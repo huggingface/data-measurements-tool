@@ -19,6 +19,10 @@ from nltk.probability import FreqDist
 from nltk.corpus import stopwords
 import sentencepiece, statistics
 
+import torch
+#Used from loading pretrained models and tokenizers 
+from transformers import AutoTokenizer, AutoModelForMaskedLM
+
 from typing import Dict, Tuple, Sequence, List, Union
 InputDataType = Union[DatasetDict, Dataset, IterableDatasetDict, IterableDataset]
 import yaml
@@ -29,6 +33,8 @@ VERBOSE = True
 tokenizer = RegexpTokenizer(r"\w+")
 wnl = WordNetLemmatizer()
 
+#Using GPU/CPU
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # A 'Preprocessing' step -- Preprocessing should be in its own module
 def cleanhtml(raw_html: str) -> str:
@@ -132,7 +138,7 @@ get_count_vocab(imdb_text, True)
 
 
 # TODO: Redo in a way that doesn't require kenlm.
-def score_ppl(test: str):
+def score_ppl_kenlm(test: str):
     # Perplexity
     ## Based on Wikipedia using the pretrained model from CCNet https://github.com/facebookresearch/cc_net/
     test = alllist[1]
@@ -148,7 +154,31 @@ def score_ppl(test: str):
     print("Final score: " + str(score))
 
 
-# score_ppl()
+def score_ppl(test: str, modelname: str):
+    tokenizer = AutoTokenizer.from_pretrained(modelname)
+    model = AutoModelForMaskedLM.from_pretrained(modelname)
+    encodings = tokenizer(test, return_tensors='pt')
+    max_length = model.config.max_position_embeddings
+    #From https://huggingface.co/transformers/perplexity.html
+    stride = 512
+    lls = []
+    for i in range(0, encodings.input_ids.size(1), stride):
+        begin_loc = max(i + stride - max_length, 0)
+        end_loc = min(i + stride, encodings.input_ids.size(1))
+        trg_len = end_loc - i    # may be different from stride on last loop
+        input_ids = encodings.input_ids[:,begin_loc:end_loc].to(device)
+        target_ids = input_ids.clone()
+        target_ids[:,:-trg_len] = -100
+
+        with torch.no_grad():
+            outputs = model(input_ids, labels=target_ids)
+            log_likelihood = outputs[0] * trg_len
+
+        lls.append(log_likelihood)
+
+    ppl = torch.exp(torch.stack(lls).sum() / end_loc)
+    print("The perplexity of the " + str(modelname) + " model for the test string is " + str(ppl.item()))
+
 
 # from https://stackoverflow.com/questions/54941966/how-can-i-calculate-perplexity-using-nltk/55043954
 
