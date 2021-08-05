@@ -1,5 +1,5 @@
-import sys
 import re
+from collections import ChainMap, Counter
 
 import nltk
 import numpy as np
@@ -14,18 +14,32 @@ from nltk.stem import WordNetLemmatizer
 nltk.download('stopwords')
 nltk.download('wordnet')
 nltk.download('punkt')
-from nltk.tokenize import RegexpTokenizer, sent_tokenize
+from nltk.tokenize import RegexpTokenizer
 from nltk.probability import FreqDist
 from nltk.corpus import stopwords
-import sentencepiece, statistics
+import statistics
 
 import torch
-#Used from loading pretrained models and tokenizers 
+# See https://huggingface.co/transformers/installation.html
+# Used from loading pretrained models and tokenizers
 from transformers import AutoTokenizer, AutoModelForMaskedLM
 
-from typing import Dict, Tuple, Sequence, List, Union
-InputDataType = Union[DatasetDict, Dataset, IterableDatasetDict, IterableDataset]
+from typing import Union, Dict
+
+DatasetType = Union[DatasetDict, Dataset, IterableDatasetDict, IterableDataset]
+
 import yaml
+
+"""
+DatasetDict({
+    USER_PROVIDED_SPLIT_KEY: Dataset({
+        features: [USER_PROVIDED_SOURCE_COLUMN_NAME, USER_PROVIDED_TARGET_COLUMN_NAME, USER_PROVIDED_SCORE_COLUMN_NAME],
+        num_rows: <automatic>
+    })
+})
+
+# USER_PROVIDED_SPLIT_KEY: this could be 'train', 'test', 'full', etc.
+"""
 
 # Make sure to give us data peeks, etc.
 VERBOSE = True
@@ -33,116 +47,223 @@ VERBOSE = True
 tokenizer = RegexpTokenizer(r"\w+")
 wnl = WordNetLemmatizer()
 
-#Using GPU/CPU
+# Using GPU/CPU
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+
+def write_yaml(yaml_data, fid) -> object:
+    stream = open(fid, 'w+')
+    # default_flow_style allows us to use dicts to dump, rather than strings.
+    yaml.dump(yaml_data, stream, default_flow_style=False)
+
+
 # A 'Preprocessing' step -- Preprocessing should be in its own module
-def cleanhtml(raw_html: str) -> str:
+# TODO: Replace with a standard HTML-stripping utility.
+def clean_html(raw_html: str) -> str:
     cleanr = re.compile("<.*?>")
-    cleantext = re.sub(cleanr, '', raw_html)
-    return cleantext
+    clean_text = re.sub(cleanr, '', raw_html)
+    return clean_text
+
+
+# Sasha had focused on imdb: most frequent words for each label,
+# and words only present in the top 10,000 most common positive/negative words
+def preprocess_imdb(imdb_data) -> str:
+    # Preprocessing for IMDB
+    all_list = [clean_html(sent) for sent in imdb_data["text"]]
+    imdb_text = ' '.join(s for s in all_list)
+    return imdb_text
 
 
 # Dataset Characteristics
-def get_data_basics(input_data: InputDataType, label_column: str, json_column=False, label_type='discrete') -> yaml:
-    df = pd.DataFrame.from_dict(input_data)
-    yaml_data = ""
-    if json_column:
-        df = pd.json_normalize(df[json_column])
+def get_data_basics(input_dataset: Dataset, column_name: str, label_type: str = 'discrete') -> Dict:
+    # Should we ask about deduping?!
+    """
+    # Takes a DatasetDict & isolates the Dataset of interest as a dataframe using json_normalize
+    # on the value of the relevant Dataset key (dataset_column_name).
+    # We will need to know this Dataset key name from a config file.
+    :rtype: Dict
+    :type dataset_column_name: str
+    """
+    basics_dict = {}
+    num_rows = input_dataset.num_rows
+    # Turn the DatasetDict into a data frame.
+    df = pd.DataFrame.from_dict(input_dataset)
+    # Grab the Dataset itself from the data frame, using json_normalize so that the Dataset, too, will be a data frame.
+    # dataset_column = df[dataset_column_name]
+    # df = pd.json_normalize(df_raw)
     if VERBOSE:
-        print("\n* Peek at data:")
+        print('\n* Step 1: Peek at data. Calculate dataset characteristics.')
         print(df.head())
+    # Will need to grab 'shape' when we're streaming;
+    # Or will we?!  Depends how we're streaming in.
+    # Is each chunk of the stream a 'DatasetDict'?
+    # If so, then 'num_rows' specifies all of the dataset rows.
+    # If not, then we will need to use shape,
+    # And it will be a smaller number of rows when streaming into here.
     data_shape = df.shape
-    num_rows = "\nNumber of rows: %s" % data_shape[0]
-    num_cols = "\nNumber of columns: %s" % data_shape[1]
-    yaml_data += num_rows
-    yaml_data += num_cols
+    assert (data_shape[0] == num_rows)
+    basics_dict['num_rows'] = data_shape[0]
+    basics_dict['num_cols'] = data_shape[1]
     if label_type == "discrete":
-        label_value_counts = "\nLabel counts:\n" + str(df[label_column].value_counts())
-        yaml_data += label_value_counts
+        label_value_counts = str(df[column_name].value_counts()).replace('\n', ', ')
+        basics_dict['label_counts'] = label_value_counts
     elif label_type == "real":
-        np_array = np.array(df[label_column])
-        min_val = "\nLabel min: " + str(np_array.min())
-        yaml_data += min_val
-        max_val = "\nLabel Mmx: " + str(np_array.max())
-        yaml_data += max_val
-        mean_val = "\nLabel mean: " + str(np_array.mean())
-        yaml_data += mean_val
-        var_val = "\nLabel variance: " + str(np_array.var())
-        yaml_data += var_val
-    print(yaml_data)
-    return yaml_data
+        np_array = np.array(df[column_name])
+        basics_dict["label_min"] = round(np_array.min(), 4)
+        basics_dict["label_max"] = round(np_array.max(), 4)
+        basics_dict["label_mean"] = round(np_array.mean(), 4)
+        basics_dict["label_var"] = round(np_array.var(), 4)
+    if VERBOSE:
+        print('\n* Step 1 summary.')
+        print(basics_dict)
+    return basics_dict
 
 
 # Vocabulary Size
-def get_count_vocab(input_data, lower=True, language="english"):
+def get_count_vocab(input_dataset: Dataset, column_name: str,
+                    lower: bool = True, language: str = "english", do_clean_html: bool = False) -> Dict:
+    vocab_dict = {}
+    vocab = Counter()
+    filtered_vocab = Counter()
+    lem_vocab = Counter()
+    # A single ID will have multiple sources. So yeah.
+    # Turn the DatasetDict into a data frame.
+    df = pd.DataFrame.from_dict(input_dataset)
+    basics_dict = {}
+    # Grab the Dataset itself from the data frame, using json_normalize so that the Dataset, too, will be a data frame.
+    # df = pd.json_normalize(dataset_column)
     # Counts the number of tokens, with or without lowercase normalization.
-    tokenized_text = tokenizer.tokenize(input_data)
-    language_stopwords = stopwords.words(language)
-    if lower:
-        vocab = FreqDist(word.lower() for word in tokenized_text)
-        # Are all the stopwords in lowercase?
-        filtered_vocab = FreqDist(word.lower() for word in tokenized_text if word.lower() not in language_stopwords)
-        lem_vocab = FreqDist(
-            wnl.lemmatize(word.lower()) for word in tokenized_text if word.lower() not in language_stopwords)
-    else:
-        vocab = FreqDist(word for word in tokenized_text)
-        filtered_vocab = FreqDist(word for word in tokenized_text if word not in language_stopwords)
-        lem_vocab = FreqDist(wnl.lemmatize(word for word in tokenized_text if word not in language_stopwords))
-    print("There are " + str(len(vocab)) + " words including stop words")
-    print("There are " + str(len(filtered_vocab)) + " words after removing stop words")
-    print("There are " + str(len(lem_vocab)) + " words after removing stop words and lemmatizing")
+    if VERBOSE:
+        print('\n* Step 2: Calculate statistics on text looking like this.')
+        print(df[column_name].head())
+    for sent in df[column_name]:
+        if do_clean_html:
+            sent = clean_html(sent)
+        tokenized_text = tokenizer.tokenize(sent)
+        language_stopwords = stopwords.words(language)
+        if lower:
+            vocab_tmp = FreqDist(word.lower() for word in tokenized_text)
+            # Are all the stopwords in lowercase?
+            filtered_vocab_tmp = FreqDist(
+                word.lower() for word in tokenized_text if word.lower() not in language_stopwords)
+            lem_vocab_tmp = FreqDist(
+                wnl.lemmatize(word.lower()) for word in tokenized_text if word.lower() not in language_stopwords)
+        else:
+            vocab_tmp = FreqDist(word for word in tokenized_text)
+            filtered_vocab_tmp = FreqDist(word for word in tokenized_text if word not in language_stopwords)
+            lem_vocab_tmp = FreqDist(wnl.lemmatize(word for word in tokenized_text if word not in language_stopwords))
+        vocab.update(vocab_tmp)
+        filtered_vocab.update(filtered_vocab_tmp)
+        lem_vocab.update(lem_vocab_tmp)
+    if VERBOSE:
+        print("\n* Step 2 summary.")
+        print("There are {0} words including stop words".format(str(len(vocab))))
+        print("There are " + str(len(filtered_vocab)) + " words after removing stop words")
+        print("There are " + str(len(lem_vocab)) + " words after removing stop words and lemmatizing")
+    vocab_dict['num_words'] = len(vocab)
+    vocab_dict['num_filtered_words'] = len(filtered_vocab)
+    vocab_dict['num_lemmatized_words'] = len(lem_vocab)
+    return vocab_dict
 
 
 # Instance Characteristics
-def get_text_stats(text_list):
-    # Calculates sufficient statistics for text-based instances: average, mean, medium
+def get_text_stats(input_dataset: Dataset, column_name: str) -> Dict:
+    # Calculates sufficient statistics for text-based instances: average, mean, median
     total_lens = 0
-    alllengths = []
-    # TODO(meg): Turn into yaml output
-    for i, sent in enumerate(text_list):
+    all_lengths = []
+    text_dict = {}
+    i = 1
+    # Turn the DatasetDict into a data frame.
+    df = pd.DataFrame.from_dict(input_dataset)
+    if VERBOSE:
+        print("\n* Step 3: Get text stats. Text is looking like this.")
+        print(df.head())
+    for sent in df[column_name]:  # enumerate(source_text):
         lent = len(tokenizer.tokenize(sent))
-        alllengths.append(lent)
+        all_lengths.append(lent)
         total_lens += lent
+        i += 1.0
     avg_sent_len = total_lens / i
-    print("The average sentence length is: " + str(round(avg_sent_len, 4)) + " words.")
-    print("The mean sentence length is: " + str(statistics.mean(alllengths)) + " words.")
-    print("The mean sentence length is: " + str(statistics.median(alllengths)) + " words.")
+    if VERBOSE:
+        print("\n* Step 3 summary.")
+        # Hm, weird that average and mean are different numbers. Must be rounding?
+        print("The average sentence length is: " + str(avg_sent_len) + " words.")
+        print("The mean sentence length is: " + str(statistics.mean(all_lengths)) + " words.")
+        print("The median sentence length is: " + str(statistics.median(all_lengths)) + " words.")
+    text_dict['mean_sent_len'] = round(statistics.mean(all_lengths), 4)
+    text_dict['median_sent_len'] = round(statistics.median(all_lengths), 4)
+    return text_dict
 
 
-# Per-label characteristics
-# TBD. Sasha had focused on imdb: most frequent words for each label,
-# and words only present in the top 10,000 most common positive/negative words
-
-# Dataset: glue-ax
-""" A manually-curated evaluation dataset for fine-grained analysis 
-of system performance on a broad range of linguistic phenomena. 
-This dataset evaluates sentence understanding through Natural Language Inference (NLI) problems. 
-Use a model trained on MulitNLI to produce predictions for this dataset."""
-dataset: Union[DatasetDict, Dataset, IterableDatasetDict, IterableDataset] = load_dataset("glue", "ax")
-
-yaml_data = get_data_basics(dataset, label_column="label", json_column="test")
-
-asset = load_dataset("asset", "ratings")
-
-yaml_data = get_data_basics(asset, label_column="rating", json_column="full", label_type="real")
-
-imdb = load_dataset("imdb")
-imdb_train = imdb['train']
-yaml_data = get_data_basics(imdb_train, label_column="label")
-
-# Preprocessing for IMDB
-alllist = [cleanhtml(sent) for sent in imdb_train["text"]]
-imdb_text = ' '.join(s for s in alllist)
-get_count_vocab(imdb_text, True)
+def do_glue_ax_dataset(dataset_column_name="test") -> ChainMap:
+    # Dataset: glue-ax
+    """ A manually-curated evaluation dataset for fine-grained analysis
+    of system performance on a broad range of linguistic phenomena.
+    This dataset evaluates sentence understanding through Natural Language Inference (NLI) problems.
+    Use a model trained on MulitNLI to produce predictions for this dataset."""
+    glue: DatasetDict = load_dataset("glue", "ax")
+    glue_dataset = glue[dataset_column_name]
+    glue_basics_dict = get_data_basics(glue_dataset, column_name="label")
+    # Want to do this for both *source* and *target*
+    glue_vocab_dict = get_count_vocab(glue_dataset, column_name="premise")
+    glue_text_dict = get_text_stats(glue_dataset, column_name="premise")
+    # TODO: Run all the rest of the metrics
+    glue_yaml_data = ChainMap(glue_basics_dict, glue_vocab_dict, glue_text_dict)
+    return glue_yaml_data
 
 
+def do_asset_ratings_dataset(dataset_column_name="full") -> ChainMap:
+    # Dataset: Asset-ratings
+    asset_dict: DatasetDict = load_dataset("asset", "ratings")
+    asset_dataset = asset_dict[dataset_column_name]
+    asset_basics_dict = get_data_basics(asset_dataset, column_name="rating", label_type="real")
+    # Want to do this for both *source* and *target*
+    asset_vocab_dict = get_count_vocab(asset_dataset, column_name="original")
+    asset_text_dict = get_text_stats(asset_dataset, column_name="original")
+    # TODO: Run all the rest of the metrics
+    asset_yaml_data = ChainMap(asset_basics_dict, asset_vocab_dict, asset_text_dict)
+    return asset_yaml_data
+
+
+def do_imdb_train_dataset(dataset_column_name="train") -> ChainMap:
+    imdb_dict: DatasetDict = load_dataset("imdb")
+    imdb_dataset = imdb_dict[dataset_column_name]
+    imdb_basics_dict = get_data_basics(imdb_dataset, column_name="label")
+    # Want to do this for both *source* and *target*
+    imdb_vocab_dict = get_count_vocab(imdb_dataset, column_name="text", do_clean_html=True)
+    imdb_text_dict = get_text_stats(imdb_dataset, column_name="text")
+    # TODO: Run all the rest of the metrics
+    imdb_yaml_data = ChainMap(imdb_basics_dict, imdb_vocab_dict, imdb_text_dict)
+    return imdb_yaml_data
+
+
+# Large datasets we stream; this requires different handling,
+# specifically different read-in functions for a streamed vs fully-read
+# TODO: Get dataset size to help solve whether to stream of read in full.
+# (could be config, could be automatically grabbed)
+
+print("\n\n=== Processing Glue, ax...===")
+glue_yaml = do_glue_ax_dataset()
+write_yaml(glue_yaml, 'glue-ax.yaml')
+
+print("\n\n=== Processing Asset, ratings...===")
+asset_yaml = do_asset_ratings_dataset()
+write_yaml(asset_yaml, 'asset-ratings.yaml')
+
+print("\n\n=== Processing IMDB ===")
+imdb_train_yaml = do_imdb_train_dataset()
+write_yaml(imdb_train_yaml, 'imdb-train.yaml')
+
+
+
+# TODO: Clean up everything below this.
 # TODO: Redo in a way that doesn't require kenlm.
+"""
 def score_ppl_kenlm(test: str):
     # Perplexity
     ## Based on Wikipedia using the pretrained model from CCNet https://github.com/facebookresearch/cc_net/
     test = alllist[1]
-    sp_model = sentencepiece.SentencePieceProcessor('en.sp.model')
+    # sp_model = sentencepiece.SentencePieceProcessor('en.sp.model')
     # TBD. Issue with accessing kenlm.
     # model = kenlm.Model('/home/sasha/Documents/MilaPostDoc/Python/cc_net/data/lm_sp/en.arpa.bin')
     score = 0
@@ -152,6 +273,7 @@ def score_ppl_kenlm(test: str):
         # score += model.score(" ".join(sentence))
         doc_length += len(sentence) + 1
     print("Final score: " + str(score))
+"""
 
 
 def score_ppl(test: str, modelname: str):
@@ -159,16 +281,17 @@ def score_ppl(test: str, modelname: str):
     model = AutoModelForMaskedLM.from_pretrained(modelname)
     encodings = tokenizer(test, return_tensors='pt')
     max_length = model.config.max_position_embeddings
-    #From https://huggingface.co/transformers/perplexity.html
+    # From https://huggingface.co/transformers/perplexity.html
     stride = 512
     lls = []
+    end_loc = 1
     for i in range(0, encodings.input_ids.size(1), stride):
         begin_loc = max(i + stride - max_length, 0)
         end_loc = min(i + stride, encodings.input_ids.size(1))
-        trg_len = end_loc - i    # may be different from stride on last loop
-        input_ids = encodings.input_ids[:,begin_loc:end_loc].to(device)
+        trg_len = end_loc - i  # may be different from stride on last loop
+        input_ids = encodings.input_ids[:, begin_loc:end_loc].to(device)
         target_ids = input_ids.clone()
-        target_ids[:,:-trg_len] = -100
+        target_ids[:, :-trg_len] = -100
 
         with torch.no_grad():
             outputs = model(input_ids, labels=target_ids)
