@@ -51,7 +51,7 @@ wnl = WordNetLemmatizer()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-def write_yaml(yaml_data, fid) -> object:
+def write_yaml(yaml_data, fid):
     stream = open(fid, 'w+')
     # default_flow_style allows us to use dicts to dump, rather than strings.
     yaml.dump(yaml_data, stream, default_flow_style=False)
@@ -81,8 +81,10 @@ def get_data_basics(input_dataset: Dataset, column_name: str, label_type: str = 
     # Takes a DatasetDict & isolates the Dataset of interest as a dataframe using json_normalize
     # on the value of the relevant Dataset key (dataset_column_name).
     # We will need to know this Dataset key name from a config file.
+    :type input_dataset: Dataset
+    :type column_name: str
+    :type label_type: str
     :rtype: Dict
-    :type dataset_column_name: str
     """
     basics_dict = {}
     num_rows = input_dataset.num_rows
@@ -92,7 +94,7 @@ def get_data_basics(input_dataset: Dataset, column_name: str, label_type: str = 
     # dataset_column = df[dataset_column_name]
     # df = pd.json_normalize(df_raw)
     if VERBOSE:
-        print('\n* Step 1: Peek at data. Calculate dataset characteristics.')
+        print('\n* Step 1: Peek at data. Calculating dataset characteristics.')
         print(df.head())
     # Will need to grab 'shape' when we're streaming;
     # Or will we?!  Depends how we're streaming in.
@@ -129,13 +131,13 @@ def get_count_vocab(input_dataset: Dataset, column_name: str,
     # A single ID will have multiple sources. So yeah.
     # Turn the DatasetDict into a data frame.
     df = pd.DataFrame.from_dict(input_dataset)
-    basics_dict = {}
     # Grab the Dataset itself from the data frame, using json_normalize so that the Dataset, too, will be a data frame.
     # df = pd.json_normalize(dataset_column)
     # Counts the number of tokens, with or without lowercase normalization.
     if VERBOSE:
-        print('\n* Step 2: Calculate statistics on text looking like this.')
+        print('\n* Step 2: Calculating statistics on text looking like this.')
         print(df[column_name].head())
+    # TODO: Do this the fast way.
     for sent in df[column_name]:
         if do_clean_html:
             sent = clean_html(sent)
@@ -253,8 +255,6 @@ write_yaml(asset_yaml, 'asset-ratings.yaml')
 print("\n\n=== Processing IMDB ===")
 imdb_train_yaml = do_imdb_train_dataset()
 write_yaml(imdb_train_yaml, 'imdb-train.yaml')
-
-
 
 # TODO: Clean up everything below this.
 # TODO: Redo in a way that doesn't require kenlm.
