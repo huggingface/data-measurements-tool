@@ -75,14 +75,14 @@ def preprocess_imdb(imdb_data) -> str:
 
 
 # Dataset Characteristics
-def get_data_basics(input_dataset: Dataset, column_name: str, label_type: str = 'discrete') -> Dict:
+def get_data_basics(input_dataset: Dataset, label_column_name: str, label_type='discrete') -> Dict:
     # Should we ask about deduping?!
     """
     # Takes a DatasetDict & isolates the Dataset of interest as a dataframe using json_normalize
     # on the value of the relevant Dataset key (dataset_column_name).
     # We will need to know this Dataset key name from a config file.
     :type input_dataset: Dataset
-    :type column_name: str
+    :type label_column_name: str
     :type label_type: str
     :rtype: Dict
     """
@@ -107,10 +107,10 @@ def get_data_basics(input_dataset: Dataset, column_name: str, label_type: str = 
     basics_dict['num_rows'] = data_shape[0]
     basics_dict['num_cols'] = data_shape[1]
     if label_type == "discrete":
-        label_value_counts = str(df[column_name].value_counts()).replace('\n', ', ')
+        label_value_counts = str(df[label_column_name].value_counts()).replace('\n', ', ')
         basics_dict['label_counts'] = label_value_counts
     elif label_type == "real":
-        np_array = np.array(df[column_name])
+        np_array = np.array(df[label_column_name])
         basics_dict["label_min"] = round(np_array.min(), 4)
         basics_dict["label_max"] = round(np_array.max(), 4)
         basics_dict["label_mean"] = round(np_array.mean(), 4)
@@ -122,8 +122,8 @@ def get_data_basics(input_dataset: Dataset, column_name: str, label_type: str = 
 
 
 # Vocabulary Size
-def get_count_vocab(input_dataset: Dataset, column_name: str,
-                    lower: bool = True, language: str = "english", do_clean_html: bool = False) -> Dict:
+def get_count_vocab(input_dataset: Dataset, langa_column_name: str, lower=True, language="english",
+                    do_clean_html=False) -> Dict:
     vocab_dict = {}
     vocab = Counter()
     filtered_vocab = Counter()
@@ -136,9 +136,9 @@ def get_count_vocab(input_dataset: Dataset, column_name: str,
     # Counts the number of tokens, with or without lowercase normalization.
     if VERBOSE:
         print('\n* Step 2: Calculating statistics on text looking like this.')
-        print(df[column_name].head())
+        print(df[langa_column_name].head())
     # TODO: Do this the fast way.
-    for sent in df[column_name]:
+    for sent in df[langa_column_name]:
         if do_clean_html:
             sent = clean_html(sent)
         tokenized_text = tokenizer.tokenize(sent)
@@ -169,18 +169,18 @@ def get_count_vocab(input_dataset: Dataset, column_name: str,
 
 
 # Instance Characteristics
-def get_text_stats(input_dataset: Dataset, column_name: str) -> Dict:
+def get_text_stats(input_dataset: Dataset, langa_column_name: str) -> Dict:
     # Calculates sufficient statistics for text-based instances: average, mean, median
     total_lens = 0
     all_lengths = []
     text_dict = {}
     i = 1
-    # Turn the DatasetDict into a data frame.
+    # Turn the Dataset into a data frame.
     df = pd.DataFrame.from_dict(input_dataset)
     if VERBOSE:
         print("\n* Step 3: Get text stats. Text is looking like this.")
         print(df.head())
-    for sent in df[column_name]:  # enumerate(source_text):
+    for sent in df[langa_column_name]:  # enumerate(source_text):
         lent = len(tokenizer.tokenize(sent))
         all_lengths.append(lent)
         total_lens += lent
@@ -197,46 +197,60 @@ def get_text_stats(input_dataset: Dataset, column_name: str) -> Dict:
     return text_dict
 
 
-def do_glue_ax_dataset(dataset_column_name="test") -> ChainMap:
+def do_dataset(dataset_name: str, dataset_section: str, dataset_column_name: str, label_column_name: str,
+               label_type="discrete", langa_column_name="text", lower=True, language="english",
+               do_clean_html=False) -> ChainMap:
+    data_dict = load_dataset(dataset_name, dataset_section)
+    desired_dataset = data_dict[dataset_column_name]
+    data_basics_dict = get_data_basics(desired_dataset, label_column_name=label_column_name, label_type=label_type)
+    # Want to do this for both *source* and *target*
+    data_vocab_dict = get_count_vocab(input_dataset=desired_dataset, langa_column_name=langa_column_name, lower=lower,
+                                      language=language, do_clean_html=do_clean_html)
+    data_text_dict = get_text_stats(desired_dataset, langa_column_name=langa_column_name)
+    # TODO: Run all the rest of the metrics
+    output_yaml_data = ChainMap(data_basics_dict, data_vocab_dict, data_text_dict)
+    return output_yaml_data
+
+
+def do_glue_ax_dataset() -> ChainMap:
     # Dataset: glue-ax
     """ A manually-curated evaluation dataset for fine-grained analysis
     of system performance on a broad range of linguistic phenomena.
     This dataset evaluates sentence understanding through Natural Language Inference (NLI) problems.
     Use a model trained on MulitNLI to produce predictions for this dataset."""
-    glue: DatasetDict = load_dataset("glue", "ax")
-    glue_dataset = glue[dataset_column_name]
-    glue_basics_dict = get_data_basics(glue_dataset, column_name="label")
+    glue_ax_yaml = do_dataset(dataset_name="glue", dataset_section="ax", dataset_column_name="test",
+                              label_column_name="label", label_type="discrete", langa_column_name="premise")
+    # glue: DatasetDict = load_dataset("glue", "ax")
+    # glue_dataset = glue[dataset_column_name]
+    # glue_basics_dict = get_data_basics(glue_dataset, column_name="label")
     # Want to do this for both *source* and *target*
-    glue_vocab_dict = get_count_vocab(glue_dataset, column_name="premise")
-    glue_text_dict = get_text_stats(glue_dataset, column_name="premise")
+    # glue_vocab_dict = get_count_vocab(glue_dataset, column_name="premise")
+    # glue_text_dict = get_text_stats(glue_dataset, column_name="premise")
     # TODO: Run all the rest of the metrics
-    glue_yaml_data = ChainMap(glue_basics_dict, glue_vocab_dict, glue_text_dict)
-    return glue_yaml_data
+    # glue_yaml_data = ChainMap(glue_basics_dict, glue_vocab_dict, glue_text_dict)
+    return glue_ax_yaml
 
 
-def do_asset_ratings_dataset(dataset_column_name="full") -> ChainMap:
+def do_asset_ratings_dataset() -> ChainMap:
     # Dataset: Asset-ratings
-    asset_dict: DatasetDict = load_dataset("asset", "ratings")
-    asset_dataset = asset_dict[dataset_column_name]
-    asset_basics_dict = get_data_basics(asset_dataset, column_name="rating", label_type="real")
+    asset_ratings_yaml = do_dataset(dataset_name="asset", dataset_section="ratings", dataset_column_name="full",
+                                    label_column_name="rating", label_type="real", langa_column_name="original")
+    # asset_dict: DatasetDict = load_dataset("asset", "ratings")
+    # asset_dataset = asset_dict[dataset_column_name]
+    # asset_basics_dict = get_data_basics(asset_dataset, column_name="rating", label_type="real")
     # Want to do this for both *source* and *target*
-    asset_vocab_dict = get_count_vocab(asset_dataset, column_name="original")
-    asset_text_dict = get_text_stats(asset_dataset, column_name="original")
+    # asset_vocab_dict = get_count_vocab(asset_dataset, column_name="original")
+    # asset_text_dict = get_text_stats(asset_dataset, column_name="original")
     # TODO: Run all the rest of the metrics
-    asset_yaml_data = ChainMap(asset_basics_dict, asset_vocab_dict, asset_text_dict)
-    return asset_yaml_data
+    # asset_yaml_data = ChainMap(asset_basics_dict, asset_vocab_dict, asset_text_dict)
+    return asset_ratings_yaml
 
 
-def do_imdb_train_dataset(dataset_column_name="train") -> ChainMap:
-    imdb_dict: DatasetDict = load_dataset("imdb")
-    imdb_dataset = imdb_dict[dataset_column_name]
-    imdb_basics_dict = get_data_basics(imdb_dataset, column_name="label")
-    # Want to do this for both *source* and *target*
-    imdb_vocab_dict = get_count_vocab(imdb_dataset, column_name="text", do_clean_html=True)
-    imdb_text_dict = get_text_stats(imdb_dataset, column_name="text")
-    # TODO: Run all the rest of the metrics
-    imdb_yaml_data = ChainMap(imdb_basics_dict, imdb_vocab_dict, imdb_text_dict)
-    return imdb_yaml_data
+def do_imdb_train_dataset() -> ChainMap:
+    imdb_yaml = do_dataset(dataset_name="imdb", dataset_section="plain_text", dataset_column_name="train",
+                           label_column_name="label", label_type="discrete", langa_column_name="text",
+                           do_clean_html=True)
+    return imdb_yaml
 
 
 # Large datasets we stream; this requires different handling,
