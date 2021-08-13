@@ -1,36 +1,33 @@
 import re
+import statistics
 from collections import ChainMap, Counter
+from typing import Dict
 
 import nltk
 import numpy as np
 import pandas as pd
+import torch
+import yaml
 # If you don't have this installed, see https://huggingface.co/docs/datasets/installation.html
-from datasets import load_dataset, DatasetDict, Dataset, IterableDatasetDict, IterableDataset
+from datasets import load_dataset, Dataset
+from nltk.corpus import stopwords
 from nltk.lm import MLE
 from nltk.lm.preprocessing import padded_everygram_pipeline
+from nltk.probability import FreqDist
 from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import RegexpTokenizer
+# See https://huggingface.co/transformers/installation.html
+# Used from loading pretrained models and tokenizers
+from transformers import AutoTokenizer, AutoModelForMaskedLM
 
 # Used later in vocab statistics.
 nltk.download('stopwords')
 nltk.download('wordnet')
 nltk.download('punkt')
-from nltk.tokenize import RegexpTokenizer
-from nltk.probability import FreqDist
-from nltk.corpus import stopwords
-import statistics
-
-import torch
-# See https://huggingface.co/transformers/installation.html
-# Used from loading pretrained models and tokenizers
-from transformers import AutoTokenizer, AutoModelForMaskedLM
-
-from typing import Union, Dict
-
-DatasetType = Union[DatasetDict, Dataset, IterableDatasetDict, IterableDataset]
-
-import yaml
 
 """
+The DatasetDict structure is like this:
+
 DatasetDict({
     USER_PROVIDED_SPLIT_KEY: Dataset({
         features: [USER_PROVIDED_SOURCE_COLUMN_NAME, USER_PROVIDED_TARGET_COLUMN_NAME, USER_PROVIDED_SCORE_COLUMN_NAME],
@@ -65,15 +62,6 @@ def clean_html(raw_html: str) -> str:
     return clean_text
 
 
-# Sasha had focused on imdb: most frequent words for each label,
-# and words only present in the top 10,000 most common positive/negative words
-def preprocess_imdb(imdb_data) -> str:
-    # Preprocessing for IMDB
-    all_list = [clean_html(sent) for sent in imdb_data["text"]]
-    imdb_text = ' '.join(s for s in all_list)
-    return imdb_text
-
-
 # Dataset Characteristics
 def get_data_basics(input_dataset: Dataset, label_column_name: str, label_type='discrete') -> Dict:
     # Should we ask about deduping?!
@@ -88,11 +76,10 @@ def get_data_basics(input_dataset: Dataset, label_column_name: str, label_type='
     """
     basics_dict = {}
     num_rows = input_dataset.num_rows
-    # Turn the DatasetDict into a data frame.
+    # Turn the Dataset into a data frame.
     df = pd.DataFrame.from_dict(input_dataset)
     # Grab the Dataset itself from the data frame, using json_normalize so that the Dataset, too, will be a data frame.
-    # dataset_column = df[dataset_column_name]
-    # df = pd.json_normalize(df_raw)
+    # TODO: .info() as the summarization mechanism, as well as .isnull() to get a view of the NaN
     if VERBOSE:
         print('\n* Step 1: Peek at data. Calculating dataset characteristics.')
         print(df.head())
@@ -128,11 +115,10 @@ def get_count_vocab(input_dataset: Dataset, langa_column_name: str, lower=True, 
     vocab = Counter()
     filtered_vocab = Counter()
     lem_vocab = Counter()
-    # A single ID will have multiple sources. So yeah.
-    # Turn the DatasetDict into a data frame.
+    # TODO: A single ID will have multiple duplicated sources if there are multiple translations.
+    # So yeah. We have to deal with that.
+    # Turn the Dataset into a data frame.
     df = pd.DataFrame.from_dict(input_dataset)
-    # Grab the Dataset itself from the data frame, using json_normalize so that the Dataset, too, will be a data frame.
-    # df = pd.json_normalize(dataset_column)
     # Counts the number of tokens, with or without lowercase normalization.
     if VERBOSE:
         print('\n* Step 2: Calculating statistics on text looking like this.')
@@ -168,6 +154,19 @@ def get_count_vocab(input_dataset: Dataset, langa_column_name: str, lower=True, 
     return vocab_dict
 
 
+# def get_label_stats()
+# TODO: Show the top tokens by count for each label.
+# Proportion within dataset
+# Closed and open pi chart?
+# Find the closed word lists for the different languages in order to calculate distributional statistics.
+
+
+# def do_zipf():
+# Then show Zipf plot for top 400 tokens.
+# Real vs. Projected value according to Zipf; flag those that are a difference higher than x
+# # for what's predicted by the law.
+# For closed class words, what could we say about that means semantically?
+
 # Instance Characteristics
 def get_text_stats(input_dataset: Dataset, langa_column_name: str) -> Dict:
     # Calculates sufficient statistics for text-based instances: average, mean, median
@@ -197,10 +196,10 @@ def get_text_stats(input_dataset: Dataset, langa_column_name: str) -> Dict:
     return text_dict
 
 
-def do_dataset(dataset_name: str, dataset_section: str, dataset_column_name: str, label_column_name: str,
+def do_dataset(dataset_name: str, config: str, dataset_column_name: str, label_column_name: str,
                label_type="discrete", langa_column_name="text", lower=True, language="english",
                do_clean_html=False) -> ChainMap:
-    data_dict = load_dataset(dataset_name, dataset_section)
+    data_dict = load_dataset(dataset_name, config)
     desired_dataset = data_dict[dataset_column_name]
     data_basics_dict = get_data_basics(desired_dataset, label_column_name=label_column_name, label_type=label_type)
     # Want to do this for both *source* and *target*
@@ -218,36 +217,20 @@ def do_glue_ax_dataset() -> ChainMap:
     of system performance on a broad range of linguistic phenomena.
     This dataset evaluates sentence understanding through Natural Language Inference (NLI) problems.
     Use a model trained on MulitNLI to produce predictions for this dataset."""
-    glue_ax_yaml = do_dataset(dataset_name="glue", dataset_section="ax", dataset_column_name="test",
+    glue_ax_yaml = do_dataset(dataset_name="glue", config="ax", dataset_column_name="test",
                               label_column_name="label", label_type="discrete", langa_column_name="premise")
-    # glue: DatasetDict = load_dataset("glue", "ax")
-    # glue_dataset = glue[dataset_column_name]
-    # glue_basics_dict = get_data_basics(glue_dataset, column_name="label")
-    # Want to do this for both *source* and *target*
-    # glue_vocab_dict = get_count_vocab(glue_dataset, column_name="premise")
-    # glue_text_dict = get_text_stats(glue_dataset, column_name="premise")
-    # TODO: Run all the rest of the metrics
-    # glue_yaml_data = ChainMap(glue_basics_dict, glue_vocab_dict, glue_text_dict)
     return glue_ax_yaml
 
 
 def do_asset_ratings_dataset() -> ChainMap:
     # Dataset: Asset-ratings
-    asset_ratings_yaml = do_dataset(dataset_name="asset", dataset_section="ratings", dataset_column_name="full",
+    asset_ratings_yaml = do_dataset(dataset_name="asset", config="ratings", dataset_column_name="full",
                                     label_column_name="rating", label_type="real", langa_column_name="original")
-    # asset_dict: DatasetDict = load_dataset("asset", "ratings")
-    # asset_dataset = asset_dict[dataset_column_name]
-    # asset_basics_dict = get_data_basics(asset_dataset, column_name="rating", label_type="real")
-    # Want to do this for both *source* and *target*
-    # asset_vocab_dict = get_count_vocab(asset_dataset, column_name="original")
-    # asset_text_dict = get_text_stats(asset_dataset, column_name="original")
-    # TODO: Run all the rest of the metrics
-    # asset_yaml_data = ChainMap(asset_basics_dict, asset_vocab_dict, asset_text_dict)
     return asset_ratings_yaml
 
 
 def do_imdb_train_dataset() -> ChainMap:
-    imdb_yaml = do_dataset(dataset_name="imdb", dataset_section="plain_text", dataset_column_name="train",
+    imdb_yaml = do_dataset(dataset_name="imdb", config="plain_text", dataset_column_name="train",
                            label_column_name="label", label_type="discrete", langa_column_name="text",
                            do_clean_html=True)
     return imdb_yaml
