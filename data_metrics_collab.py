@@ -1,3 +1,4 @@
+import itertools
 import re
 import statistics
 from collections import ChainMap, Counter
@@ -18,7 +19,7 @@ from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import RegexpTokenizer
 # See https://huggingface.co/transformers/installation.html
 # Used from loading pretrained models and tokenizers
-from transformers import AutoTokenizer, AutoModelForMaskedLM
+from transformers import AutoTokenizer, AutoModelWithLMHead, AutoModelForMaskedLM
 
 # Used later in vocab statistics.
 nltk.download('stopwords')
@@ -46,6 +47,133 @@ wnl = WordNetLemmatizer()
 
 # Using GPU/CPU
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+
+def perplex_model_data(**kwargs):
+    '''
+    arguments:
+    m_name : name of the model, e.g. "bert-base-uncased"
+    d_name : name of the dataset, e.g. "oscar"
+    d_option : dataset options, e.g. "unshuffled_deduplicated_en"
+    d_split : train or test
+    d_streaming : True or False
+    d_size : how many instances to load if streaming
+    d_col : which column to analyze in the dataset
+
+    Calculates the perplexity of a model, dataset pair
+    Probably will need to run several times for a given dataset, based on models that have been trained on other datasets (from the same task?)
+    E.g. I'm uploading a new summarization dataset, and I'll calculate its perplexity based on models trained on existing summarization datasets.
+    '''
+    modlist = []
+    # TODO: We may need multiple lists if we want to test a bunch of different models.
+    maskedLM = ["bert-base-uncased"]
+    maskedHead = ["t5-small"]
+    tok = AutoTokenizer.from_pretrained(kwargs['m_name'])
+    # TODO: fix the redundant loading of models!
+    if kwargs['m_name'] in modlist:
+        pass
+    elif kwargs['m_name'] in maskedHead:
+        model = AutoModelWithLMHead.from_pretrained(kwargs['m_name'])
+        modlist.append(kwargs['m_name'])
+    else:
+        model = AutoModelForMaskedLM.from_pretrained(kwargs['m_name'])
+        print(str(kwargs['m_name']) + " model loaded!")
+        modlist.append(kwargs['m_name'])
+    data = load_dataset(kwargs['d_name'], kwargs['d_option'], split=kwargs['d_split'], streaming=kwargs['d_streaming'])
+    print(str(kwargs['d_name']) + " dataset loaded!")
+    if kwargs['d_streaming'] == True:
+        data_head = data.take(kwargs['d_size'])
+        # try:
+        #    text = [l['text'] for l in list(data_head)]
+        # except:
+        #    # TODO: figure out a better way to do this
+        feature = kwargs['d_col']
+        text = [l[feature] for l in list(data_head)]
+
+    else:
+        feature = next(iter(data.features))
+        text = data[feature][:kwargs['d_size']]
+
+    encodings = tok('\n\n'.join(text), return_tensors='pt')
+    try:
+        max_length = model.config.max_position_embeddings
+    except AttributeError as error:
+        max_length = model.config.n_positions
+    except:
+        max_length = 512
+
+    # From https://huggingface.co/transformers/perplexity.html
+    stride = 512
+    lls = []
+    for i in range(0, encodings.input_ids.size(1), stride):
+        begin_loc = max(i + stride - max_length, 0)
+        end_loc = min(i + stride, encodings.input_ids.size(1))
+        trg_len = end_loc - i  # may be different from stride on last loop
+        input_ids = encodings.input_ids[:, begin_loc:end_loc].to(device)
+        target_ids = input_ids.clone()
+        target_ids[:, :-trg_len] = -100
+
+        with torch.no_grad():
+            outputs = model(input_ids, labels=target_ids)
+            log_likelihood = outputs[0] * trg_len
+
+        lls.append(log_likelihood)
+
+    ppl = torch.exp(torch.stack(lls).sum() / end_loc)
+    print("The perplexity of the " + str(kwargs['m_name']) + " model with the " + str(
+        kwargs['d_name']) + " dataset is " + str(ppl.item()))
+
+
+def get_combo_pp(models, datasets):
+    '''
+    Takes a list of [models] and [datasets] and their respective options (same as above) and calculates
+    all of the perplexity scores of the *combinations* of models and datasets
+    e.g.
+    models = ["bert-base-uncased", "t5-small"]
+
+    datasets= [
+        ["asset", "ratings", "full", False, 5],
+        ["oscar", "unshuffled_deduplicated_en", "train", True,5],
+        ["imdb","plain_text", "test", False ,5],
+        ["poem_sentiment","plain_text", "test", True ,5],
+        ["c4", "en", "train", True, 5]
+       ]
+    '''
+    combos = list(itertools.product(models, datasets))
+    print("There are " + str(len(list(combos))) + " combinations of models and datasets.")
+    for m, d in combos:
+        print('Analyzing the ' + m + ' model and the ' + d[0] + ' dataset.')
+        print(d)
+        perplex_model_data(m_name=m, d_name=d[0], d_option=d[1], d_split=d[2], d_streaming=d[3], d_size=d[4],
+                           d_col=d[5])
+
+
+def get_perplexity(dataset_name, config_name, dataset_split_name, langa_column_name, streaming=True):
+    # TODO: What's a better way to do this? Can we check whether streaming is possible for the dataset before calling?
+    # ALSO, it seems that '.orig' and similar are simply text files, which are streamable; they just don't have
+    # the right name.
+    try:
+        data = load_dataset(dataset_name, config_name, split=dataset_split_name, streaming=streaming)
+    except NotImplementedError:
+        data = load_dataset(dataset_name, config_name, split=dataset_split_name, streaming=False)
+    mods = ["bert-base-uncased", "t5-small"]
+    # These are organized as dataset name, config name, data split name, where the langa stuff is written
+    # TODO: Pulls these out more automatically.
+    datas = [
+        ["asset", "ratings", "full", False, 5, "simplification"],
+        ["oscar", "unshuffled_deduplicated_en", "train", True, 5, "text"],
+        ["imdb", "plain_text", "test", False, 5, "text"],
+        ["poem_sentiment", "plain_text", "test", True, 5, "verse_text"],
+        ["c4", "en", "train", True, 5, "text"]
+    ]
+    perplex_model_data(m_name="bert-base-uncased", d_name="oscar", d_option="unshuffled_deduplicated_en",
+                       d_split="train", d_streaming=True, d_size=5, d_col="text")
+    get_combo_pp(mods, datas)
+    base_url = 'https://storage.googleapis.com/huggingface-nlp/cache/datasets/wikipedia/20200501.en/1.0.0/'
+    data_files = {"train": base_url + "wikipedia-train.parquet"}
+    wiki = load_dataset("parquet", data_files=data_files, split="train", streaming=True)
+    print(next(iter(wiki)))
+    # {'title': 'Yangliuqing', 'text': 'Yangliuqing () is a market town in Xiqing District...'}
 
 
 def write_yaml(yaml_data, fid):
@@ -196,16 +324,17 @@ def get_text_stats(input_dataset: Dataset, langa_column_name: str) -> Dict:
     return text_dict
 
 
-def do_dataset(dataset_name: str, config: str, dataset_column_name: str, label_column_name: str,
+def do_dataset(dataset_name: str, config_name: str, dataset_split_name: str, label_column_name: str,
                label_type="discrete", langa_column_name="text", lower=True, language="english",
                do_clean_html=False) -> ChainMap:
-    data_dict = load_dataset(dataset_name, config)
-    desired_dataset = data_dict[dataset_column_name]
+    data_dict = load_dataset(dataset_name, config_name)
+    desired_dataset = data_dict[dataset_split_name]
     data_basics_dict = get_data_basics(desired_dataset, label_column_name=label_column_name, label_type=label_type)
     # Want to do this for both *source* and *target*
     data_vocab_dict = get_count_vocab(input_dataset=desired_dataset, langa_column_name=langa_column_name, lower=lower,
                                       language=language, do_clean_html=do_clean_html)
     data_text_dict = get_text_stats(desired_dataset, langa_column_name=langa_column_name)
+    get_perplexity(dataset_name, config_name, dataset_split_name, langa_column_name)
     # TODO: Run all the rest of the metrics
     output_yaml_data = ChainMap(data_basics_dict, data_vocab_dict, data_text_dict)
     return output_yaml_data
@@ -217,20 +346,20 @@ def do_glue_ax_dataset() -> ChainMap:
     of system performance on a broad range of linguistic phenomena.
     This dataset evaluates sentence understanding through Natural Language Inference (NLI) problems.
     Use a model trained on MulitNLI to produce predictions for this dataset."""
-    glue_ax_yaml = do_dataset(dataset_name="glue", config="ax", dataset_column_name="test",
+    glue_ax_yaml = do_dataset(dataset_name="glue", config_name="ax", dataset_split_name="test",
                               label_column_name="label", label_type="discrete", langa_column_name="premise")
     return glue_ax_yaml
 
 
 def do_asset_ratings_dataset() -> ChainMap:
     # Dataset: Asset-ratings
-    asset_ratings_yaml = do_dataset(dataset_name="asset", config="ratings", dataset_column_name="full",
+    asset_ratings_yaml = do_dataset(dataset_name="asset", config_name="ratings", dataset_split_name="full",
                                     label_column_name="rating", label_type="real", langa_column_name="original")
     return asset_ratings_yaml
 
 
 def do_imdb_train_dataset() -> ChainMap:
-    imdb_yaml = do_dataset(dataset_name="imdb", config="plain_text", dataset_column_name="train",
+    imdb_yaml = do_dataset(dataset_name="imdb", config_name="plain_text", dataset_split_name="train",
                            label_column_name="label", label_type="discrete", langa_column_name="text",
                            do_clean_html=True)
     return imdb_yaml
@@ -241,6 +370,7 @@ def do_imdb_train_dataset() -> ChainMap:
 # TODO: Get dataset size to help solve whether to stream of read in full.
 # (could be config, could be automatically grabbed)
 
+# Lists of datasets and their deets are available at https://huggingface.co/datasets
 print("\n\n=== Processing Glue, ax...===")
 glue_yaml = do_glue_ax_dataset()
 write_yaml(glue_yaml, 'glue-ax.yaml')
