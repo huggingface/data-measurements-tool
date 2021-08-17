@@ -1,5 +1,8 @@
+import argparse
 import re
 import statistics
+import sys
+import textwrap
 from collections import Counter
 from typing import Dict
 
@@ -11,14 +14,41 @@ import yaml
 # If you don't have this installed, see https://huggingface.co/docs/datasets/installation.html
 from datasets import load_dataset, Dataset
 from nltk.corpus import stopwords
-from nltk.lm import MLE
-from nltk.lm.preprocessing import padded_everygram_pipeline
 from nltk.probability import FreqDist
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import RegexpTokenizer
 # See https://huggingface.co/transformers/installation.html
 # Used from loading pretrained models and tokenizers
 from transformers import AutoTokenizer, AutoModelWithLMHead, AutoModelForMaskedLM
+
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 description=textwrap.dedent('''
+                                 
+                                 Example for Glue dataset:
+                                 python3 data_metrics_collab.py --dataset="glue" --config="ax" --split="test" --label-column="label" --label-type="discrete" --language-column="premise"
+                                 
+                                 Example for Asset dataset:
+                                 python3 data_metrics_collab.py --dataset="asset" --config="ratings" --split="full" --label-column="rating" --label-type="real" --language-column="original"
+                                 
+                                 Example for IMDB dataset:
+                                 python3 data_metrics_collab.py --dataset="imdb" --config="plain_text" --split="train" --label-column="label" --label-type="discrete" --language-column="text" --clean-html
+                        
+                                 '''))
+
+parser.add_argument('--dataset', type=str,
+                    help='Name of the dataset (Required)', required=True)
+parser.add_argument('--config', type=str, required=True, help='Dataset configuration to use (Required)')
+parser.add_argument('--split', type=str, required=True, help='Name of the dataset split to use (Required)')
+# TODO: Handle situations that are not just straightforward single-cell labels.
+parser.add_argument('--label-column', type=str, required=True, help='Name of the column where the labels are (Required)')
+parser.add_argument('--label-type', type=str, required=True, choices=["discrete", "real"],
+                    help='Type of label: discrete or real-valued (Required)')
+parser.add_argument('--language-column', type=str, required=True,
+                    help='Name of the column with the natural language is (Required)')
+parser.add_argument('--clean-html', default=False, required=False, action="store_true",
+                    help='Whether to clear out HTML in the text before processing (Optional)')
+
+args = parser.parse_args()
 
 # Used later in vocab statistics.
 nltk.download('stopwords')
@@ -145,13 +175,16 @@ def get_perplexity(dataset_name, config_name, dataset_split_name, langa_column_n
     lm_models = ["bert-base-uncased", "t5-small"]
     ppl_dict = {}
     for lm_model_name in lm_models:
+        # TODO: Make STREAM_BATCH_SIZE an option that the user can specify (I guess...?)
         ppl = perplex_model_data(m_name=lm_model_name, d_name=dataset_name, d_option=config_name,
-                                 d_split=dataset_split_name, d_streaming=streaming, d_size=5, d_col=langa_column_name)
+                                 d_split=dataset_split_name, d_streaming=streaming, d_size=STREAM_BATCH_SIZE,
+                                 d_col=langa_column_name)
         ppl_dict[lm_model_name] = ppl
-    base_url = 'https://storage.googleapis.com/huggingface-nlp/cache/datasets/wikipedia/20200501.en/1.0.0/'
-    data_files = {"train": base_url + "wikipedia-train.parquet"}
-    wiki = load_dataset("parquet", data_files=data_files, split="train", streaming=True)
-    print(next(iter(wiki)))
+    # TODO: Figure out relevance of this from the jupyter notebook.
+    # base_url = 'https://storage.googleapis.com/huggingface-nlp/cache/datasets/wikipedia/20200501.en/1.0.0/'
+    # data_files = {"train": base_url + "wikipedia-train.parquet"}
+    # wiki = load_dataset("parquet", data_files=data_files, split="train", streaming=True)
+    # print(next(iter(wiki)))
     # {'title': 'Yangliuqing', 'text': 'Yangliuqing () is a market town in Xiqing District...'}
     return ppl_dict
 
@@ -164,7 +197,7 @@ def write_yaml(yaml_data, fid):
 
 # A 'Preprocessing' step -- Preprocessing should be in its own module
 # TODO: Replace with a standard HTML-stripping utility.
-def clean_html(raw_html: str) -> str:
+def do_clean_html(raw_html: str) -> str:
     cleanr = re.compile("<.*?>")
     clean_text = re.sub(cleanr, '', raw_html)
     return clean_text
@@ -217,8 +250,8 @@ def get_data_basics(input_dataset: Dataset, label_column_name: str, label_type='
 
 
 # Vocabulary Size
-def get_count_vocab(input_dataset: Dataset, langa_column_name: str, lower=True, language="english",
-                    do_clean_html=False) -> Dict:
+def get_count_vocab(input_dataset: Dataset, langa_column_name: str, lower=True, language="english", clean_html=False) \
+        -> Dict:
     vocab_dict = {}
     vocab = Counter()
     filtered_vocab = Counter()
@@ -233,8 +266,8 @@ def get_count_vocab(input_dataset: Dataset, langa_column_name: str, lower=True, 
         print(df[langa_column_name].head())
     # TODO: Do this the fast way.
     for sent in df[langa_column_name]:
-        if do_clean_html:
-            sent = clean_html(sent)
+        if clean_html:
+            sent = do_clean_html(sent)
         tokenized_text = tokenizer.tokenize(sent)
         language_stopwords = stopwords.words(language)
         if lower:
@@ -306,13 +339,13 @@ def get_text_stats(input_dataset: Dataset, langa_column_name: str) -> Dict:
 
 def do_dataset(dataset_name: str, config_name: str, dataset_split_name: str, label_column_name: str,
                label_type="discrete", langa_column_name="text", lower=True, language="english",
-               do_clean_html=False) -> Dict:
+               clean_html=False) -> Dict:
     data_dict = load_dataset(dataset_name, config_name)
     desired_dataset = data_dict[dataset_split_name]
     data_basics_dict = get_data_basics(desired_dataset, label_column_name=label_column_name, label_type=label_type)
     # Want to do this for both *source* and *target*
     data_vocab_dict = get_count_vocab(input_dataset=desired_dataset, langa_column_name=langa_column_name, lower=lower,
-                                      language=language, do_clean_html=do_clean_html)
+                                      language=language, clean_html=clean_html)
     data_text_dict = get_text_stats(desired_dataset, langa_column_name=langa_column_name)
     ppl_dict = get_perplexity(dataset_name, config_name, dataset_split_name, langa_column_name)
     # TODO: Run all the rest of the metrics
@@ -342,7 +375,7 @@ def do_asset_ratings_dataset() -> Dict:
 def do_imdb_train_dataset() -> Dict:
     imdb_yaml = do_dataset(dataset_name="imdb", config_name="plain_text", dataset_split_name="train",
                            label_column_name="label", label_type="discrete", langa_column_name="text",
-                           do_clean_html=True)
+                           clean_html=True)
     return imdb_yaml
 
 
@@ -351,38 +384,81 @@ def do_imdb_train_dataset() -> Dict:
 # TODO: Get dataset size to help solve whether to stream of read in full.
 # (could be config, could be automatically grabbed)
 
-# Lists of datasets and their deets are available at https://huggingface.co/datasets
-print("\n\n=== Processing Glue, ax...===")
-glue_yaml = do_glue_ax_dataset()
-write_yaml(glue_yaml, 'glue-ax.yaml')
+def main(args) -> Dict:
+    dataset_name = args.dataset
+    config_name = args.config
+    dataset_split_name = args.split
+    label_column_name = args.label_column
+    label_type = args.label_type
+    langa_column_name = args.language_column
+    clean_html = args.clean_html
+    # This is going to need to expand as the other options will be necessary to distinguish between, e.g,
+    # different splits of the dataset being analyzed.
+    yaml_name = dataset_name + "-" + config_name + ".yaml"
+    # TODO: Decide whether to handle these as kwargs, or attributes of a Data class, or something else.
+    output_yaml = do_dataset(dataset_name=dataset_name, config_name=config_name, dataset_split_name=dataset_split_name,
+                             label_column_name=label_column_name, label_type=label_type,
+                             langa_column_name=langa_column_name, clean_html=clean_html)
+    write_yaml(output_yaml, yaml_name)
+    # TODO: Dump a json for the lists of ranked words, etc.; this can be used for visualization work.
+    return [yaml_name]
 
-print("\n\n=== Processing Asset, ratings...===")
-asset_yaml = do_asset_ratings_dataset()
-write_yaml(asset_yaml, 'asset-ratings.yaml')
 
-print("\n\n=== Processing IMDB ===")
-imdb_train_yaml = do_imdb_train_dataset()
-write_yaml(imdb_train_yaml, 'imdb-train.yaml')
+if __name__ == "__main__":
+    # execute only if run as a script
+    if len(sys.argv) == 1:
+        output_filenames = []
+        print("No arguments specified; running through 3 datasets as an example: Glue, Asset, IMDB")
+        # Lists of datasets and their deets are available at https://huggingface.co/datasets
+        print("\n\n=== Processing Glue, ax...===")
+        glue_yaml = do_glue_ax_dataset()
+        write_yaml(glue_yaml, 'glue-ax.yaml')
+        output_filenames += ['glue-ax.yaml']
 
-# from https://stackoverflow.com/questions/54941966/how-can-i-calculate-perplexity-using-nltk/55043954
+        print("\n\n=== Processing Asset, ratings...===")
+        asset_yaml = do_asset_ratings_dataset()
+        write_yaml(asset_yaml, 'asset-ratings.yaml')
+        output_filenames += ['asset-ratings.yaml']
 
-train_sentences = ['an apple', 'an orange']
-tokenized_text = [list(map(str.lower, nltk.tokenize.word_tokenize(sent)))
-                  for sent in train_sentences]
-n = 1
-train_data, padded_vocab = padded_everygram_pipeline(n, tokenized_text)
-model = MLE(n)
-model.fit(train_data, padded_vocab)
+        print("\n\n=== Processing IMDB ===")
+        imdb_train_yaml = do_imdb_train_dataset()
+        write_yaml(imdb_train_yaml, 'imdb-train.yaml')
+        output_filenames += ['imdb-train.yaml']
+    else:
+        output_filenames = main(args)
+    print("\n\nDone!  Output to yaml file(s):")
+    print(' '.join(output_filenames))
+    print("\n")
 
-test_sentences = ['an apple', 'an ant']
-tokenized_text = [list(map(str.lower, nltk.tokenize.word_tokenize(sent)))
-                  for sent in test_sentences]
 
-test_data, _ = padded_everygram_pipeline(n, tokenized_text)
-for test in test_data:
-    print("MLE Estimates:", [((ngram[-1], ngram[:-1]), model.score(ngram[-1], ngram[:-1])) for ngram in test])
 
-test_data, _ = padded_everygram_pipeline(n, tokenized_text)
 
-for i, test in enumerate(test_data):
-    print("PP({0}):{1}".format(test_sentences[i], model.perplexity(test)))
+
+
+
+# ================= Scratch =================
+# TODO: Are we still using this? Figure out how it fits in.
+"""
+def what_is_this_used_for_now:
+    # from https://stackoverflow.com/questions/54941966/how-can-i-calculate-perplexity-using-nltk/55043954
+    train_sentences = ['an apple', 'an orange']
+    tokenized_text = [list(map(str.lower, nltk.tokenize.word_tokenize(sent)))
+                      for sent in train_sentences]
+    n = 1
+    train_data, padded_vocab = padded_everygram_pipeline(n, tokenized_text)
+    model = MLE(n)
+    model.fit(train_data, padded_vocab)
+    
+    test_sentences = ['an apple', 'an ant']
+    tokenized_text = [list(map(str.lower, nltk.tokenize.word_tokenize(sent)))
+                      for sent in test_sentences]
+    
+    test_data, _ = padded_everygram_pipeline(n, tokenized_text)
+    for test in test_data:
+        print("MLE Estimates:", [((ngram[-1], ngram[:-1]), model.score(ngram[-1], ngram[:-1])) for ngram in test])
+    
+    test_data, _ = padded_everygram_pipeline(n, tokenized_text)
+    
+    for i, test in enumerate(test_data):
+        print("PP({0}):{1}".format(test_sentences[i], model.perplexity(test)))
+"""
