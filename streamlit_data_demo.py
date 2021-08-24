@@ -234,6 +234,9 @@ text_to_analyze_b = get_text_to_analyze(
 left_col, right_col = st.columns(2)
 
 left_col.markdown(f"### Showing {ds_name_a} - {config_name_a} - {text_feature_a}")
+with left_col.expander("Dataset Description A"):
+    st.markdown(ds_name_to_dict[ds_name_a])
+
 with left_col.expander("Show some examples A"):
     st.markdown("### Example text fields A")
     start_id_show = st.slider('Starting index A:', 0, len(text_to_analyze_a) - 10, 5)
@@ -246,6 +249,9 @@ with left_col.expander("Show text lengths A", expanded=True):
     st.plotly_chart(fig_a, use_container_width=True)
 
 right_col.markdown(f"### Showing {ds_name_b} - {config_name_b} - {text_feature_b}")
+with right_col.expander("Dataset Description B"):
+    st.markdown(ds_name_to_dict[ds_name_b])
+
 with right_col.expander("Show some examples B"):
     st.markdown("### Example text fields B")
     start_id_show = st.slider('Starting index B:', 0, len(text_to_analyze_b) - 10, 5)
