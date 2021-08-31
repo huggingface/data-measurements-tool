@@ -40,8 +40,8 @@ parser.add_argument('--dataset', type=str,
 parser.add_argument('--config', type=str, required=True, help='Dataset configuration to use (Required)')
 parser.add_argument('--split', type=str, required=True, help='Name of the dataset split to use (Required)')
 # TODO: Handle situations that are not just straightforward single-cell labels.
-parser.add_argument('--label-column', type=str, required=True, help='Name of the column where the labels are (Required)')
-parser.add_argument('--label-type', type=str, required=True, choices=["discrete", "real"],
+parser.add_argument('--label-column', type=str, required=False, default='', help='Name of the column where the labels are (Required)')
+parser.add_argument('--label-type', type=str, required=False, default='', choices=["discrete", "real"],
                     help='Type of label: discrete or real-valued (Required)')
 parser.add_argument('--language-column', type=str, required=True,
                     help='Name of the column with the natural language is (Required)')
@@ -204,7 +204,7 @@ def do_clean_html(raw_html: str) -> str:
 
 
 # Dataset Characteristics
-def get_data_basics(input_dataset: Dataset, label_column_name: str, label_type='discrete') -> Dict:
+def get_data_basics(input_dataset: Dataset, label_column_name: str, label_type: str) -> Dict:
     # Should we ask about deduping?!
     """
     # Takes a DatasetDict & isolates the Dataset of interest as a dataframe using json_normalize
@@ -234,15 +234,18 @@ def get_data_basics(input_dataset: Dataset, label_column_name: str, label_type='
     assert (data_shape[0] == num_rows)
     basics_dict['num_rows'] = data_shape[0]
     basics_dict['num_cols'] = data_shape[1]
-    if label_type == "discrete":
-        label_value_counts = str(df[label_column_name].value_counts()).replace('\n', ', ')
-        basics_dict['label_counts'] = label_value_counts
-    elif label_type == "real":
-        np_array = np.array(df[label_column_name])
-        basics_dict["label_min"] = float(round(np_array.min(), 4))
-        basics_dict["label_max"] = float(round(np_array.max(), 4))
-        basics_dict["label_mean"] = float(round(np_array.mean(), 4))
-        basics_dict["label_var"] = float(round(np_array.var(), 4))
+    if label_column_name:
+        if label_type == "discrete":
+            label_value_counts = str(df[label_column_name].value_counts()).replace('\n', ', ')
+            basics_dict['label_counts'] = label_value_counts
+        elif label_type == "real":
+            np_array = np.array(df[label_column_name])
+            basics_dict["label_min"] = float(round(np_array.min(), 4))
+            basics_dict["label_max"] = float(round(np_array.max(), 4))
+            basics_dict["label_mean"] = float(round(np_array.mean(), 4))
+            basics_dict["label_var"] = float(round(np_array.var(), 4))
+        else:
+            sys.stderr.write("No label type specified; not calculating label statistics.\n")
     if VERBOSE:
         print('\n* Step 1 summary.')
         print(basics_dict)
