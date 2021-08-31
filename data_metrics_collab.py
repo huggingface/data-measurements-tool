@@ -217,9 +217,9 @@ def get_data_basics(input_dataset: Dataset, label_column_name: str, label_type: 
     """
     basics_dict = {}
     num_rows = input_dataset.num_rows
-    # Turn the Dataset into a data frame.
-    df = pd.DataFrame.from_dict(input_dataset)
-    # Grab the Dataset itself from the data frame, using json_normalize so that the Dataset, too, will be a data frame.
+    # Turn the Dataset into a data frame, using json_normalize so that the Dataset, too, will be a data frame.
+    # Note that json_normalize is preferable to from_dict for handling of nested dicts.
+    df = pd.json_normalize(input_dataset)
     # TODO: .info() as the summarization mechanism, as well as .isnull() to get a view of the NaN
     if VERBOSE:
         print('\n* Step 1: Peek at data. Calculating dataset characteristics.')
