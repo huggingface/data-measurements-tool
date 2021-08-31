@@ -1,0 +1,504 @@
+# From http://www.french-linguistics.co.uk/phrase_book/en/function_words.html
+http://www.french-linguistics.co.uk/grammar/prepositions_list.shtml
+# https://grammar.collinsdictionary.com/us/french-easy-learning
+# https://www.optilingo.com/blog/french/french-grammatical-cases/
+
+### Conjunctions
+et
+parce que
+puis
+ou
+mais
+
+### Articles
+# Definite
+le
+l'
+la
+# Indefinite
+un
+une
+# Partitive
+du
+de
+la
+de l'
+des
+# Possessive
+mon
+ma
+mes
+ton
+ta
+tes
+son
+sa
+ses
+notre
+nos
+votre
+vos
+leur
+leurs
+
+### Pronouns
+# Nominative
+je
+j'
+nous
+tu
+vous
+il
+ils
+elle
+elles
+on
+# Accusative
+me
+m'
+te
+t'
+le
+l'
+la
+nous
+vous
+les
+# Dative
+lui
+leur
+# Disjunctive/Emphatic
+moi
+toi
+lui
+elle
+soi
+nous
+vous
+eux
+elles
+# Demonstrative
+ce
+c'est
+c’était
+cela
+ça
+ceci
+celui
+celle
+ceux
+celles
+celui
+celui-ci
+celui-là
+celle-ci
+celle-là	
+ceux-ci
+ceux-là
+celles-ci
+celles-là
+# Possessive/Genitive
+le mien
+le tien
+le sien
+le nôtre
+le vôtre
+le leur
+la mienne
+la tienne
+la sienne
+la nôtre
+la vôtre
+la leur
+les miens
+les tiens
+les siens
+les nôtres
+les vôtres
+les leurs
+les miennes
+les tiennes
+les siennes
+les nôtres
+les vôtres
+les leurs
+# Indefinite
+chacun
+chacune
+personne
+quelque chose
+quelqu'un
+rien
+tout
+tous
+toutes
+# Relative
+qui
+qu'
+que
+lequel
+laquelle
+lesquels
+lesquelles
+auxquels
+auxquelles
+desquels
+desquelles
+dont
+# Adverbial
+y
+en
+
+### Question Words
+quoi
+quand
+pourquoi
+quel
+combien de
+comment
+
+### Prepositions
+à
+à cause de
+à côté de
+à droite de
+à gauche de
+à l’égard de
+à l’extérieur de
+à l’intérieur de
+à partir de
+à propos de
+après
+au
+au bout de
+au cœur de
+au coeur de
+au coin de
+au contraire de
+au lieu de
+au niveau de
+au sein de
+au sujet de
+au-dessous
+au-dessous de
+au-dessus
+au-dessus de
+autour de
+aux
+avant
+avec
+chez
+concernant
+contre
+d’après
+dans
+de
+de côté
+dehors
+depuis
+derrière
+des
+devant
+du
+durant
+en
+en arrière de
+en bas de
+en dehors de
+en dessous de
+en face de
+en haut de
+entre
+envers
+environ
+excepté
+excluant
+faute de
+grâce à
+hors de
+ici
+incluant
+jusque
+la
+là
+là-bas
+le
+les
+loin
+loin de
+malgré
+par
+par rapport à
+parmi
+passé
+pendant
+pour
+près d'ici
+près de
+quant à
+sans
+sauf
+selon
+sous
+suivant
+sur
+vers
+vis-à-vis de
+vu
+
+### Degree and quantity
+parce que
+très
+peu
+bien
+assez
+trop
+trop de
+pas
+jamais
+toujours
+encore
+plus
+moins
+que
+
+### Auxiliary Verbs
+## Être
+être
+# Present
+suis
+es
+est
+sommes
+êtes
+sont
+# Imperfect
+étais
+étais
+était
+étions
+étiez
+étaient
+# Future	
+serai	
+seras	
+sera	
+serons	
+serez	
+seront	
+# Conditional
+serais
+serais
+serait
+serions
+seriez
+seraient
+# Subjunctive	
+sois	
+sois	
+soit	
+soyons	
+soyez	
+soient	
+# Imperfect subjunctive
+fusse
+fusses
+fût
+fussions
+fussiez
+fussent
+# Passé composé
+ai été
+as été
+a été
+avons été
+avez été
+ont été
+## Past perfect
+avais été
+avait été
+avions été
+aviez été
+avaient été
+# Future perfect 
+aurai été	
+auras été	
+aura été	
+aurons été	
+aurez été	
+auront été	
+# Past conditional
+aurais été
+aurait été
+aurions été
+auriez été
+auraient été
+# Past subjunctive
+aie été	
+aies été	
+ait été	
+ayons été	
+ayez été	
+aient été
+# Pluperfect subjunctive
+eusse été
+eusses été
+eût été
+eussions été
+eussiez été
+eussent été
+# Passé simple
+fus
+fus
+fut
+fûmes
+fûtes
+furent
+# Past anterior
+eus été
+eut été
+eûmes été
+eûtes été
+eurent été
+# Imperative
+sois
+soyons
+soyez
+# Past imperative
+aie été
+ayons été
+ayez été
+# Participles
+étant
+été
+ayant été
+# Past infinitive
+avoir été
+# Whatever this is
+ç’a
+est-ce
+qu'est-ce
+## Avoir
+# Present
+avoir
+ai
+as
+a
+avons
+avez
+ont
+# Imperfect
+avais
+avais
+avait
+avions
+aviez
+avaient
+# Future
+aurai	
+auras	
+aura	
+aurons	
+aurez	
+auront
+# Future perfect
+aurai eu	
+auras eu	
+aura eu	
+aurons eu	
+aurez eu	
+auront eu	
+# Passé composé
+ai eu
+as eu
+a eu
+avons eu
+avez eu
+ont eu
+# Passé simple
+eus
+eus
+eut
+eûmes
+eûtes
+eurent
+# Past perfect
+avais eu
+avais eu
+avait eu
+avions eu
+aviez eu
+avaient eu
+# Past anterior
+eus eu
+eus eu
+eut eu
+eûmes eu
+eûtes eu
+eurent eu
+# Conditional
+aurais
+aurais
+aurait
+aurions
+auriez
+auraient
+# Past conditional
+aurais eu
+aurais eu
+aurait eu
+aurions eu
+auriez eu
+auraient eu
+# Imperative
+aie
+ayons
+ayez
+# Past imperative
+aie eu
+ayons eu
+ayez eu
+# Subjunctive	
+aie	
+aies	
+ait	
+ayons	
+ayez	
+aient	
+# Past subjunctive	
+aie eu	
+aies eu	
+ait eu	
+ayons eu	
+ayez eu	
+aient eu
+# Participles
+ayant
+eu
+ayant eu
+# Past Infinitive
+avoir eu
+# Imperfect subjunctive
+eusse
+eusses
+eût
+eussions
+eussiez
+eussent
+# Pluperfect subjunctive
+eusse eu
+eusses eu
+eût eu
+eussions eu
+eussiez eu
+eussent eu
+
+### Whatever we should call this - TBD
+n'est
+ne
+non 
+plus
+pas
+jamais
+### Deictic - TBD
+### Interjections - TBD
