@@ -1,6 +1,9 @@
+import math
 import numpy as np
 import plotly.figure_factory as ff
 import streamlit as st
+import tokenizers
+import torch
 
 from datasets import (
     import_main_class,
@@ -9,6 +12,8 @@ from datasets import (
     load_dataset_builder,
     prepare_module,
 )
+
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
 ########## preparation functions
 
@@ -97,6 +102,7 @@ def get_config_infos_dict(name):
 # extract text to analyze:
 # list of all examples of a given feature in a given split of a given config of a given dataset
 # returns a list of strings
+@st.cache(persist=True, allow_output_mutation=True)
 def get_text_to_analyze(
     name, text_path, config,
     split=None, max_items=20000, streaming=False
@@ -128,6 +134,29 @@ def get_text_to_analyze(
         if example_ct >= max_items:
             break
     return text_list
+
+
+########## metrics code
+@st.cache(persist=True, allow_output_mutation=True)
+def get_space_tokenized_lengths(sentences):
+    lengths = [len(st.split()) for st in sentences]
+    return lengths
+
+
+# TODO: cache results
+tokenizer = AutoTokenizer.from_pretrained("xlnet-base-cased")
+model = AutoModelForCausalLM.from_pretrained("xlnet-base-cased")
+# @st.cache(persist=True, allow_output_mutation=True, hash_funcs={tokenizers.Tokenizer: (lambda _:None), tokenizers.AddedToken: (lambda _:None)})
+def get_single_sent_loss(sent):
+    batch = tokenizer(sent, return_tensors="pt", padding=True)
+    batch['labels'] = batch['input_ids']
+    loss = model(**batch).loss.item()
+    return loss
+
+@st.cache(persist=True, allow_output_mutation=True, hash_funcs={tokenizers.Tokenizer: (lambda _:None), tokenizers.AddedToken: (lambda _:None)})
+def get_gpt2_perplexities(sentences):
+    losses = [get_single_sent_loss(st) for st in sentences]
+    return losses
 
 ########## streamlit code
 
@@ -190,6 +219,23 @@ with st.sidebar.expander("Choose first dataset and field"):
         text_features_a,
         index=max([i for i, tp in enumerate(text_features_a) if tp[0] != 'id']),
     )
+    # choose a split and dataset size
+    split_a = st.selectbox(
+        "Which split from the first dataset would you like to analyze?",
+        ds_config_a["splits"].keys(),
+        index=0,
+    )
+    num_examples_a = st.slider(
+        "Number of examples to analyze in the first dataset:",
+        0,
+        min(ds_config_a["splits"][split_a], 50000),
+        value=min(1000, ds_config_a["splits"][split_a]),
+        step=1000,
+    )
+    streaming_a = st.checkbox(
+        "Use streaming functionality for the first dataset",
+        value=False,
+    )
 
 with st.sidebar.expander("Choose second dataset and field"):
     # choose a dataset to analyze
@@ -214,19 +260,34 @@ with st.sidebar.expander("Choose second dataset and field"):
         text_features_b,
         index=max([i for i, tp in enumerate(text_features_b) if tp[0] != 'id']),
     )
+    # choose a split and dataset size
+    split_b = st.selectbox(
+        "Which split from the second dataset would you like to analyze?",
+        ds_config_b["splits"].keys(),
+        index=0,
+    )
+    num_examples_b = st.slider(
+        "Number of examples to analyze in the second dataset:",
+        0,
+        min(ds_config_b["splits"][split_b], 50000),
+        value=min(1000, ds_config_b["splits"][split_b]),
+        step=1000,
+    )
+    streaming_b = st.checkbox(
+        "Use streaming functionality for the second dataset",
+        value=False,
+    )
 
-# TODO:
-# - select split
-# - control number of examples
-# - with or without streaming
+
+# Grab the text requested
 text_to_analyze_a = get_text_to_analyze(
     ds_name_a, text_feature_a, ds_config_a,
-    split=None, max_items=2000, streaming=False
+    split=split_a, max_items=num_examples_a, streaming=streaming_a
 )
 
 text_to_analyze_b = get_text_to_analyze(
     ds_name_b, text_feature_b, ds_config_b,
-    split=None, max_items=2000, streaming=False
+    split=split_b, max_items=num_examples_b, streaming=streaming_b
 )
 
 ######## Main window
@@ -239,14 +300,47 @@ with left_col.expander("Dataset Description A"):
 
 with left_col.expander("Show some examples A"):
     st.markdown("### Example text fields A")
-    start_id_show = st.slider('Starting index A:', 0, len(text_to_analyze_a) - 10, 5)
+    start_id_show = st.slider('Starting index A:', 0, len(text_to_analyze_a) - 5, value=0, step=5)
     st.dataframe(text_to_analyze_a[start_id_show:start_id_show+10])
 
 with left_col.expander("Show text lengths A", expanded=True):
     st.markdown("### Text lengths A")
-    hist_data_a = [[len(st.split()) for st in text_to_analyze_a]]
+    space_tok_lengths_a = get_space_tokenized_lengths(text_to_analyze_a)
+    hist_data_a = [space_tok_lengths_a]
     fig_a = ff.create_distplot(hist_data_a, group_labels=["text lengths"])
     st.plotly_chart(fig_a, use_container_width=True)
+    sorted_sents_lengths_a = [
+        s for s, l in sorted(
+            [(s, l) for s, l in zip(text_to_analyze_a, space_tok_lengths_a)],
+            key=lambda x:x[1], reverse=True,
+        )
+    ]
+    start_id_show_lengths_a = st.slider(
+        'Show longest sentences in A starting at index:',
+        0, len(text_to_analyze_a) - 5, value=0, step=5
+    )
+    for sent in sorted_sents_lengths_a[start_id_show_lengths_a:start_id_show_lengths_a+5]:
+        st.text(sent)
+
+with left_col.expander("Show text perplexities A", expanded=True):
+    st.markdown("### Text perplexities A")
+    perplexities_a = get_gpt2_perplexities(text_to_analyze_a)
+    hist_data_loss_a = [perplexities_a]
+    fig_loss_a = ff.create_distplot(hist_data_loss_a, group_labels=["text perplexities"])
+    st.plotly_chart(fig_loss_a, use_container_width=True)
+    sorted_sents_loss_a = [
+        s for s, l in sorted(
+            [(s, l) for s, l in zip(text_to_analyze_a, perplexities_a)],
+            key=lambda x:x[1], reverse=True,
+        )
+    ]
+    start_id_show_loss_a = st.slider(
+        'Show highest perplexity sentences in A starting at index:',
+        0, len(text_to_analyze_a) - 5, value=0, step=5
+    )
+    for sent in sorted_sents_loss_a[start_id_show_loss_a:start_id_show_loss_a+5]:
+        st.text(sent)
+
 
 right_col.markdown(f"### Showing {ds_name_b} - {config_name_b} - {text_feature_b}")
 with right_col.expander("Dataset Description B"):
