@@ -12,7 +12,7 @@ from datasets import (
     load_dataset_builder,
     prepare_module,
 )
-
+from os.path import join as pjoin
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
 st.set_page_config(
@@ -224,6 +224,10 @@ with st.sidebar.expander("Choose first dataset and field"):
         "Use streaming functionality for the first dataset",
         value=False,
     )
+    compute_perplexities_a = st.checkbox(
+        "Compute perplexities for the first dataset",
+        value=False,
+    )
 
 with st.sidebar.expander("Choose second dataset and field"):
     # choose a dataset to analyze
@@ -265,6 +269,10 @@ with st.sidebar.expander("Choose second dataset and field"):
         "Use streaming functionality for the second dataset",
         value=False,
     )
+    compute_perplexities_b = st.checkbox(
+        "Compute perplexities for the second dataset",
+        value=False,
+    )
 
 
 # Grab the text requested
@@ -277,11 +285,32 @@ text_dset_b = get_text_to_analyze(
     split=split_b, max_items=num_examples_b, streaming=streaming_b
 )
 
-text_dset_a_lengths = text_dset_a.map(lambda exple: {"space_tok_length": len(exple["text"].split())})
-text_dset_b_lengths = text_dset_b.map(lambda exple: {"space_tok_length": len(exple["text"].split())})
+cache_name_a = f"{ds_name_a}_{config_name_a}_{split_a}_{'-'.join(text_feature_a)}_{num_examples_a}"
+cache_name_b = f"{ds_name_b}_{config_name_b}_{split_b}_{'-'.join(text_feature_b)}_{num_examples_b}"
 
-text_dset_a_loss = text_dset_a.map(lambda exple: {"xlnet_loss": get_single_sent_loss(exple["text"])})
-text_dset_b_loss = text_dset_b.map(lambda exple: {"xlnet_loss": get_single_sent_loss(exple["text"])})
+text_dset_a_lengths = text_dset_a.map(
+    lambda exple: {"space_tok_length": len(exple["text"].split())},
+    load_from_cache_file=True,
+    cache_file_name=pjoin("cache_dir", f"{cache_name_a}_space_tok_length"),
+)
+text_dset_b_lengths = text_dset_b.map(
+    lambda exple: {"space_tok_length": len(exple["text"].split())},
+    load_from_cache_file=True,
+    cache_file_name=pjoin("cache_dir", f"{cache_name_b}_space_tok_length"),
+)
+
+if compute_perplexities_a:
+    text_dset_a_loss = text_dset_a.map(
+        lambda exple: {"xlnet_loss": get_single_sent_loss(exple["text"])},
+        load_from_cache_file=True,
+        cache_file_name=pjoin("cache_dir", f"{cache_name_a}_xlnet_loss"),
+    )
+if compute_perplexities_b:
+    text_dset_b_loss = text_dset_b.map(
+        lambda exple: {"xlnet_loss": get_single_sent_loss(exple["text"])},
+        load_from_cache_file=True,
+        cache_file_name=pjoin("cache_dir", f"{cache_name_b}_xlnet_loss"),
+    )
 
 ######## Main window
 
@@ -345,37 +374,43 @@ with right_col.expander("Show text lengths B", expanded=True):
 
 ### Third, show the distribution of text perplexities
 with left_col.expander("Show text perplexities A", expanded=True):
-    st.markdown("### Text perplexities A")
-    hist_data_loss_a = [text_dset_a_loss["xlnet_loss"]]
-    fig_loss_a = ff.create_distplot(hist_data_loss_a, group_labels=["text perplexity"])
-    st.plotly_chart(fig_loss_a, use_container_width=True)
-    sorted_sents_loss_a = [
-        s for s, l in sorted(
-            [(sentence["text"], sentence["xlnet_loss"]) for sentence in text_dset_a_loss],
-            key=lambda x:x[1], reverse=True,
+    if compute_perplexities_a:
+        st.markdown("### Text perplexities A")
+        hist_data_loss_a = [text_dset_a_loss["xlnet_loss"]]
+        fig_loss_a = ff.create_distplot(hist_data_loss_a, group_labels=["text perplexity"])
+        st.plotly_chart(fig_loss_a, use_container_width=True)
+        sorted_sents_loss_a = [
+            s for s, l in sorted(
+                [(sentence["text"], sentence["xlnet_loss"]) for sentence in text_dset_a_loss],
+                key=lambda x:x[1], reverse=True,
+            )
+        ]
+        start_id_show_loss_a = st.slider(
+            'Show highest perplexity sentences in A starting at index:',
+            0, text_dset_a.num_rows - 5, value=0, step=5
         )
-    ]
-    start_id_show_loss_a = st.slider(
-        'Show highest perplexity sentences in A starting at index:',
-        0, text_dset_a.num_rows - 5, value=0, step=5
-    )
-    for sent in sorted_sents_loss_a[start_id_show_loss_a:start_id_show_loss_a+5]:
-        st.text(sent)
+        for sent in sorted_sents_loss_a[start_id_show_loss_a:start_id_show_loss_a+5]:
+            st.text(sent)
+    else:
+        st.write("To show perplexity of examples, check the `compute perplexities for the first dataset` box left")
 
 with right_col.expander("Show text perplexities B", expanded=True):
-    st.markdown("### Text perplexities B")
-    hist_data_loss_b = [text_dset_b_loss["xlnet_loss"]]
-    fig_loss_b = ff.create_distplot(hist_data_loss_b, group_labels=["text perplexity"])
-    st.plotly_chart(fig_loss_b, use_container_width=True)
-    sorted_sents_loss_b = [
-        s for s, l in sorted(
-            [(sentence["text"], sentence["xlnet_loss"]) for sentence in text_dset_b_loss],
-            key=lambda x:x[1], reverse=True,
+    if compute_perplexities_b:
+        st.markdown("### Text perplexities B")
+        hist_data_loss_b = [text_dset_b_loss["xlnet_loss"]]
+        fig_loss_b = ff.create_distplot(hist_data_loss_b, group_labels=["text perplexity"])
+        st.plotly_chart(fig_loss_b, use_container_width=True)
+        sorted_sents_loss_b = [
+            s for s, l in sorted(
+                [(sentence["text"], sentence["xlnet_loss"]) for sentence in text_dset_b_loss],
+                key=lambda x:x[1], reverse=True,
+            )
+        ]
+        start_id_show_loss_b = st.slider(
+            'Show highest perplexity sentences in B starting at index:',
+            0, text_dset_b.num_rows - 5, value=0, step=5
         )
-    ]
-    start_id_show_loss_b = st.slider(
-        'Show highest perplexity sentences in B starting at index:',
-        0, text_dset_b.num_rows - 5, value=0, step=5
-    )
-    for sent in sorted_sents_loss_b[start_id_show_loss_b:start_id_show_loss_b+5]:
-        st.text(sent)
+        for sent in sorted_sents_loss_b[start_id_show_loss_b:start_id_show_loss_b+5]:
+            st.text(sent)
+    else:
+        st.write("To show perplexity of examples, check the `compute perplexities for the second dataset` box left")
