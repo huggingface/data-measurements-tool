@@ -9,19 +9,24 @@ parce que
 puis
 ou
 mais
+donc
+or
+ni
+car
 
 ### Articles
 # Definite
 le
 l'
 la
+les
 # Indefinite
 un
 une
+des
 # Partitive
 du
-de
-la
+de la
 de l'
 des
 # Possessive
@@ -80,7 +85,7 @@ elles
 # Demonstrative
 ce
 c'est
-c’était
+c'était
 cela
 ça
 ceci
