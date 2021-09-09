@@ -335,42 +335,6 @@ with right_col.expander("Show some examples B"):
     start_id_show = st.slider('Starting index B:', 0, text_dset_b.num_rows - 10, 5)
     st.dataframe(text_dset_b[start_id_show:start_id_show+10]["text"])
 
-### Second, show the distribution of text lengths
-with left_col.expander("Show text lengths A", expanded=True):
-    st.markdown("### Text lengths A")
-    hist_data_tok_length_a = [text_dset_a_lengths["space_tok_length"]]
-    fig_tok_length_a = ff.create_distplot(hist_data_tok_length_a, group_labels=["text lengths"])
-    st.plotly_chart(fig_tok_length_a, use_container_width=True)
-    sorted_sents_lengths_a = [
-        s for s, l in sorted(
-            [(sentence["text"], sentence["space_tok_length"]) for sentence in text_dset_a_lengths],
-            key=lambda x:x[1], reverse=True,
-        )
-    ]
-    start_id_show_lengths_a = st.slider(
-        'Show longest sentences in A starting at index:',
-        0, text_dset_a.num_rows - 5, value=0, step=5
-    )
-    for sent in sorted_sents_lengths_a[start_id_show_lengths_a:start_id_show_lengths_a+5]:
-        st.text(sent)
-
-with right_col.expander("Show text lengths B", expanded=True):
-    st.markdown("### Text lengths B")
-    hist_data_tok_length_b = [text_dset_b_lengths["space_tok_length"]]
-    fig_tok_length_b = ff.create_distplot(hist_data_tok_length_b, group_labels=["text lengths"])
-    st.plotly_chart(fig_tok_length_b, use_container_width=True)
-    sorted_sents_lengths_b = [
-        s for s, l in sorted(
-            [(sentence["text"], sentence["space_tok_length"]) for sentence in text_dset_b_lengths],
-            key=lambda x:x[1], reverse=True,
-        )
-    ]
-    start_id_show_lengths_b = st.slider(
-        'Show longest sentences in B starting at index:',
-        0, text_dset_a.num_rows - 5, value=0, step=5
-    )
-    for sent in sorted_sents_lengths_b[start_id_show_lengths_b:start_id_show_lengths_b+5]:
-        st.text(sent)
 
 ### Third, show the shortest sentences
 with left_col.expander("Here are the shortest sentences in the column", expanded=True):
