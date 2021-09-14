@@ -4,6 +4,9 @@ import plotly.figure_factory as ff
 import streamlit as st
 import tokenizers
 import torch
+from sklearn.feature_extraction.text import CountVectorizer
+import pandas as pd
+import plotly.graph_objects as go
 
 from datasets import (
     import_main_class,
@@ -156,6 +159,7 @@ def get_text_to_analyze(name, text_path, config, split=None, max_items=20000, st
     )
     return dataset_text
 
+
 ########## metrics code
 tokenizer = AutoTokenizer.from_pretrained("xlnet-base-cased")
 model = AutoModelForCausalLM.from_pretrained("xlnet-base-cased")
@@ -299,6 +303,12 @@ text_dset_b_lengths = text_dset_b.map(
     cache_file_name=pjoin("cache_dir", f"{cache_name_b}_space_tok_length"),
 )
 
+text_dset_a_counts = text_dset_a.map(
+    lambda exple: {"word counts": count_vocab_frequencies(exple["text"])},
+    load_from_cache_file=True,
+    cache_file_name=pjoin("cache_dir", f"{cache_name_a}_space_tok_length"),
+)
+
 if compute_perplexities_a:
     text_dset_a_loss = text_dset_a.map(
         lambda exple: {"xlnet_loss": get_single_sent_loss(exple["text"])},
@@ -415,3 +425,33 @@ with right_col.expander("Show text perplexities B", expanded=True):
             st.text(sent)
     else:
         st.write("To show perplexity of examples, check the `compute perplexities for the second dataset` box left")
+
+### Then, show the Zipf's distribution of word frequencies
+with left_col.expander("Here is the Zipf distribution of the words in the first dataset", expanded=True):
+    st.markdown("### Zipf's distribution of Top 100 words -- dataset A")
+    cvec = CountVectorizer(token_pattern=u"(?u)\\b\\w+\\b")
+    cvec.fit(text_dset_a['text'])
+    document_matrix = cvec.transform(text_dset_a['text'])
+    batches = np.linspace(0,10000,100).astype(int)
+    i=0
+    tf = []
+    while i < len(batches)-1:
+        batch_result = np.sum(document_matrix[batches[i]:batches[i+1]].toarray(),axis=0)
+        tf.append(batch_result)
+        i += 1
+    term_freq_df = pd.DataFrame([np.sum(tf,axis=0)],columns=cvec.get_feature_names()).transpose()
+    term_freq_df.columns=['total']
+    #The exponent can change, need to define it somehow?
+    s = 1
+    expected_zipf = [term_freq_df.sort_values(by='total', ascending=False)['total'][0]/(i+1)**s for i in np.arange(500)]
+    #print(expected_zipf)
+    real_zipf=  term_freq_df.sort_values(by='total', ascending=False)[:500]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=np.arange(100), y=expected_zipf, name = 'Expected', line=dict(color='#332288')))
+    fig.add_trace(go.Bar(x=np.arange(100), y= real_zipf['total'], hovertext=real_zipf.index.tolist(), name='Observed    ', marker_color= "#882255", opacity=0.99))
+    fig.update_layout(hovermode="x")
+
+    #fig.add_bar(real_zipf, align='center', alpha=0.5)
+    #fig_tok_count_a.add_trace(go.Scatter(x=term_freq_df.index, y=real_zipf), row=1, col=1)
+    #fig_tok_count_a = ff.create_distplot([expected_zipf, real_zipf], group_labels=["expected Zipf", "real Zipf"], show_rug=False)
+    st.plotly_chart(fig, use_container_width=True)
