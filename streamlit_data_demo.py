@@ -226,7 +226,7 @@ with st.sidebar.expander("Choose first dataset and field"):
     ds_name_a = st.selectbox(
         "Choose a first dataset to explore:",
         ds_names,
-        index=ds_names.index("amazon_polarity"),
+        index=ds_names.index("squad"),
     )
     # choose a config to analyze
     ds_configs_a = get_config_infos_dict(ds_name_a)
@@ -269,7 +269,7 @@ with st.sidebar.expander("Choose second dataset and field"):
     ds_name_b = st.selectbox(
         "Choose a second dataset to explore:",
         ds_names,
-        index=ds_names.index("yelp_polarity"),
+        index=ds_names.index("squad_v2"),
     )
     # choose a config to analyze
     ds_configs_b = get_config_infos_dict(ds_name_b)
