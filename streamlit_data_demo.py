@@ -5,6 +5,7 @@ import streamlit as st
 import tokenizers
 import transformers
 import torch
+from collections import Counter
 
 from dataclasses import asdict
 from datasets import (
@@ -155,6 +156,20 @@ def get_text_to_analyze(name, text_path, config, split=None, max_items=20000, st
     )
     return dataset_text
 
+def get_labels(name, text_path, config, split=None, max_items=20000, streaming=False):
+    ### default arguments
+    if split is None:
+        split = 'train' if 'train' in config["splits"] else list(config["splits"])[0]
+        print(f"using default split: {split}")
+    ### get text from dataset
+    dataset = load_dataset(name, config["config_name"], streaming=streaming)
+    data_split = dataset[split].select(range(max_items))
+    try:
+        dataset_labels = [(data_split.info.features['label'].names[k],v) for k, v in Counter(data_split['label']).items()]
+    except:
+        dataset_labels = [(data_split.info.features['class'].names[k],v) for k, v in Counter(data_split['class']).items()]
+    return dataset_labels
+
 ########## metrics code
 @st.cache(allow_output_mutation=True, hash_funcs={Dataset: lambda _: None})
 def run_tok_length_analysis(text_dset, cache_name):
@@ -280,7 +295,7 @@ with st.sidebar.expander("Choose first dataset and field"):
     ds_name_a = st.selectbox(
         "Choose a first dataset to explore:",
         ds_names,
-        index=ds_names.index("squad"),
+        index=ds_names.index("hate_speech18"),
     )
     # choose a config to analyze
     ds_configs_a = get_config_infos_dict(ds_name_a)
@@ -324,7 +339,7 @@ with st.sidebar.expander("Choose second dataset and field"):
     ds_name_b = st.selectbox(
         "Choose a second dataset to explore:",
         ds_names,
-        index=ds_names.index("squad_v2"),
+        index=ds_names.index("hate_speech_offensive"),
     )
     # choose a config to analyze
     ds_configs_b = get_config_infos_dict(ds_name_b)
@@ -378,6 +393,9 @@ text_dset_b = get_text_to_analyze(
     split=split_b, max_items=num_examples_b, streaming=streaming_b
 )
 
+# Grab the label Distribution
+
+
 ######## Main window
 
 left_col, right_col = st.columns(2)
@@ -389,6 +407,25 @@ with left_col.expander("Dataset Description A"):
 right_col.markdown(f"### Showing {ds_name_b} - {config_name_b} - {text_feature_b}")
 with right_col.expander("Dataset Description B"):
     st.markdown(ds_name_to_dict[ds_name_b])
+
+### Show the label distribution from the dataset
+with left_col.expander("Dataset A - Label Distribution"):
+    #st.markdown(ds_config_a["features"]["label"])
+    labs_a=get_labels(
+        ds_name_a, text_feature_a, ds_config_a,
+        split=split_a, max_items=num_examples_a, streaming=streaming_a
+    )
+    st.markdown("The distribution of labels is the following: " + str(labs_a))
+
+### Show the label distribution from the dataset
+with right_col.expander("Dataset B - Label Distribution"):
+    #st.markdown(ds_config_b["features"]["label"])
+    labs_b= get_labels(
+        ds_name_b, text_feature_b, ds_config_b,
+        split=split_b, max_items=num_examples_b, streaming=streaming_b
+    )
+    st.markdown("The distribution of labels is the following: " + str(labs_b))
+
 
 ### First, show the distribution of text lengths
 with left_col.expander("Show text lengths A", expanded=True):
