@@ -69,7 +69,7 @@ def get_typed_features(features, ftype='string', parents=None):
             if feat["feature"].get("dtype", None) == ftype:
                 typed_features += [tuple(parents + [name])]
             elif isinstance(feat["feature"], dict):
-                typed_features += get_typed_features(feat.feature, ftype, parents + [name])
+                typed_features += get_typed_features(feat["feature"], ftype, parents + [name])
     return typed_features
 
 # Recursively get a list of all features that are ClassLabels
