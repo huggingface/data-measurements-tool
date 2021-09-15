@@ -15,6 +15,7 @@ from datasets import (
     load_dataset_builder,
 )
 from os.path import join as pjoin
+from sklearn.cluster import AgglomerativeClustering
 
 st.set_page_config(
     page_title="Demo to showcase dataset metrics",
@@ -80,13 +81,13 @@ def get_label_features(features, parents=None):
         parents = []
     text_features = []
     for name, feat in features.items():
-        if hasattr(feat, 'num_classes'):
-            text_features += [(tuple(parents + [name]), feat.names)]
-        elif hasattr(feat, 'feature'):
-            if hasattr(feat.feature, 'num_classes'):
-                text_features += [(tuple(parents + [name]), feat.feature.names)]
-            elif isinstance(feat.feature, dict):
-                text_features += get_label_features(feat.feature, parents + [name])
+        if 'num_classes' in feat:
+            text_features += [(tuple(parents + [name]), feat["names"])]
+        elif "feature" in feat:
+            if 'num_classes' in feat:
+                text_features += [(tuple(parents + [name]), feat["feature"]["names"])]
+            elif isinstance(feat["feature"], dict):
+                text_features += get_label_features(feat["feature"], parents + [name])
     return text_features
 
 # Cast info to pure dictionary by casting SplitInfo and pre-selecting features
@@ -204,6 +205,59 @@ def run_perplexity_analysis(text_dset, cache_name):
     ]
     return (sorted_sents_loss, fig_tok_loss)
 
+@st.cache(allow_output_mutation=True, hash_funcs={
+    Dataset: lambda _: None,
+    transformers.models.mpnet.tokenization_mpnet_fast.MPNetTokenizerFast: lambda _: None,
+    transformers.models.mpnet.modeling_mpnet.MPNetModel: lambda _: None,
+})
+def run_hierarchical_clustering(text_dset, cache_name):
+    # First step: pre-compute all embeddings
+    s_tokenizer = transformers.AutoTokenizer.from_pretrained('sentence-transformers/all-mpnet-base-v2')
+    s_model = transformers.AutoModel.from_pretrained('sentence-transformers/all-mpnet-base-v2').to(device)
+    def mean_pooling(model_output, attention_mask):
+        token_embeddings = model_output[0] #First element of model_output contains all token embeddings
+        input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+        return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
+    def embed_sentences(sentences):
+        sents = sentences["text"]
+        batch = s_tokenizer(sents, padding=True, truncation=True, return_tensors='pt')
+        batch = {k: v.to(device) for k, v in batch.items()}
+        with torch.no_grad():
+            model_output = s_model(**batch)
+            sentence_embeds = mean_pooling(model_output, batch['attention_mask'])
+            sentence_embeds /= sentence_embeds.norm(dim=-1, keepdim=True)
+            return {"embed": [embed.tolist() for embed in sentence_embeds]}
+    text_dset_embeds = text_dset.map(
+        embed_sentences,
+        batched=True,
+        batch_size=32,
+        load_from_cache_file=True,
+        cache_file_name=pjoin("cache_dir", f"{cache_name}_space_embeds"),
+    )
+    # Second step: on to the clustering
+    np_embeds = np.array(text_dset_embeds["embed"])
+    clustering_model = AgglomerativeClustering(n_clusters=None, affinity='cosine', linkage='average', distance_threshold=0.)
+    clustering_model.fit(np_embeds)
+    merged = clustering_model.children_
+    tree = [[i] for i in range(text_dset.num_rows)] + [[] for _ in range(text_dset.num_rows-1)]
+    current_node = text_dset.num_rows
+    # TODO - go beyond one level
+    embeddings = torch.Tensor(text_dset_embeds["embed"])
+    centroid = embeddings.mean(dim=0, keepdim=True).norm(dim=-1)
+    distances = (embeddings * centroid).sum(dim=-1) # using dot product
+    distance_list = distances.tolist()
+    # For now: distance from centroid
+    hist_data_excenter = [distance_list]
+    fig_tok_excenter = ff.create_distplot(hist_data_excenter, group_labels=["embeding distance from centroid"])
+    sorted_sents_excenter = [
+        (d, s) for s, d in sorted(
+            zip(text_dset_embeds["text"], distance_list),
+            key=lambda x:x[1], reverse=True,
+        )
+    ]
+    return (sorted_sents_excenter, fig_tok_excenter)
+
+
 ########## streamlit code
 
 ds_names, ds_name_to_dict = all_datasets()
@@ -259,9 +313,10 @@ with st.sidebar.expander("Choose first dataset and field"):
         "Use streaming functionality for the first dataset",
         value=False,
     )
-    compute_perplexities_a = st.checkbox(
-        "Compute perplexities for the first dataset",
-        value=False,
+    analyses_a = st.multiselect(
+        "which analyses do you want to run for the first dataset?",
+        ["sentence lengths", "sentence perplexities", "distance to centroid"],
+        ["sentence lengths"],
     )
 
 with st.sidebar.expander("Choose second dataset and field"):
@@ -302,10 +357,12 @@ with st.sidebar.expander("Choose second dataset and field"):
         "Use streaming functionality for the second dataset",
         value=False,
     )
-    compute_perplexities_b = st.checkbox(
-        "Compute perplexities for the second dataset",
-        value=False,
+    analyses_b = st.multiselect(
+        "which analyses do you want to run for the second dataset?",
+        ["sentence lengths", "sentence perplexities", "distance to centroid"],
+        ["sentence lengths"],
     )
+
 
 # doing some of the caching manually
 cache_name_a = f"{ds_name_a}_{config_name_a}_{split_a}_{'-'.join(text_feature_a)}_{num_examples_a}"
@@ -325,7 +382,6 @@ text_dset_b = get_text_to_analyze(
 
 left_col, right_col = st.columns(2)
 
-### First, show some example texts from the dataset
 left_col.markdown(f"### Showing {ds_name_a} - {config_name_a} - {text_feature_a}")
 with left_col.expander("Dataset Description A"):
     st.markdown(ds_name_to_dict[ds_name_a])
@@ -334,32 +390,38 @@ right_col.markdown(f"### Showing {ds_name_b} - {config_name_b} - {text_feature_b
 with right_col.expander("Dataset Description B"):
     st.markdown(ds_name_to_dict[ds_name_b])
 
-### Second, show the distribution of text lengths
+### First, show the distribution of text lengths
 with left_col.expander("Show text lengths A", expanded=True):
-    st.markdown("### Text lengths A")
-    sorted_sents_lengths_a, fig_tok_length_a = run_tok_length_analysis(text_dset_a, cache_name_a)
-    st.plotly_chart(fig_tok_length_a, use_container_width=True)
-    start_id_show_lengths_a = st.slider(
-        'Show longest sentences in A starting at index:',
-        0, text_dset_a.num_rows - 5, value=0, step=5
-    )
-    for ln, sent in sorted_sents_lengths_a[start_id_show_lengths_a:start_id_show_lengths_a+5]:
-        st.text(f"{ln} | {sent}")
+    if "sentence lengths" in analyses_a:
+        st.markdown("### Text lengths A")
+        sorted_sents_lengths_a, fig_tok_length_a = run_tok_length_analysis(text_dset_a, cache_name_a)
+        st.plotly_chart(fig_tok_length_a, use_container_width=True)
+        start_id_show_lengths_a = st.slider(
+            'Show longest sentences in A starting at index:',
+            0, text_dset_a.num_rows - 5, value=0, step=5
+        )
+        for ln, sent in sorted_sents_lengths_a[start_id_show_lengths_a:start_id_show_lengths_a+5]:
+            st.text(f"{ln} | {sent}")
+    else:
+        st.write("To show the lengths of examples, select `sentence lengths` in the list of analyses box left")
 
 with right_col.expander("Show text lengths B", expanded=True):
-    st.markdown("### Text lengths B")
-    sorted_sents_lengths_b, fig_tok_length_b = run_tok_length_analysis(text_dset_b, cache_name_b)
-    st.plotly_chart(fig_tok_length_b, use_container_width=True)
-    start_id_show_lengths_b = st.slider(
-        'Show longest sentences in B starting at index:',
-        0, text_dset_b.num_rows - 5, value=0, step=5
-    )
-    for ln, sent in sorted_sents_lengths_b[start_id_show_lengths_b:start_id_show_lengths_b+5]:
-        st.text(f"{ln} | {sent}")
+    if "sentence lengths" in analyses_b:
+        st.markdown("### Text lengths B")
+        sorted_sents_lengths_b, fig_tok_length_b = run_tok_length_analysis(text_dset_b, cache_name_b)
+        st.plotly_chart(fig_tok_length_b, use_container_width=True)
+        start_id_show_lengths_b = st.slider(
+            'Show longest sentences in B starting at index:',
+            0, text_dset_b.num_rows - 5, value=0, step=5
+        )
+        for ln, sent in sorted_sents_lengths_b[start_id_show_lengths_b:start_id_show_lengths_b+5]:
+            st.text(f"{ln} | {sent}")
+    else:
+        st.write("To show the lengths of examples, select `sentence lengths` in the list of analyses box left")
 
-### Third, show the distribution of text perplexities
+### Second, show the distribution of text perplexities
 with left_col.expander("Show text perplexities A", expanded=True):
-    if compute_perplexities_a:
+    if "sentence perplexities" in analyses_a:
         st.markdown("### Text perplexities A")
         sorted_sents_loss_a, fig_loss_a = run_perplexity_analysis(text_dset_a, cache_name_a)
         st.plotly_chart(fig_loss_a, use_container_width=True)
@@ -370,10 +432,10 @@ with left_col.expander("Show text perplexities A", expanded=True):
         for lss, sent in sorted_sents_loss_a[start_id_show_loss_a:start_id_show_loss_a+5]:
             st.text(f"{lss:.3f} {sent}")
     else:
-        st.write("To show perplexity of examples, check the `compute perplexities for the first dataset` box left")
+        st.write("To show perplexity of examples, select `sentence perplexities` in the list of analyses box left")
 
 with right_col.expander("Show text perplexities B", expanded=True):
-    if compute_perplexities_b:
+    if "sentence perplexities" in analyses_b:
         st.markdown("### Text perplexities B")
         sorted_sents_loss_b, fig_loss_b = run_perplexity_analysis(text_dset_b, cache_name_b)
         st.plotly_chart(fig_loss_b, use_container_width=True)
@@ -384,4 +446,33 @@ with right_col.expander("Show text perplexities B", expanded=True):
         for lss, sent in sorted_sents_loss_b[start_id_show_loss_b:start_id_show_loss_b+5]:
             st.text(f"{lss:.3f} {sent}")
     else:
-        st.write("To show perplexity of examples, check the `compute perplexities for the first dataset` box left")
+        st.write("To show perplexity of examples, select `sentence perplexities` in the list of analyses box left")
+
+### Third, use a sentence embedding model
+with left_col.expander("Show text embedding outliers A", expanded=True):
+    if "distance to centroid" in analyses_a:
+        st.markdown("### Text embedding A")
+        sorted_sents_excenter_a, fig_tok_excenter_a = run_hierarchical_clustering(text_dset_a, cache_name_a)
+        st.plotly_chart(fig_tok_excenter_a, use_container_width=True)
+        start_id_show_excenter_a = st.slider(
+            'Show closest sentences to centroid in A starting at index (dot product):',
+            0, text_dset_a.num_rows - 5, value=0, step=5
+        )
+        for ln, sent in sorted_sents_excenter_a[start_id_show_excenter_a:start_id_show_excenter_a+5]:
+            st.text(f"{ln:.3f} | {sent}")
+    else:
+        st.write("To show example distances from the centroid, select `distance to centroid` in the list of analyses box left")
+
+with right_col.expander("Show text embedding outliers B", expanded=True):
+    if "distance to centroid" in analyses_b:
+        st.markdown("### Text embedding B")
+        sorted_sents_excenter_b, fig_tok_excenter_b = run_hierarchical_clustering(text_dset_b, cache_name_b)
+        st.plotly_chart(fig_tok_excenter_b, use_container_width=True)
+        start_id_show_excenter_b = st.slider(
+            'Show closest sentences to centroid in B starting at index (dot product):',
+            0, text_dset_b.num_rows - 5, value=0, step=5
+        )
+        for ln, sent in sorted_sents_excenter_b[start_id_show_excenter_b:start_id_show_excenter_b+5]:
+            st.text(f"{ln:.3f} | {sent}")
+    else:
+        st.write("To show example distances from the centroid, select `distance to centroid` in the list of analyses box left")
