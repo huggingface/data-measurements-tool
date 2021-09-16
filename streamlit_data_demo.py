@@ -202,6 +202,18 @@ def get_language(name, text):
         lang= detect(text)
         return(languages.get(alpha2=lang).name.lower())
 
+#Counting vocabulary from the text
+
+def get_count_vocab(datatext, language):
+    language_stopwords = stopwords.words(language)
+    vocab_dict = {}
+    vocab = Counter()
+    for sent in datatext['text']:
+        tokenized_text = simple_tokenizer.tokenize(sent)
+        vocab_tmp = FreqDist(word for word in tokenized_text if word.lower() not in language_stopwords)
+        vocab.update(vocab_tmp)
+    return(vocab)
+
 ########## metrics code
 @st.cache(allow_output_mutation=True, hash_funcs={Dataset: lambda _: None})
 def run_tok_length_analysis(text_dset, cache_name):
@@ -464,33 +476,21 @@ with right_col.expander("Dataset B - Label Distribution"):
 
 ### Calculate the vocab size
 with left_col.expander("Dataset A - Language and Vocabulary Size"):
-    language= get_language(ds_name_a,text_dset_a[0]['text'])
-    language_stopwords = stopwords.words(language)
-    vocab_dict = {}
-    vocab = Counter()
-    for sent in text_dset_a['text']:
-        tokenized_text = simple_tokenizer.tokenize(sent)
-        vocab_tmp = FreqDist(word for word in tokenized_text if word.lower() not in language_stopwords)
-        vocab.update(vocab_tmp)
-    common= vocab.most_common(10)
-    st.markdown("The language detected is: " + language.capitalize())
-    st.markdown("There are {0} words after removing stop words".format(str(len(vocab))))
-    st.markdown("The most common words and their counts are: "+ ', '.join((map(str, common))))
+    language_a = get_language(ds_name_a,text_dset_a[0]['text'])
+    vocab_a = get_count_vocab(text_dset_a,language_a)
+    common_a = vocab_a.most_common(10)
+    st.markdown("The language detected is: " + language_a.capitalize())
+    st.markdown("There are {0} words after removing stop words".format(str(len(vocab_a))))
+    st.markdown("The most common words and their counts are: "+ ', '.join((map(str, common_a))))
 
 
 with right_col.expander("Dataset B - Language and Vocabulary Size"):
-    language= get_language(ds_name_b,text_dset_b[0]['text'])
-    language_stopwords = stopwords.words(language)
-    vocab_dict = {}
-    vocab = Counter()
-    for sent in text_dset_b['text']:
-        tokenized_text = simple_tokenizer.tokenize(sent)
-        vocab_tmp = FreqDist(word for word in tokenized_text if word.lower() not in language_stopwords)
-        vocab.update(vocab_tmp)
-    common= vocab.most_common(10)
-    st.markdown("The language detected is: " + language.capitalize())
-    st.markdown("There are {0} words after removing stop words".format(str(len(vocab))))
-    st.markdown("The most common words and their counts are: "+ ', '.join((map(str, common))))
+    language_b = get_language(ds_name_b,text_dset_b[0]['text'])
+    vocab_b = get_count_vocab(text_dset_b,language_b)
+    common_b = vocab_b.most_common(10)
+    st.markdown("The language detected is: " + language_b.capitalize())
+    st.markdown("There are {0} words after removing stop words".format(str(len(vocab_b))))
+    st.markdown("The most common words and their counts are: "+ ', '.join((map(str, common_b))))
 
 ### First, show the distribution of text lengths
 with left_col.expander("Show text lengths A", expanded=True):
