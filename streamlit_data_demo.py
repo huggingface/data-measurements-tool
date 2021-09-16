@@ -3,9 +3,11 @@ import math
 import numpy as np
 import plotly.figure_factory as ff
 import plotly.graph_objects as go
+import plotly.express as px
 import streamlit as st
 import tokenizers
 import transformers
+import pandas as pd
 import torch
 from collections import Counter
 
@@ -217,6 +219,21 @@ def get_count_vocab(datatext, language):
         vocab_tmp = FreqDist(word for word in tokenized_text if word.lower() not in language_stopwords)
         vocab.update(vocab_tmp)
     return(vocab)
+
+#Checking for NaNs
+
+def get_nans(name, text_path, config, split=None, max_items=20000, streaming=False):
+    if split is None:
+        split = 'train' if 'train' in config["splits"] else list(config["splits"])[0]
+        print(f"using default split: {split}")
+    ### get text from dataset
+    dataset = load_dataset(name, config["config_name"], streaming=streaming)
+    data_split = dataset[split].select(range(max_items))
+    # TODO: figure out how to do this without converting to DataFrame
+    datadf = pd.DataFrame(data_split)
+    nans= datadf.isnull().sum().sum()
+    return nans
+
 
 ########## metrics code
 @st.cache(allow_output_mutation=True, hash_funcs={Dataset: lambda _: None})
@@ -579,6 +596,34 @@ right_col.markdown(f"### Showing {ds_name_b} - {config_name_b} - {text_feature_b
 with right_col.expander("Dataset Description B"):
     st.markdown(ds_name_to_dict[ds_name_b])
 
+### Calculate the vocab size
+with left_col.expander("Dataset A - General Statistics"):
+    language_a = get_language(ds_name_a,text_dset_a[0]['text'])
+    vocab_a = get_count_vocab(text_dset_a,language_a)
+    common_a = vocab_a.most_common(10)
+    nancount_a= get_nans(
+                ds_name_a, text_feature_a, ds_config_a,
+                split=split_a, max_items=num_examples_a, streaming=streaming_a
+            )
+    st.markdown("The language detected is: " + language_a.capitalize())
+    st.markdown("There are {0} words after removing stop words".format(str(len(vocab_a))))
+    st.markdown("The most common words and their counts are: "+ ', '.join((map(str, common_a))))
+    st.markdown("There are {0} missing values in the dataset".format(str(nancount_a)))
+
+
+with right_col.expander("Dataset B - Language and Vocabulary Size"):
+    language_b = get_language(ds_name_b,text_dset_b[0]['text'])
+    vocab_b = get_count_vocab(text_dset_b,language_b)
+    common_b = vocab_b.most_common(10)
+    nancount_b= get_nans(
+                ds_name_b, text_feature_b, ds_config_b,
+                split=split_b, max_items=num_examples_b, streaming=streaming_b
+            )
+    st.markdown("The language detected is: " + language_b.capitalize())
+    st.markdown("There are {0} words after removing stop words".format(str(len(vocab_b))))
+    st.markdown("The most common words and their counts are: "+ ', '.join((map(str, common_b))))
+    st.markdown("There are {0} missing values in the dataset".format(str(nancount_b)))
+
 ### Show the label distribution from the datasets
 with left_col.expander("Dataset A - Label Distribution"):
     try:
@@ -586,7 +631,14 @@ with left_col.expander("Dataset A - Label Distribution"):
             ds_name_a, text_feature_a, ds_config_a,
             split=split_a, max_items=num_examples_a, streaming=streaming_a
         )
-        st.markdown("The distribution of labels is the following: " + str(labs_a))
+        labnames_a = [l[0] for l in labs_a]
+        labcounts_a = [l[1] for l in labs_a]
+        fig_label_a= px.pie(labcounts_a, values=labcounts_a, names=labnames_a)
+        #fig_label_a.update_layout(margin=dict(l=10, r=10, b=10, t=10))
+        st.markdown("There are {0} labels in this dataset, with the following distribution: ".format(str(len(labnames_a))))
+        fig_label_a.update_traces(hoverinfo='label+percent', textinfo='percent')
+        st.plotly_chart(fig_label_a, use_container_width=True)
+        #st.markdown("The distribution of labels is the following: " + str(labs_a))
     except KeyError as e:
         st.markdown("No labels were found in the dataset")
 
@@ -597,27 +649,14 @@ with right_col.expander("Dataset B - Label Distribution"):
             ds_name_b, text_feature_b, ds_config_b,
             split=split_b, max_items=num_examples_b, streaming=streaming_b
         )
-        st.markdown("The distribution of labels is the following: " + str(labs_b))
+        labnames_b = [l[0] for l in labs_b]
+        labcounts_b = [l[1] for l in labs_b]
+        fig_label_b= px.pie(labcounts_b, values=labcounts_b, names=labnames_b)
+        fig_label_b.update_traces(hoverinfo='label+percent', textinfo='percent')
+        st.markdown("There are {0} labels in this dataset, with the following distribution: ".format(str(len(labnames_b))))
+        st.plotly_chart(fig_label_b, use_container_width=True)
     except KeyError as e:
         st.markdown("No labels were found in the dataset")
-
-### Calculate the vocab size
-with left_col.expander("Dataset A - Language and Vocabulary Size"):
-    language_a = get_language(ds_name_a,text_dset_a[0]['text'])
-    vocab_a = get_count_vocab(text_dset_a,language_a)
-    common_a = vocab_a.most_common(10)
-    st.markdown("The language detected is: " + language_a.capitalize())
-    st.markdown("There are {0} words after removing stop words".format(str(len(vocab_a))))
-    st.markdown("The most common words and their counts are: "+ ', '.join((map(str, common_a))))
-
-
-with right_col.expander("Dataset B - Language and Vocabulary Size"):
-    language_b = get_language(ds_name_b,text_dset_b[0]['text'])
-    vocab_b = get_count_vocab(text_dset_b,language_b)
-    common_b = vocab_b.most_common(10)
-    st.markdown("The language detected is: " + language_b.capitalize())
-    st.markdown("There are {0} words after removing stop words".format(str(len(vocab_b))))
-    st.markdown("The most common words and their counts are: "+ ', '.join((map(str, common_b))))
 
 ### First, show the distribution of text lengths
 with left_col.expander("Show text lengths A", expanded=True):
