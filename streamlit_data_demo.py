@@ -597,7 +597,7 @@ with right_col.expander("Dataset Description B"):
     st.markdown(ds_name_to_dict[ds_name_b])
 
 ### Calculate the vocab size
-with left_col.expander("Dataset A - General Statistics"):
+with left_col.expander("Dataset A - General Text Statistics"):
     language_a = get_language(ds_name_a,text_dset_a[0]['text'])
     vocab_a = get_count_vocab(text_dset_a,language_a)
     common_a = vocab_a.most_common(10)
@@ -608,10 +608,10 @@ with left_col.expander("Dataset A - General Statistics"):
     st.markdown("The language detected is: " + language_a.capitalize())
     st.markdown("There are {0} words after removing stop words".format(str(len(vocab_a))))
     st.markdown("The most common words and their counts are: "+ ', '.join((map(str, common_a))))
-    st.markdown("There are {0} missing values in the dataset".format(str(nancount_a)))
+    st.markdown("There are {0} missing values in the dataset!".format(str(nancount_a)))
 
 
-with right_col.expander("Dataset B - Language and Vocabulary Size"):
+with right_col.expander("Dataset B - General Text Statistics"):
     language_b = get_language(ds_name_b,text_dset_b[0]['text'])
     vocab_b = get_count_vocab(text_dset_b,language_b)
     common_b = vocab_b.most_common(10)
@@ -622,7 +622,7 @@ with right_col.expander("Dataset B - Language and Vocabulary Size"):
     st.markdown("The language detected is: " + language_b.capitalize())
     st.markdown("There are {0} words after removing stop words".format(str(len(vocab_b))))
     st.markdown("The most common words and their counts are: "+ ', '.join((map(str, common_b))))
-    st.markdown("There are {0} missing values in the dataset".format(str(nancount_b)))
+    st.markdown("There are {0} missing values in the dataset!".format(str(nancount_b)))
 
 ### Show the label distribution from the datasets
 with left_col.expander("Dataset A - Label Distribution"):
