@@ -1,6 +1,8 @@
+import igraph
 import math
 import numpy as np
 import plotly.figure_factory as ff
+import plotly.graph_objects as go
 import streamlit as st
 import tokenizers
 import transformers
@@ -16,7 +18,7 @@ from datasets import (
     load_dataset_builder,
 )
 from datasets.utils import metadata
-
+from igraph import Graph, EdgeSeq
 from os.path import join as pjoin
 from sklearn.cluster import AgglomerativeClustering
 import nltk
@@ -56,6 +58,8 @@ colors = [
 ########## preparation functions
 
 _SAMPLE_SIZE = 5000
+_TREE_DEPTH = 8
+_TREE_MIN_NODES = 200
 
 @st.cache()
 def all_datasets():
@@ -232,7 +236,6 @@ def run_tok_length_analysis(text_dset, cache_name):
     ]
     return (sorted_sents_lengths, fig_tok_length)
 
-
 device = "cuda:0"
 @st.cache(allow_output_mutation=True, hash_funcs={
     Dataset: lambda _: None,
@@ -298,24 +301,148 @@ def run_hierarchical_clustering(text_dset, cache_name):
     clustering_model = AgglomerativeClustering(n_clusters=None, affinity='cosine', linkage='average', distance_threshold=0.)
     clustering_model.fit(np_embeds)
     merged = clustering_model.children_
-    tree = [[i] for i in range(text_dset.num_rows)] + [[] for _ in range(text_dset.num_rows-1)]
-    current_node = text_dset.num_rows
-    # TODO - go beyond one level
-    embeddings = torch.Tensor(text_dset_embeds["embed"])
-    centroid = embeddings.mean(dim=0, keepdim=True).norm(dim=-1)
-    distances = (embeddings * centroid).sum(dim=-1) # using dot product
-    distance_list = distances.tolist()
-    # For now: distance from centroid
-    hist_data_excenter = [distance_list]
-    fig_tok_excenter = ff.create_distplot(hist_data_excenter, group_labels=["embeding distance from centroid"])
-    sorted_sents_excenter = [
-        (d, s) for s, d in sorted(
-            zip(text_dset_embeds["text"], distance_list),
-            key=lambda x:x[1], reverse=True,
+    in_merge = [nid for mg in merged for nid in mg]
+    assert len(in_merge) == len(set(in_merge))
+    # make actual tree from merges
+    nodes = [{
+        "nid": i,
+        "parent": -1,
+        "child_left": -1,
+        "child_right": -1,
+        "sent_id_list": [i],
+        "weight": 1,
+        "depth": 0,
+    } for i in range(text_dset.num_rows)] + [{
+        "nid": text_dset.num_rows + i,
+        "parent": -1,
+        "child_left": -1,
+        "child_right": -1,
+        "sent_id_list": [],
+        "weight": 0,
+        "depth": 0,
+    } for i in range(text_dset.num_rows-1)]
+    for inid, (c_a, c_b) in enumerate(merged):
+        nid = inid + text_dset.num_rows
+        nodes[nid]["child_left"] = int(c_a)
+        nodes[nid]["child_right"] = int(c_b)
+        nodes[c_a]["parent"] = nid
+        nodes[c_b]["parent"] = nid
+        nodes[nid]["depth"] = max(nodes[nid]["depth"], nodes[c_a]["depth"] + 1, nodes[c_b]["depth"] + 1)
+        nodes[nid]["weight"] = nodes[c_a]["weight"] + nodes[c_b]["weight"]
+    # restrict the depth
+    tree_depth = max([node["depth"] for node in nodes])
+    root = nodes[[node["depth"] for node in nodes].index(tree_depth)]
+    def compute_rec_depth(node, current_depth):
+        node["depth"] = current_depth
+        if node["child_left"] != -1:
+            compute_rec_depth(nodes[node["child_left"]], current_depth+1)
+        if node["child_right"] != -1:
+            compute_rec_depth(nodes[node["child_right"]], current_depth+1)
+    compute_rec_depth(root, 0)
+    def aggregate_children_sentences(node):
+        if node["child_left"] != -1 and node["child_right"] != -1:
+            assert nodes[node["child_left"]]["parent"] == node["nid"], f"C {node} \n -- {nodes[node['child_left']]} \n -- {nodes[node['child_right']]}"
+            assert nodes[node["child_right"]]["parent"] == node["nid"], f"D {node} \n -- {nodes[node['child_left']]} \n -- {nodes[node['child_right']]}"
+            aggregate_children_sentences(nodes[node["child_left"]])
+            aggregate_children_sentences(nodes[node["child_right"]])
+            node["sent_id_list"] = nodes[node["child_left"]]["sent_id_list"][:] + nodes[node["child_right"]]["sent_id_list"][:]
+            assert node["weight"] == len(node["sent_id_list"]), f"{node} \n -- {nodes[node['child_left']]} \n -- {nodes[node['child_right']]}"
+    cutoff_depth = _TREE_DEPTH
+    cutoff_nodes = _TREE_MIN_NODES
+    for node in nodes:
+        if node["depth"] == cutoff_depth or (
+            (0 < node["depth"] and node["depth"] < cutoff_depth) and \
+            (node["weight"] < cutoff_nodes and nodes[node["parent"]]["weight"] >= cutoff_nodes)
+        ):
+            aggregate_children_sentences(node)
+    top_nodes = [
+        node
+        for nid, node in enumerate(nodes) if node["depth"] <= cutoff_depth and (
+            node["weight"] >= cutoff_nodes or \
+            nodes[node["parent"]]["weight"] >= cutoff_nodes
         )
     ]
-    return (sorted_sents_excenter, fig_tok_excenter)
+    top_nodes.reverse()
+    id_map = dict([(node["nid"], i) for i, node in enumerate(top_nodes)])
+    id_map[-1] = -1
+    for node in top_nodes:
+        node["orig_id"] = node["nid"]
+        for k in ["nid", "parent", "child_left", "child_right"]:
+            node[k] = id_map.get(node[k], -1)
+    # TODO node embeddings and leaf histograms
+    leaves = [node for node in top_nodes if node["child_left"] == -1]
+    for leaf in leaves:
+        assert len(leaf["sent_id_list"]) > 0, f"{leaf}"
+        embeddings = torch.Tensor([text_dset_embeds[sid]["embed"] for sid in leaf["sent_id_list"]])
+        centroid = embeddings.mean(dim=0, keepdim=True).norm(dim=-1)
+        distances = (embeddings * centroid).sum(dim=-1) # using dot product
+        distance_list = distances.tolist()
+        # For now: distance from centroid
+        hist_data_excenter = [distance_list]
+        fig_tok_excenter = ff.create_distplot(hist_data_excenter, group_labels=["embeding distance from centroid"])
+        sorted_sents_excenter = [
+            (d, text_dset_embeds["text"][sid]) for sid, d in sorted(
+                zip(leaf["sent_id_list"], distance_list),
+                key=lambda x:x[1], reverse=True,
+            )
+        ]
+        leaf["figure"] = fig_tok_excenter
+        leaf["sorted"] = sorted_sents_excenter
+    return top_nodes, leaves
 
+# copied code from https://plotly.com/python/tree-plots/
+@st.cache(allow_output_mutation=True)
+def make_tree_plot(node_list):
+    # make plot nodes
+    labels = [f"{nid:2d} - {node['weight']:5d} sents" for nid, node in enumerate(node_list)]
+    root = node_list[0]
+    root["X"] = 0
+    root["Y"] = 0
+    def rec_make_coordinates(node):
+        if node["child_left"] != -1:
+            child_l = node_list[node["child_left"]]
+            child_r = node_list[node["child_right"]]
+            child_l["X"] = node["X"]
+            child_l["Y"] = node["Y"] - 1
+            child_r["X"] = node["X"] + child_l["weight"] * 10 / root["weight"]
+            child_r["Y"] = node["Y"] - 1
+            rec_make_coordinates(child_l)
+            rec_make_coordinates(child_r)
+    rec_make_coordinates(root)
+    E = [] # list of edges
+    Xn = []
+    Yn = []
+    Xe = []
+    Ye = []
+    for nid, node in enumerate(node_list):
+        Xn += [node["X"]]
+        Yn += [node["Y"]]
+        c_a, c_b = (node["child_left"], node["child_right"])
+        if c_a != -1:
+            E += [(nid, c_a)]
+            Xe += [node["X"], node_list[c_a]["X"], None]
+            Ye += [node["Y"], node_list[c_a]["Y"], None]
+        if c_b != -1:
+            E += [(nid, c_b)]
+            Xe += [node["X"], node_list[c_b]["X"], None]
+            Ye += [node["Y"], node_list[c_b]["Y"], None]
+    # make figure
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(x=Xe, y=Ye, mode='lines', line=dict(color='rgb(210,210,210)', width=1), hoverinfo='none')
+    )
+    fig.add_trace(
+        go.Scatter(x=Xn, y=Yn, mode='markers', name='nodes',
+                marker=dict(
+                symbol='circle-dot',
+                size=18,
+                color='#6175c1',    #'#DB4551',
+                line=dict(color='rgb(50,50,50)', width=1)
+            ),
+            text=labels, hoverinfo='text', opacity=0.8
+        )
+    )
+    return fig
 
 ########## streamlit code
 
@@ -554,27 +681,47 @@ with right_col.expander("Show text perplexities B", expanded=True):
 with left_col.expander("Show text embedding outliers A", expanded=True):
     if "distance to centroid" in analyses_a:
         st.markdown("### Text embedding A")
-        sorted_sents_excenter_a, fig_tok_excenter_a = run_hierarchical_clustering(text_dset_a, cache_name_a)
-        st.plotly_chart(fig_tok_excenter_a, use_container_width=True)
-        start_id_show_excenter_a = st.slider(
-            'Show closest sentences to centroid in A starting at index (dot product):',
-            0, text_dset_a.num_rows - 5, value=0, step=5
+        node_list_a, leaf_list_a = run_hierarchical_clustering(text_dset_a, cache_name_a)
+        leaf_ids_a = [leaf["nid"] for leaf in leaf_list_a]
+        fig_tree_a = make_tree_plot(node_list_a)
+        st.plotly_chart(fig_tree_a, use_container_width=True)
+        show_leaf_a = st.selectbox(
+            "Choose a leaf node to explore in the first dataset:",
+            leaf_ids_a,
+            index=0,
         )
-        for ln, sent in sorted_sents_excenter_a[start_id_show_excenter_a:start_id_show_excenter_a+5]:
-            st.text(f"{ln:.3f} | {sent}")
+        figure_leaf_a = leaf_list_a[leaf_ids_a.index(show_leaf_a)]["figure"]
+        sorted_leaf_a = leaf_list_a[leaf_ids_a.index(show_leaf_a)]["sorted"]
+        st.plotly_chart(figure_leaf_a, use_container_width=True)
+        start_id_show_leaf_a = st.slider(
+            'Show closest sentences in leaf to the centroid in A starting at index:',
+            0, len(sorted_leaf_a) - 5, value=0, step=5
+        )
+        for lss, sent in sorted_leaf_a[start_id_show_leaf_a:start_id_show_leaf_a+5]:
+            st.text(f"{lss:.3f} {sent}")
     else:
         st.write("To show example distances from the centroid, select `distance to centroid` in the list of analyses box left")
 
 with right_col.expander("Show text embedding outliers B", expanded=True):
     if "distance to centroid" in analyses_b:
         st.markdown("### Text embedding B")
-        sorted_sents_excenter_b, fig_tok_excenter_b = run_hierarchical_clustering(text_dset_b, cache_name_b)
-        st.plotly_chart(fig_tok_excenter_b, use_container_width=True)
-        start_id_show_excenter_b = st.slider(
-            'Show closest sentences to centroid in B starting at index (dot product):',
-            0, text_dset_b.num_rows - 5, value=0, step=5
+        node_list_b, leaf_list_b = run_hierarchical_clustering(text_dset_b, cache_name_b)
+        leaf_ids_b = [leaf["nid"] for leaf in leaf_list_b]
+        fig_tree_b = make_tree_plot(node_list_b)
+        st.plotly_chart(fig_tree_b, use_container_width=True)
+        show_leaf_b = st.selectbox(
+            "Choose a leaf node to explore in the second dataset:",
+            leaf_ids_b,
+            index=0,
         )
-        for ln, sent in sorted_sents_excenter_b[start_id_show_excenter_b:start_id_show_excenter_b+5]:
-            st.text(f"{ln:.3f} | {sent}")
+        figure_leaf_b = leaf_list_b[leaf_ids_b.index(show_leaf_b)]["figure"]
+        sorted_leaf_b = leaf_list_b[leaf_ids_b.index(show_leaf_b)]["sorted"]
+        st.plotly_chart(figure_leaf_b, use_container_width=True)
+        start_id_show_leaf_b = st.slider(
+            'Show closest sentences in leaf to the centroid in B starting at index:',
+            0, len(sorted_leaf_b) - 5, value=0, step=5
+        )
+        for lss, sent in sorted_leaf_b[start_id_show_leaf_b:start_id_show_leaf_b+5]:
+            st.text(f"{lss:.3f} {sent}")
     else:
         st.write("To show example distances from the centroid, select `distance to centroid` in the list of analyses box left")
