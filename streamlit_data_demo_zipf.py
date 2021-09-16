@@ -409,11 +409,12 @@ with left_col.expander("Show the Zipf distribution for A", expanded=True):
     fit_a = powerlaw.Fit(term_freq_df_a.total, discrete= True)
     s_a = fit_a.power_law.alpha
     sig_a = fit_a.power_law.sigma
-    expected_zipf_a = [int(term_freq_df_a['total'][0]/(i+1)**np.log(s_a)) for i in np.arange(_SAMPLE_SIZE)]
+    expected_zipf_a = [int(term_freq_df_a['total'][0]/(i+1)**s_a) for i in np.arange(_SAMPLE_SIZE)]
     fig_zipf_a = go.Figure()
-    fig_zipf_a.add_trace(go.Scatter(x=np.arange(100), y=expected_zipf_a, name = 'Expected', line=dict(color='#332288')))
-    fig_zipf_a.add_trace(go.Bar(x=np.arange(100), y= term_freq_df_a['total'], hovertext=term_freq_df_a.index.tolist(), name='Observed', marker_color= "#882255", opacity=0.99))
+    fig_zipf_a.add_trace(go.Scatter(x=np.arange(_SAMPLE_SIZE), y=expected_zipf_a, name = 'Expected', line=dict(color='#332288')))
+    fig_zipf_a.add_trace(go.Bar(x=np.arange(_SAMPLE_SIZE), y= term_freq_df_a['total'], hovertext=term_freq_df_a.index.tolist(), name='Observed', marker_color= "#882255", opacity=0.99))
     fig_zipf_a.update_layout(hovermode="x")
+    fig_zipf_a.update_xaxes(range=[0, 100])
     st.plotly_chart(fig_zipf_a, use_container_width=True)
     st.markdown("The coefficient that best fits this distribution is: " + str(round(s_a,3)) + " with an error of " + str(round(sig_a,3)))
 
@@ -436,10 +437,11 @@ with right_col.expander("Show the Zipf distribution for B", expanded=True):
     fit_b = powerlaw.Fit(term_freq_df_b.total, discrete= True)
     s_b = fit_b.power_law.alpha
     sig_b = fit_b.power_law.sigma
-    expected_zipf_b = [int(term_freq_df_b['total'][0]/(i+1)**np.log(s_b)) for i in np.arange(_SAMPLE_SIZE)]
+    expected_zipf_b = [int(term_freq_df_b['total'][0]/(i+1)**s_b) for i in np.arange(_SAMPLE_SIZE)]
     fig_zipf_b = go.Figure()
-    fig_zipf_b.add_trace(go.Scatter(x=np.arange(100), y=expected_zipf_b, name = 'Expected', line=dict(color='#332288')))
-    fig_zipf_b.add_trace(go.Bar(x=np.arange(100), y= term_freq_df_b['total'], hovertext=term_freq_df_b.index.tolist(), name='Observed', marker_color= "#882255", opacity=0.99))
+    fig_zipf_b.add_trace(go.Scatter(x=np.arange(_SAMPLE_SIZE), y=expected_zipf_b, name = 'Expected', line=dict(color='#332288')))
+    fig_zipf_b.add_trace(go.Bar(x=np.arange(_SAMPLE_SIZE), y= term_freq_df_b['total'], hovertext=term_freq_df_b.index.tolist(), name='Observed', marker_color= "#882255", opacity=0.99))
     fig_zipf_b.update_layout(hovermode="x")
+    fig_zipf_b.update_xaxes(range=[0, 100])
     st.plotly_chart(fig_zipf_b, use_container_width=True)
     st.markdown("The coefficient that best fits this distribution is: " + str(round(s_b,3)) + " with an error of " + str(round(sig_b,3)))

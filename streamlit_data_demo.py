@@ -7,6 +7,7 @@ import streamlit as st
 import tokenizers
 import transformers
 import torch
+from collections import Counter
 
 from dataclasses import asdict
 from datasets import (
@@ -16,9 +17,24 @@ from datasets import (
     load_dataset,
     load_dataset_builder,
 )
+from datasets.utils import metadata
 from igraph import Graph, EdgeSeq
 from os.path import join as pjoin
 from sklearn.cluster import AgglomerativeClustering
+import nltk
+from nltk.corpus import stopwords
+from nltk.probability import FreqDist
+nltk.download('stopwords')
+
+#Using this simple tokenizer for now, but we can use the HF one everywhere, if that's preferred
+from nltk.tokenize import RegexpTokenizer
+simple_tokenizer = RegexpTokenizer(r"\w+")
+
+#For language detection (since datasets don't automatically come with a language)
+#TODO: get language from the dataset card
+from langdetect import detect, DetectorFactory
+DetectorFactory.seed = 0
+from iso639 import languages
 
 st.set_page_config(
     page_title="Demo to showcase dataset metrics",
@@ -59,6 +75,8 @@ keep_info_fields = [
     "config_name",
     "splits",
 ]
+
+
 
 # Recursively get a list of all features of a certain dtype
 # the output is a list of tuples > e.g. ('A', 'B', 'C') for feature example['A']['B']['C']
@@ -159,6 +177,46 @@ def get_text_to_analyze(name, text_path, config, split=None, max_items=20000, st
         remove_columns=data_split.column_names,
     )
     return dataset_text
+
+def get_labels(name, text_path, config, split=None, max_items=20000, streaming=False):
+    ### default arguments
+    if split is None:
+        split = 'train' if 'train' in config["splits"] else list(config["splits"])[0]
+        print(f"using default split: {split}")
+    ### get text from dataset
+    dataset = load_dataset(name, config["config_name"], streaming=streaming)
+    data_split = dataset[split].select(range(max_items))
+    #TODO: find other ways of finding labels? other names?
+    try:
+        dataset_labels = [(data_split.info.features['label'].names[k],v) for k, v in Counter(data_split['label']).items()]
+    except:
+        dataset_labels = [(data_split.info.features['class'].names[k],v) for k, v in Counter(data_split['class']).items()]
+    return dataset_labels
+
+#Quick and dirty way of getting language from datacard if possible, otherwise using langdetect on the first sentence in the dataset
+def get_language(name, text):
+    try:
+        metadata= utils.metadata.DatasetMetadata.from_readme("./datasets/"+name+"/README.md")
+        langs = metadata['languages']
+        if len(langs) > 1:
+            return ("Languages detected: " + [languages.get(alpha2=l).name.lower() for l in langs])
+        else:
+            return(languages.get(alpha2=languages[0]).name.lower())
+    except:
+        lang= detect(text)
+        return(languages.get(alpha2=lang).name.lower())
+
+#Counting vocabulary from the text
+
+def get_count_vocab(datatext, language):
+    language_stopwords = stopwords.words(language)
+    vocab_dict = {}
+    vocab = Counter()
+    for sent in datatext['text']:
+        tokenized_text = simple_tokenizer.tokenize(sent)
+        vocab_tmp = FreqDist(word for word in tokenized_text if word.lower() not in language_stopwords)
+        vocab.update(vocab_tmp)
+    return(vocab)
 
 ########## metrics code
 @st.cache(allow_output_mutation=True, hash_funcs={Dataset: lambda _: None})
@@ -408,7 +466,7 @@ with st.sidebar.expander("Choose first dataset and field"):
     ds_name_a = st.selectbox(
         "Choose a first dataset to explore:",
         ds_names,
-        index=ds_names.index("squad"),
+        index=ds_names.index("hate_speech18"),
     )
     # choose a config to analyze
     ds_configs_a = get_config_infos_dict(ds_name_a)
@@ -452,7 +510,7 @@ with st.sidebar.expander("Choose second dataset and field"):
     ds_name_b = st.selectbox(
         "Choose a second dataset to explore:",
         ds_names,
-        index=ds_names.index("squad_v2"),
+        index=ds_names.index("hate_speech_offensive"),
     )
     # choose a config to analyze
     ds_configs_b = get_config_infos_dict(ds_name_b)
@@ -506,6 +564,9 @@ text_dset_b = get_text_to_analyze(
     split=split_b, max_items=num_examples_b, streaming=streaming_b
 )
 
+# Grab the label Distribution
+
+
 ######## Main window
 
 left_col, right_col = st.columns(2)
@@ -517,6 +578,46 @@ with left_col.expander("Dataset Description A"):
 right_col.markdown(f"### Showing {ds_name_b} - {config_name_b} - {text_feature_b}")
 with right_col.expander("Dataset Description B"):
     st.markdown(ds_name_to_dict[ds_name_b])
+
+### Show the label distribution from the datasets
+with left_col.expander("Dataset A - Label Distribution"):
+    try:
+        labs_a=get_labels(
+            ds_name_a, text_feature_a, ds_config_a,
+            split=split_a, max_items=num_examples_a, streaming=streaming_a
+        )
+        st.markdown("The distribution of labels is the following: " + str(labs_a))
+    except KeyError as e:
+        st.markdown("No labels were found in the dataset")
+
+### Show the label distribution from the dataset
+with right_col.expander("Dataset B - Label Distribution"):
+    try:
+        labs_b= get_labels(
+            ds_name_b, text_feature_b, ds_config_b,
+            split=split_b, max_items=num_examples_b, streaming=streaming_b
+        )
+        st.markdown("The distribution of labels is the following: " + str(labs_b))
+    except KeyError as e:
+        st.markdown("No labels were found in the dataset")
+
+### Calculate the vocab size
+with left_col.expander("Dataset A - Language and Vocabulary Size"):
+    language_a = get_language(ds_name_a,text_dset_a[0]['text'])
+    vocab_a = get_count_vocab(text_dset_a,language_a)
+    common_a = vocab_a.most_common(10)
+    st.markdown("The language detected is: " + language_a.capitalize())
+    st.markdown("There are {0} words after removing stop words".format(str(len(vocab_a))))
+    st.markdown("The most common words and their counts are: "+ ', '.join((map(str, common_a))))
+
+
+with right_col.expander("Dataset B - Language and Vocabulary Size"):
+    language_b = get_language(ds_name_b,text_dset_b[0]['text'])
+    vocab_b = get_count_vocab(text_dset_b,language_b)
+    common_b = vocab_b.most_common(10)
+    st.markdown("The language detected is: " + language_b.capitalize())
+    st.markdown("There are {0} words after removing stop words".format(str(len(vocab_b))))
+    st.markdown("The most common words and their counts are: "+ ', '.join((map(str, common_b))))
 
 ### First, show the distribution of text lengths
 with left_col.expander("Show text lengths A", expanded=True):
