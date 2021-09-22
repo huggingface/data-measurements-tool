@@ -58,8 +58,8 @@ colors = [
 ########## preparation functions
 
 _SAMPLE_SIZE = 5000
-_TREE_DEPTH = 8
-_TREE_MIN_NODES = 200
+_TREE_DEPTH = 10
+_TREE_MIN_NODES = 250
 
 @st.cache()
 def all_datasets():
@@ -370,7 +370,7 @@ def run_hierarchical_clustering(text_dset, cache_name):
         for k in ["nid", "parent", "child_left", "child_right"]:
             node[k] = id_map.get(node[k], -1)
     # TODO node embeddings and leaf histograms
-    leaves = [node for node in top_nodes if node["child_left"] == -1]
+    leaves = [node for node in top_nodes if node["child_left"] == -1 and len(node["sent_id_list"]) > 2]
     for leaf in leaves:
         assert len(leaf["sent_id_list"]) > 0, f"{leaf}"
         embeddings = torch.Tensor([text_dset_embeds[sid]["embed"] for sid in leaf["sent_id_list"]])
