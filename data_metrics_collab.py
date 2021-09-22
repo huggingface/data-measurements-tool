@@ -17,12 +17,17 @@ from nltk.corpus import stopwords
 from nltk.probability import FreqDist
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import RegexpTokenizer
+from sklearn.feature_extraction.text import CountVectorizer
 # See https://huggingface.co/transformers/installation.html
 # Used from loading pretrained models and tokenizers
-from transformers import AutoTokenizer, AutoModelWithLMHead, AutoModelForMaskedLM
+from transformers import AutoTokenizer, AutoModelWithLMHead, \
+    AutoModelForMaskedLM
 
-parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                 description=textwrap.dedent('''
+# See http://docs.allennlp.org/main/api/fairness/bias_metrics/#associationwithoutgroundtruth
+
+parser = argparse.ArgumentParser(
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    description=textwrap.dedent('''
                                  
                                  Example for Glue dataset:
                                  python3 data_metrics_collab.py --dataset="glue" --config="ax" --split="test" --label-column="label" --label-type="discrete" --language-column="premise"
@@ -37,15 +42,20 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
 
 parser.add_argument('--dataset', type=str,
                     help='Name of the dataset (Required)', required=True)
-parser.add_argument('--config', type=str, required=True, help='Dataset configuration to use (Required)')
-parser.add_argument('--split', type=str, required=True, help='Name of the dataset split to use (Required)')
+parser.add_argument('--config', type=str, required=True,
+                    help='Dataset configuration to use (Required)')
+parser.add_argument('--split', type=str, required=True,
+                    help='Name of the dataset split to use (Required)')
 # TODO: Handle situations that are not just straightforward single-cell labels.
-parser.add_argument('--label-column', type=str, required=False, default='', help='Name of the column where the labels are (Required)')
-parser.add_argument('--label-type', type=str, required=False, default='', choices=["discrete", "real"],
+parser.add_argument('--label-column', type=str, required=False, default='',
+                    help='Name of the column where the labels are (Required)')
+parser.add_argument('--label-type', type=str, required=False, default='',
+                    choices=["discrete", "real"],
                     help='Type of label: discrete or real-valued (Required)')
 parser.add_argument('--language-column', type=str, required=True,
                     help='Name of the column with the natural language is (Required)')
-parser.add_argument('--clean-html', default=False, required=False, action="store_true",
+parser.add_argument('--clean-html', default=False, required=False,
+                    action="store_true",
                     help='Whether to clear out HTML in the text before processing (Optional)')
 
 args = parser.parse_args()
@@ -116,11 +126,13 @@ def perplex_model_data(**kwargs):
     if VERBOSE:
         print(str(kwargs['m_name']) + " model loaded!")
     try:
-        data = load_dataset(kwargs['d_name'], kwargs['d_option'], split=kwargs['d_split'],
+        data = load_dataset(kwargs['d_name'], kwargs['d_option'],
+                            split=kwargs['d_split'],
                             streaming=kwargs['d_streaming'])
     # TODO: NotImplemented wrt Extraction Protocol specifically
     except NotImplementedError:
-        data = load_dataset(kwargs['d_name'], kwargs['d_option'], split=kwargs['d_split'], streaming=False)
+        data = load_dataset(kwargs['d_name'], kwargs['d_option'],
+                            split=kwargs['d_split'], streaming=False)
         kwargs['d_streaming'] = False
     if VERBOSE:
         print(str(kwargs['d_name']) + " dataset loaded!")
@@ -163,12 +175,14 @@ def perplex_model_data(**kwargs):
     # Note that this will produce a Zero Division error if the STRIDE is too large for the given range above.
     ppl = torch.exp(torch.stack(lls).sum() / end_loc)
     if VERBOSE:
-        print("The perplexity of the " + str(kwargs['m_name']) + " model with the " + str(
+        print("The perplexity of the " + str(
+            kwargs['m_name']) + " model with the " + str(
             kwargs['d_name']) + " dataset is " + str(ppl.item()))
     return ppl.item()
 
 
-def get_perplexity(dataset_name, config_name, dataset_split_name, langa_column_name, streaming=True):
+def get_perplexity(dataset_name, config_name, dataset_split_name,
+                   langa_column_name, streaming=True):
     # TODO: What's a better way to do this? Can we check whether streaming is possible for the dataset before calling?
     # ALSO, it seems that '.orig' and similar are simply text files, which are streamable; they just don't have
     # the right name.
@@ -176,8 +190,11 @@ def get_perplexity(dataset_name, config_name, dataset_split_name, langa_column_n
     ppl_dict = {}
     for lm_model_name in lm_models:
         # TODO: Make STREAM_BATCH_SIZE an option that the user can specify (I guess...?)
-        ppl = perplex_model_data(m_name=lm_model_name, d_name=dataset_name, d_option=config_name,
-                                 d_split=dataset_split_name, d_streaming=streaming, d_size=STREAM_BATCH_SIZE,
+        ppl = perplex_model_data(m_name=lm_model_name, d_name=dataset_name,
+                                 d_option=config_name,
+                                 d_split=dataset_split_name,
+                                 d_streaming=streaming,
+                                 d_size=STREAM_BATCH_SIZE,
                                  d_col=langa_column_name)
         ppl_dict[lm_model_name] = ppl
     # TODO: Figure out relevance of this from the jupyter notebook.
@@ -204,7 +221,8 @@ def do_clean_html(raw_html: str) -> str:
 
 
 # Dataset Characteristics
-def get_data_basics(input_dataset: Dataset, label_column_name: str, label_type: str) -> Dict:
+def get_data_basics(input_dataset: Dataset, label_column_name: str,
+                    label_type: str) -> Dict:
     # Should we ask about deduping?!
     """
     # Takes a DatasetDict & isolates the Dataset of interest as a dataframe using json_normalize
@@ -236,7 +254,8 @@ def get_data_basics(input_dataset: Dataset, label_column_name: str, label_type: 
     basics_dict['num_cols'] = data_shape[1]
     if label_column_name:
         if label_type == "discrete":
-            label_value_counts = str(df[label_column_name].value_counts()).replace('\n', ', ')
+            label_value_counts = str(
+                df[label_column_name].value_counts()).replace('\n', ', ')
             basics_dict['label_counts'] = label_value_counts
         elif label_type == "real":
             np_array = np.array(df[label_column_name])
@@ -245,7 +264,8 @@ def get_data_basics(input_dataset: Dataset, label_column_name: str, label_type: 
             basics_dict["label_mean"] = float(round(np_array.mean(), 4))
             basics_dict["label_var"] = float(round(np_array.var(), 4))
         else:
-            sys.stderr.write("No label type specified; not calculating label statistics.\n")
+            sys.stderr.write(
+                "No label type specified; not calculating label statistics.\n")
     if VERBOSE:
         print('\n* Step 1 summary.')
         print(basics_dict)
@@ -253,7 +273,8 @@ def get_data_basics(input_dataset: Dataset, label_column_name: str, label_type: 
 
 
 # Vocabulary Size
-def get_count_vocab(input_dataset: Dataset, langa_column_name: str, lower=True, language="english", clean_html=False) \
+def get_count_vocab(input_dataset: Dataset, langa_column_name: str, lower=True,
+                    language="english", clean_html=False) \
         -> Dict:
     vocab_dict = {}
     vocab = Counter()
@@ -277,26 +298,50 @@ def get_count_vocab(input_dataset: Dataset, langa_column_name: str, lower=True, 
             vocab_tmp = FreqDist(word.lower() for word in tokenized_text)
             # Are all the stopwords in lowercase?
             filtered_vocab_tmp = FreqDist(
-                word.lower() for word in tokenized_text if word.lower() not in language_stopwords)
+                word.lower() for word in tokenized_text if
+                word.lower() not in language_stopwords)
             lem_vocab_tmp = FreqDist(
-                wnl.lemmatize(word.lower()) for word in tokenized_text if word.lower() not in language_stopwords)
+                wnl.lemmatize(word.lower()) for word in tokenized_text if
+                word.lower() not in language_stopwords)
         else:
             vocab_tmp = FreqDist(word for word in tokenized_text)
-            filtered_vocab_tmp = FreqDist(word for word in tokenized_text if word not in language_stopwords)
-            lem_vocab_tmp = FreqDist(wnl.lemmatize(word for word in tokenized_text if word not in language_stopwords))
+            filtered_vocab_tmp = FreqDist(word for word in tokenized_text if
+                                          word not in language_stopwords)
+            lem_vocab_tmp = FreqDist(wnl.lemmatize(
+                word for word in tokenized_text if
+                word not in language_stopwords))
         vocab.update(vocab_tmp)
         filtered_vocab.update(filtered_vocab_tmp)
         lem_vocab.update(lem_vocab_tmp)
     if VERBOSE:
         print("\n* Step 2 summary.")
-        print("There are {0} words including stop words".format(str(len(vocab))))
-        print("There are " + str(len(filtered_vocab)) + " words after removing stop words")
-        print("There are " + str(len(lem_vocab)) + " words after removing stop words and lemmatizing")
+        print(
+            "There are {0} words including stop words".format(str(len(vocab))))
+        print("There are " + str(
+            len(filtered_vocab)) + " words after removing stop words")
+        print("There are " + str(
+            len(lem_vocab)) + " words after removing stop words and lemmatizing")
     vocab_dict['num_words'] = len(vocab)
     vocab_dict['num_filtered_words'] = len(filtered_vocab)
     vocab_dict['num_lemmatized_words'] = len(lem_vocab)
     return vocab_dict
 
+
+# TODO: Association metrics
+# def forward(self, *args, **kwargs):
+# Accumulate metric over batches
+#    self._npmixy(predicted_labels, protected_variable_labels)
+
+# def do_association_metrics():
+#    """ AssociationWithoutGroundTruth measures model biases in the absence of ground truth. It does so by computing
+#    one-vs-all or pairwise association gaps using statistical measures like nPMIxy, nPMIy, PMI^2, and PMI, which are
+#    capable of capturing labels across a range of marginal frequencies. A gap of nearly 0 implies less bias on the
+#    basis of Association the Absence of Ground Truth.
+#    """
+#    self._npmixy = AssociationWithoutGroundTruth()
+#    model = YourModel(...)
+#    # Get final values of metric after all batches have been processed
+#    print(model._npmixy.get_metric())
 
 # def get_label_stats()
 # TODO: Show the top tokens by count for each label.
@@ -304,12 +349,43 @@ def get_count_vocab(input_dataset: Dataset, langa_column_name: str, lower=True, 
 # Closed and open pi chart?
 # Find the closed word lists for the different languages in order to calculate distributional statistics.
 
+def count_vocab_frequencies(term_df):
+    """
+    Based on an input pandas DataFrame with a 'text' column,
+    this function will count the occurrences of ALL words
+    (no stop word removal) and will return another DataFrame
+    with the rows corresponding to the different vocabulary words
+    and the column to the total count of that word.
+    """
+    cvec = CountVectorizer(token_pattern=u"(?u)\\b\\w+\\b")
+    # Needed to modify the minimum token length :
+    # https://stackoverflow.com/questions/33260505/countvectorizer-ignoring-i
+    cvec.fit(term_df)
+    document_matrix = cvec.transform(term_df)
+    batches = np.linspace(0, term_df.shape[0], 100).astype(int)
+    i = 0
+    tf = []
+    while i < len(batches) - 1:
+        batch_result = np.sum(
+            document_matrix[batches[i]:batches[i + 1]].toarray(), axis=0)
+        tf.append(batch_result)
+        i += 1
+    term_freq_df = pd.DataFrame([np.sum(tf, axis=0)],
+                                columns=cvec.get_feature_names()).transpose()
+    term_freq_df.columns = ['total']
+    return term_freq_df.nlargest(10, 'total')
 
-# def do_zipf():
-# Then show Zipf plot for top 400 tokens.
-# Real vs. Projected value according to Zipf; flag those that are a difference higher than x
-# # for what's predicted by the law.
-# For closed class words, what could we say about that means semantically?
+
+def get_zipf(input_dataset, langa_column_name):
+    # Turn the Dataset into a data frame.
+    df = pd.DataFrame.from_dict(input_dataset)
+    term_df = count_vocab_frequencies(df[langa_column_name])
+    term_freq_df = count_vocab_frequencies(term_df)
+    # Real vs. Projected value according to Zipf; flag those that are a difference higher than x
+    # # for what's predicted by the law.
+    # For closed class words, what could we say about that means semantically?
+    return term_freq_df.to_dict()
+
 
 # Instance Characteristics
 def get_text_stats(input_dataset: Dataset, langa_column_name: str) -> Dict:
@@ -332,28 +408,43 @@ def get_text_stats(input_dataset: Dataset, langa_column_name: str) -> Dict:
     if VERBOSE:
         print("\n* Step 3 summary.")
         # Hm, weird that average and mean are different numbers. Must be rounding?
-        print("The average sentence length is: " + str(avg_sent_len) + " words.")
-        print("The mean sentence length is: " + str(statistics.mean(all_lengths)) + " words.")
-        print("The median sentence length is: " + str(statistics.median(all_lengths)) + " words.")
+        print(
+            "The average sentence length is: " + str(avg_sent_len) + " words.")
+        print("The mean sentence length is: " + str(
+            statistics.mean(all_lengths)) + " words.")
+        print("The median sentence length is: " + str(
+            statistics.median(all_lengths)) + " words.")
     text_dict['mean_sent_len'] = round(statistics.mean(all_lengths), 4)
     text_dict['median_sent_len'] = round(statistics.median(all_lengths), 4)
     return text_dict
 
 
-def do_dataset(dataset_name: str, config_name: str, dataset_split_name: str, label_column_name: str,
-               label_type="discrete", langa_column_name="text", lower=True, language="english",
+def do_dataset(dataset_name: str, config_name: str, dataset_split_name: str,
+               label_column_name: str,
+               label_type="discrete", langa_column_name="text", lower=True,
+               language="english",
                clean_html=False) -> Dict:
     data_dict = load_dataset(dataset_name, config_name)
     desired_dataset = data_dict[dataset_split_name]
-    data_basics_dict = get_data_basics(desired_dataset, label_column_name=label_column_name, label_type=label_type)
+    data_basics_dict = get_data_basics(desired_dataset,
+                                       label_column_name=label_column_name,
+                                       label_type=label_type)
     # Want to do this for both *source* and *target*
-    data_vocab_dict = get_count_vocab(input_dataset=desired_dataset, langa_column_name=langa_column_name, lower=lower,
+    data_vocab_dict = get_count_vocab(input_dataset=desired_dataset,
+                                      langa_column_name=langa_column_name,
+                                      lower=lower,
                                       language=language, clean_html=clean_html)
-    data_text_dict = get_text_stats(desired_dataset, langa_column_name=langa_column_name)
-    ppl_dict = get_perplexity(dataset_name, config_name, dataset_split_name, langa_column_name)
+    data_text_dict = get_text_stats(desired_dataset,
+                                    langa_column_name=langa_column_name)
+    ppl_dict = get_perplexity(dataset_name, config_name, dataset_split_name,
+                              langa_column_name)
+    zipf_dict = get_zipf(input_dataset=desired_dataset,
+                         langa_column_name=langa_column_name)
     # TODO: Run all the rest of the metrics
-    output_yaml_data = {"Basic Data Characteristics": data_basics_dict, "Vocab Characteristics": data_vocab_dict,
-                        "Text Characteristics": data_text_dict, "Perplexity": ppl_dict}
+    output_yaml_data = {"Basic Data Characteristics": data_basics_dict,
+                        "Vocab Characteristics": data_vocab_dict,
+                        "Text Characteristics": data_text_dict,
+                        "Perplexity": ppl_dict, "Zipf distribution": zipf_dict}
     return output_yaml_data
 
 
@@ -363,21 +454,28 @@ def do_glue_ax_dataset() -> Dict:
     of system performance on a broad range of linguistic phenomena.
     This dataset evaluates sentence understanding through Natural Language Inference (NLI) problems.
     Use a model trained on MulitNLI to produce predictions for this dataset."""
-    glue_ax_yaml = do_dataset(dataset_name="glue", config_name="ax", dataset_split_name="test",
-                              label_column_name="label", label_type="discrete", langa_column_name="premise")
+    glue_ax_yaml = do_dataset(dataset_name="glue", config_name="ax",
+                              dataset_split_name="test",
+                              label_column_name="label", label_type="discrete",
+                              langa_column_name="premise")
     return glue_ax_yaml
 
 
 def do_asset_ratings_dataset() -> Dict:
     # Dataset: Asset-ratings
-    asset_ratings_yaml = do_dataset(dataset_name="asset", config_name="ratings", dataset_split_name="full",
-                                    label_column_name="rating", label_type="real", langa_column_name="original")
+    asset_ratings_yaml = do_dataset(dataset_name="asset", config_name="ratings",
+                                    dataset_split_name="full",
+                                    label_column_name="rating",
+                                    label_type="real",
+                                    langa_column_name="original")
     return asset_ratings_yaml
 
 
 def do_imdb_train_dataset() -> Dict:
-    imdb_yaml = do_dataset(dataset_name="imdb", config_name="plain_text", dataset_split_name="train",
-                           label_column_name="label", label_type="discrete", langa_column_name="text",
+    imdb_yaml = do_dataset(dataset_name="imdb", config_name="plain_text",
+                           dataset_split_name="train",
+                           label_column_name="label", label_type="discrete",
+                           langa_column_name="text",
                            clean_html=True)
     return imdb_yaml
 
@@ -399,9 +497,12 @@ def main(args) -> Dict:
     # different splits of the dataset being analyzed.
     yaml_name = dataset_name + "-" + config_name + ".yaml"
     # TODO: Decide whether to handle these as kwargs, or attributes of a Data class, or something else.
-    output_yaml = do_dataset(dataset_name=dataset_name, config_name=config_name, dataset_split_name=dataset_split_name,
-                             label_column_name=label_column_name, label_type=label_type,
-                             langa_column_name=langa_column_name, clean_html=clean_html)
+    output_yaml = do_dataset(dataset_name=dataset_name, config_name=config_name,
+                             dataset_split_name=dataset_split_name,
+                             label_column_name=label_column_name,
+                             label_type=label_type,
+                             langa_column_name=langa_column_name,
+                             clean_html=clean_html)
     write_yaml(output_yaml, yaml_name)
     # TODO: Dump a json for the lists of ranked words, etc.; this can be used for visualization work.
     return [yaml_name]
@@ -411,7 +512,8 @@ if __name__ == "__main__":
     # execute only if run as a script
     if len(sys.argv) == 1:
         output_filenames = []
-        print("No arguments specified; running through 3 datasets as an example: Glue, Asset, IMDB")
+        print(
+            "No arguments specified; running through 3 datasets as an example: Glue, Asset, IMDB")
         # Lists of datasets and their deets are available at https://huggingface.co/datasets
         print("\n\n=== Processing Glue, ax...===")
         glue_yaml = do_glue_ax_dataset()
@@ -432,12 +534,6 @@ if __name__ == "__main__":
     print("\n\nDone!  Output to yaml file(s):")
     print(' '.join(output_filenames))
     print("\n")
-
-
-
-
-
-
 
 # ================= Scratch =================
 # TODO: Are we still using this? Figure out how it fits in.
