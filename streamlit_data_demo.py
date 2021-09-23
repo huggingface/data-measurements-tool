@@ -919,12 +919,12 @@ with right_col.expander("Show text embedding outliers B", expanded=True):
 ### Fourth, show Zipf stuff
 with left_col.expander("Show Zipf's Law fit for Dataset A", expanded=False):
     term_freq_df_a= count_vocab_frequencies(text_dset_a)
-    st.markdown("Checking the goodness of fit of our observed distribution to the hypothesized power law distribution using a Kolmogorov–Smirnov (KS) test.")
+    st.markdown("_Checking the goodness of fit of our observed distribution to the hypothesized power law distribution using a Kolmogorov–Smirnov (KS) test._")
     st.pyplot(fit_Zipf(term_freq_df_a), use_container_width=True)
 
 with right_col.expander("Show Zipf's Law Fit for Dataset B", expanded=False):
     term_freq_df_b = count_vocab_frequencies(text_dset_b)
-    st.markdown("Checking the goodness of fit of our observed distribution to the hypothesized power law distribution using a Kolmogorov–Smirnov (KS) test.")
+    st.markdown("_Checking the goodness of fit of our observed distribution to the hypothesized power law distribution using a Kolmogorov–Smirnov (KS) test._")
     st.pyplot(fit_Zipf(term_freq_df_b), use_container_width=True)
 
 
