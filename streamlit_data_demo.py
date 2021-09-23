@@ -8,8 +8,12 @@ import streamlit as st
 import tokenizers
 import transformers
 import pandas as pd
+import powerlaw
 import torch
-from collections import Counter
+from sklearn.feature_extraction.text import CountVectorizer
+from scipy.stats import hmean, norm, ks_2samp
+import matplotlib.pyplot as plt
+from collections import Counter, defaultdict
 
 from dataclasses import asdict
 from datasets import (
@@ -505,6 +509,95 @@ def make_tree_plot(node_list):
     )
     return fig
 
+# vocab counting code
+def count_vocab_frequencies(df, cutoff=3):
+    """
+    Based on an input pandas DataFrame with a 'text' column,
+    this function will count the occurrences of all words
+    with a frequency higher than 'cutoff' and will return another DataFrame
+    with the rows corresponding to the different vocabulary words
+    and the column to the total count of that word.
+    """
+    # Move this up as a constant in larger code.
+    batch_size = 10
+    cvec = CountVectorizer(token_pattern=u"(?u)\\b\\w+\\b")
+    # Needed to modify the minimum token length:
+    # https://stackoverflow.com/questions/33260505/countvectorizer-ignoring-i
+    cvec.fit(df['text'])
+    document_matrix = cvec.transform(df['text'])
+    batches = np.linspace(0, df.shape[0], batch_size).astype(int)
+    i = 0
+    tf = []
+    while i < len(batches) - 1:
+        batch_result = np.sum(document_matrix[batches[i]:batches[i+1]].toarray(), axis=0)
+        tf.append(batch_result)
+        i += 1
+    term_freq_df = pd.DataFrame([np.sum(tf, axis=0)], columns=cvec.get_feature_names()).transpose()
+    term_freq_df.columns = ['total']
+    term_freq_df = term_freq_df[term_freq_df['total'] > cutoff]
+    sorted_term_freq_df = pd.DataFrame(term_freq_df.sort_values(by='total')['total'])
+    return sorted_term_freq_df
+
+
+# Uses the powerlaw package to fit the observed frequencies to a zipfian distribution
+def fit_Zipf(term_df):
+    observed_counts = np.flip(term_df['total'].values)
+    norm = float(sum(observed_counts))
+    fit = powerlaw.Fit(observed_counts, fit_method="KS", discrete=True)
+    bin_edges, log_observed_probabilities = fit.pdf(original_data=True)
+    log_predicted_probabilities = fit.power_law.pdf()
+    alpha = fit.power_law.alpha
+    xmin = fit.power_law.xmin
+    distance = fit.power_law.KS()
+    observed_probabilities = np.flip(observed_counts/norm)
+    predicted_probabilities = np.flip(bin_edges/norm)
+    st.markdown("The optimal alpha is :\t\t%.4f" % alpha)
+    #st.markdown("Optimal Frequency cut-off:\t%s" % xmin)
+    #st.markdown("Distance:\t\t%.4f" % distance)
+    # Significance testing
+    # Note: We may want to use bootstrapping (instead of the standard KS test p-value tables) to determine statistical significance
+    # See: https://stats.stackexchange.com/questions/264431/how-to-determine-if-zipfs-law-can-be-applied Answer #4
+    ks_test = ks_2samp(observed_probabilities, predicted_probabilities)
+    # print("KS test:", end='\t\t')
+    #st.markdown(ks_test)
+    #st.markdown("\nThe KS test p-value is: %.4f" % ks_test.pvalue)
+    if ks_test.pvalue < .01:
+        st.markdown("\n Great news! Your data fits a powerlaw with a minimum KS distance of %.4f" % distance)
+    else:
+        st.markdown("\n Sadly, your data does not fit a powerlaw. =\(")
+    predicted_per_rank = defaultdict(list)
+    j = 0
+    # For each rank in the observed_counts
+    for i in range(len(observed_counts)):
+        observed_count = observed_counts[i]
+        rank = i+1
+        # while the predicted count is higher than the observed count,
+        # set its rank to the observed rank
+        if j < len(bin_edges):
+            while np.flip(bin_edges)[j] >= observed_count:
+                bin_rank = rank
+                j +=1
+                predicted_per_rank[i] += [np.flip(bin_edges)[j-1]]
+                if (j>=len(bin_edges)):
+                    break
+
+    predicted_x_axis = []
+    predicted_y_axis = []
+    for i, j in sorted(predicted_per_rank.items()):
+        predicted_x_axis += [i]
+        predicted_y_axis += [sum(j)/len(j)]
+    # Graph it out.
+    fig = plt.figure(figsize=(20,15))
+    # The pdf of the observed data.
+    # The continuous line is superfluous and confusing I think (?) Hacky removing.
+    fit.plot_pdf(color='r', linewidth=0, linestyle=':', marker='o')
+    # The pdf of the best fit powerlaw
+    fit.power_law.plot_pdf(color='b', linestyle='--', linewidth=2)
+    fig.suptitle('Log-log plot of word frequency (y-axis) vs. rank (x-axis) \nObserved = red dots\n Power law = blue lines', fontsize=20)
+    plt.ylabel('Log frequency', fontsize=18)
+    plt.xlabel('Log rank (binned frequencies).\nGaps signify there weren\'t observed words in the fitted frequency bin.', fontsize=16)
+    return(fig)
+
 ########## streamlit code
 
 ds_names, ds_name_to_dict = all_datasets()
@@ -819,7 +912,19 @@ with right_col.expander("Show text embedding outliers B", expanded=True):
     else:
         st.write("To show example distances from the centroid, select `distance to centroid` in the list of analyses box left")
 
-### Fourth, show duplicates
+### Fourth, show Zipf stuff
+with left_col.expander("Show Zipf's Law fit for Dataset A", expanded=False):
+    term_freq_df_a= count_vocab_frequencies(text_dset_a)
+    st.markdown("Checking the goodness of fit of our observed distribution to the hypothesized power law distribution using a Kolmogorov–Smirnov (KS) test.")
+    st.pyplot(fit_Zipf(term_freq_df_a), use_container_width=True)
+
+with right_col.expander("Show Zipf's Law Fit for Dataset B", expanded=False):
+    term_freq_df_b = count_vocab_frequencies(text_dset_b)
+    st.markdown("Checking the goodness of fit of our observed distribution to the hypothesized power law distribution using a Kolmogorov–Smirnov (KS) test.")
+    st.pyplot(fit_Zipf(term_freq_df_b), use_container_width=True)
+
+
+### Then, show duplicates
 with left_col.expander("Show Duplicates from Dataset A", expanded=False):
     st.write("### Here is a list of all the duplicated items:")
     dedup_list_a= dedup_print(
