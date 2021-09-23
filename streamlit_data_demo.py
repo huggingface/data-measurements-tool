@@ -586,16 +586,20 @@ def fit_Zipf(term_df):
     for i, j in sorted(predicted_per_rank.items()):
         predicted_x_axis += [i]
         predicted_y_axis += [sum(j)/len(j)]
-    # Graph it out.
-    fig = plt.figure(figsize=(20,15))
-    # The pdf of the observed data.
-    # The continuous line is superfluous and confusing I think (?) Hacky removing.
-    fit.plot_pdf(color='r', linewidth=0, linestyle=':', marker='o')
-    # The pdf of the best fit powerlaw
-    fit.power_law.plot_pdf(color='b', linestyle='--', linewidth=2)
-    fig.suptitle('Log-log plot of word frequency (y-axis) vs. rank (x-axis) \nObserved = red dots\n Power law = blue lines', fontsize=20)
-    plt.ylabel('Log frequency', fontsize=18)
-    plt.xlabel('Log rank (binned frequencies).\nGaps signify there weren\'t observed words in the fitted frequency bin.', fontsize=16)
+    observed= observed_probabilities
+    num_tokens = len(observed)
+    predicted_x = np.array(predicted_x_axis)
+    predicted_y = np.array(predicted_y_axis)/norm
+    multiplier=1
+    max_rank = 50
+    y_bins = np.arange(max_rank)
+    smaller_predicted_x = predicted_x[predicted_x <= max_rank]
+    fig= plt.figure(figsize=(10,10))
+    plt.bar(y_bins, observed[:max_rank]*multiplier, align='center', alpha=0.5)
+    plt.plot(smaller_predicted_x, predicted_y[:len(smaller_predicted_x)]*multiplier, color='r', linestyle='--',linewidth=2,alpha=0.5)
+    plt.ylabel('Normalized Frequency')
+    plt.xlabel('Bin')
+    plt.title("Top %s ranks in the dataset, with predictions from a fitted power law in dotted red" % max_rank)
     return(fig)
 
 ########## streamlit code
