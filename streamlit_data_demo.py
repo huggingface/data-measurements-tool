@@ -910,16 +910,19 @@ with right_col.expander("Show Zipf's Law Fit for Dataset B", expanded=False):
 ### Then, show duplicates
 with left_col.expander("Show Duplicates from Dataset A", expanded=False):
     st.write("### Here is a list of all the duplicated items and their counts:")
+
     if len(dedup_dict_a) == 0:
         st.write("There are no duplicates in this dataset!")
     else:
-        for t, n in dedup_dict_a.items():
-            st.write(t, n)
+        dedup_dict_a= sorted(dedup_dict_a.items(), key=lambda x:x[1],reverse= True)
+        for t, n in dedup_dict_a:
+            st.write(n, t)
 
 with right_col.expander("Show Duplicates from Dataset B", expanded=False):
     st.write("### Here is a list of all the duplicated items and their counts:")
     if len(dedup_dict_b) == 0:
         st.write("There are no duplicates in this dataset!")
     else:
-        for q,t in dedup_dict_b.items():
-            st.write(q, t)
+        dedup_dict_b= sorted(dedup_dict_b.items(), key=lambda x:x[1],reverse= True)
+        for q,t in dedup_dict_b:
+            st.write(t, q)
