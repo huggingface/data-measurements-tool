@@ -37,6 +37,10 @@ parser = argparse.ArgumentParser(
                                  
                                  Example for IMDB dataset:
                                  python3 data_metrics_collab.py --dataset="imdb" --config="plain_text" --split="train" --label-column="label" --label-type="discrete" --language-column="text" --clean-html
+                                 
+                                 Example for summarization datasets:
+                                 python3 data_metrics_collab.py --dataset="xsum" --config="default" --split="train" --language-column="summary"
+                                 python3 data_metrics_collab.py --dataset="csebuetnlp/xlsum" --config="english" --split="train" --language-column="summary"         
                         
                                  '''))
 
