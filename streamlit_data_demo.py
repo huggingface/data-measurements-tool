@@ -60,8 +60,8 @@ colors = [
 ########## preparation functions
 
 _SAMPLE_SIZE = 5000
-_TREE_DEPTH = 8
-_TREE_MIN_NODES = 200
+_TREE_DEPTH = 10
+_TREE_MIN_NODES = 250
 
 @st.cache()
 def all_datasets():
@@ -235,6 +235,50 @@ def get_nans(name, text_path, config, split=None, max_items=20000, streaming=Fal
     return nans
 
 
+def dedup_count(name, text_path, config, split=None, max_items=20000, streaming=False):
+    dataset = load_dataset(name, config["config_name"], streaming=streaming)
+    data_split = dataset[split].select(range(max_items))
+    # TODO: figure out how to do this without converting to DataFrame
+    datadf = pd.DataFrame(data_split)
+    dict_count = {}
+    count=0
+    total=0
+    for t in datadf[text_path[0]].tolist():
+        if len(t) > 0:
+            count+=1
+            try:
+                dict_count[str(t)] += 1
+                #print("Duplicate sentence %s at index %d " % (t, datadf.index[count]))
+                total +=1
+            except KeyError:
+                dict_count[str(t)] = 1
+        else:
+            continue
+    return(total)
+
+def dedup_print(name, text_path, config, split=None, max_items=20000, streaming=False):
+    dataset = load_dataset(name, config["config_name"], streaming=streaming)
+    data_split = dataset[split].select(range(max_items))
+    # TODO: figure out how to do this without converting to DataFrame
+    datadf = pd.DataFrame(data_split)
+    dict_count = {}
+    count=0
+    total=0
+    duplicatelist=[]
+    for t in datadf[text_path[0]].tolist():
+        if len(t) > 0:
+            count+=1
+            try:
+                dict_count[str(t)] += 1
+                duplicatelist.append(t)
+                total +=1
+            except KeyError:
+                dict_count[str(t)] = 1
+        else:
+            continue
+    return(duplicatelist)
+
+
 ########## metrics code
 @st.cache(allow_output_mutation=True, hash_funcs={Dataset: lambda _: None})
 def run_tok_length_analysis(text_dset, cache_name):
@@ -387,7 +431,7 @@ def run_hierarchical_clustering(text_dset, cache_name):
         for k in ["nid", "parent", "child_left", "child_right"]:
             node[k] = id_map.get(node[k], -1)
     # TODO node embeddings and leaf histograms
-    leaves = [node for node in top_nodes if node["child_left"] == -1]
+    leaves = [node for node in top_nodes if node["child_left"] == -1 and len(node["sent_id_list"]) > 2]
     for leaf in leaves:
         assert len(leaf["sent_id_list"]) > 0, f"{leaf}"
         embeddings = torch.Tensor([text_dset_embeds[sid]["embed"] for sid in leaf["sent_id_list"]])
@@ -605,11 +649,15 @@ with left_col.expander("Dataset A - General Text Statistics"):
                 ds_name_a, text_feature_a, ds_config_a,
                 split=split_a, max_items=num_examples_a, streaming=streaming_a
             )
+    dedup_a= dedup_count(
+                ds_name_a, text_feature_a, ds_config_a,
+                split=split_a, max_items=num_examples_a, streaming=streaming_a
+            )
     st.markdown("The language detected is: " + language_a.capitalize())
     st.markdown("There are {0} words after removing stop words".format(str(len(vocab_a))))
     st.markdown("The most common words and their counts are: "+ ', '.join((map(str, common_a))))
-    st.markdown("There are {0} missing values in the dataset!".format(str(nancount_a)))
-
+    st.markdown("There are {0} missing values in the dataset.".format(str(nancount_a)))
+    st.markdown("There are {0} duplicate items in the dataset. For more information about the duplicates, click the 'Duplicates' tab below.".format(str(dedup_a)))
 
 with right_col.expander("Dataset B - General Text Statistics"):
     language_b = get_language(ds_name_b,text_dset_b[0]['text'])
@@ -619,10 +667,16 @@ with right_col.expander("Dataset B - General Text Statistics"):
                 ds_name_b, text_feature_b, ds_config_b,
                 split=split_b, max_items=num_examples_b, streaming=streaming_b
             )
+    dedup_b= dedup_count(
+                ds_name_b, text_feature_b, ds_config_b,
+                split=split_b, max_items=num_examples_b, streaming=streaming_b
+            )
+
     st.markdown("The language detected is: " + language_b.capitalize())
     st.markdown("There are {0} words after removing stop words".format(str(len(vocab_b))))
     st.markdown("The most common words and their counts are: "+ ', '.join((map(str, common_b))))
-    st.markdown("There are {0} missing values in the dataset!".format(str(nancount_b)))
+    st.markdown("There are {0} missing values in the dataset.".format(str(nancount_b)))
+    st.markdown("There are {0} duplicate items in the dataset. For more information about the duplicates, click the 'Duplicates' tab below.".format(str(dedup_b)))
 
 ### Show the label distribution from the datasets
 with left_col.expander("Dataset A - Label Distribution"):
@@ -659,7 +713,7 @@ with right_col.expander("Dataset B - Label Distribution"):
         st.markdown("No labels were found in the dataset")
 
 ### First, show the distribution of text lengths
-with left_col.expander("Show text lengths A", expanded=True):
+with left_col.expander("Show text lengths A", expanded=False):
     if "sentence lengths" in analyses_a:
         st.markdown("### Text lengths A")
         sorted_sents_lengths_a, fig_tok_length_a = run_tok_length_analysis(text_dset_a, cache_name_a)
@@ -673,7 +727,7 @@ with left_col.expander("Show text lengths A", expanded=True):
     else:
         st.write("To show the lengths of examples, select `sentence lengths` in the list of analyses box left")
 
-with right_col.expander("Show text lengths B", expanded=True):
+with right_col.expander("Show text lengths B", expanded=False):
     if "sentence lengths" in analyses_b:
         st.markdown("### Text lengths B")
         sorted_sents_lengths_b, fig_tok_length_b = run_tok_length_analysis(text_dset_b, cache_name_b)
@@ -764,3 +818,28 @@ with right_col.expander("Show text embedding outliers B", expanded=True):
             st.text(f"{lss:.3f} {sent}")
     else:
         st.write("To show example distances from the centroid, select `distance to centroid` in the list of analyses box left")
+
+### Fourth, show duplicates
+with left_col.expander("Show Duplicates from Dataset A", expanded=False):
+    st.write("### Here is a list of all the duplicated items:")
+    dedup_list_a= dedup_print(
+                ds_name_a, text_feature_a, ds_config_a,
+                split=split_a, max_items=num_examples_a, streaming=streaming_a
+            )
+    if dedup_list_a == 0:
+        st.write("There are no duplicates in this dataset!")
+    else:
+        for l in dedup_list_a:
+            st.write(l)
+
+with right_col.expander("Show Duplicates from Dataset B", expanded=False):
+    st.write("### Here is a list of all the duplicated items:")
+    dedup_list_b= dedup_print(
+                ds_name_b, text_feature_b, ds_config_b,
+                split=split_b, max_items=num_examples_b, streaming=streaming_b
+            )
+    if len(dedup_list_b) == 0:
+        st.write("There are no duplicates in this dataset!")
+    else:
+        for q in dedup_list_b:
+            st.write(q)
