@@ -66,7 +66,7 @@ colors = [
 _SAMPLE_SIZE = 5000
 _TREE_DEPTH = 12
 _TREE_MIN_NODES = 250
-_MAX_CLUSTER_EXAMPLES = 10000 #  as long as we're using sklearn - already pushing the resources
+_MAX_CLUSTER_EXAMPLES = 5000 #  as long as we're using sklearn - already pushing the resources
 
 @st.cache()
 def all_datasets():
@@ -185,6 +185,7 @@ def get_text_to_analyze(name, text_path, config, split=None, max_items=20000, st
     )
     return dataset_text
 
+@st.cache(allow_output_mutation=True)
 def get_labels(name, text_path, config, split=None, max_items=20000, streaming=False):
     ### default arguments
     if split is None:
@@ -201,6 +202,7 @@ def get_labels(name, text_path, config, split=None, max_items=20000, streaming=F
     return dataset_labels
 
 #Quick and dirty way of getting language from datacard if possible, otherwise using langdetect on the first sentence in the dataset
+@st.cache(allow_output_mutation=True)
 def get_language(name, text):
     try:
         metadata= utils.metadata.DatasetMetadata.from_readme("./datasets/"+name+"/README.md")
@@ -215,6 +217,7 @@ def get_language(name, text):
 
 #Counting vocabulary from the text
 
+@st.cache(allow_output_mutation=True)
 def get_count_vocab(datatext, language):
     language_stopwords = stopwords.words(language)
     vocab_dict = {}
@@ -227,6 +230,7 @@ def get_count_vocab(datatext, language):
 
 #Checking for NaNs
 
+@st.cache(allow_output_mutation=True)
 def get_nans(name, text_path, config, split=None, max_items=20000, streaming=False):
     if split is None:
         split = 'train' if 'train' in config["splits"] else list(config["splits"])[0]
@@ -239,6 +243,7 @@ def get_nans(name, text_path, config, split=None, max_items=20000, streaming=Fal
     nans= datadf.isnull().sum().sum()
     return nans
 
+@st.cache(allow_output_mutation=True)
 def dedup(name, text_path, config, split=None, max_items=20000, streaming=False):
     dataset = load_dataset(name, config["config_name"], streaming=streaming)
     data_split = dataset[split].select(range(max_items))
