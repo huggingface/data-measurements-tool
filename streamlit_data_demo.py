@@ -239,29 +239,7 @@ def get_nans(name, text_path, config, split=None, max_items=20000, streaming=Fal
     nans= datadf.isnull().sum().sum()
     return nans
 
-
-def dedup_count(name, text_path, config, split=None, max_items=20000, streaming=False):
-    dataset = load_dataset(name, config["config_name"], streaming=streaming)
-    data_split = dataset[split].select(range(max_items))
-    # TODO: figure out how to do this without converting to DataFrame
-    datadf = pd.DataFrame(data_split)
-    dict_count = {}
-    count=0
-    total=0
-    for t in datadf[text_path[0]].tolist():
-        if len(t) > 0:
-            count+=1
-            try:
-                dict_count[str(t)] += 1
-                #print("Duplicate sentence %s at index %d " % (t, datadf.index[count]))
-                total +=1
-            except KeyError:
-                dict_count[str(t)] = 1
-        else:
-            continue
-    return(total)
-
-def dedup_print(name, text_path, config, split=None, max_items=20000, streaming=False):
+def dedup(name, text_path, config, split=None, max_items=20000, streaming=False):
     dataset = load_dataset(name, config["config_name"], streaming=streaming)
     data_split = dataset[split].select(range(max_items))
     # TODO: figure out how to do this without converting to DataFrame
@@ -281,7 +259,8 @@ def dedup_print(name, text_path, config, split=None, max_items=20000, streaming=
                 dict_count[str(t)] = 1
         else:
             continue
-    return(duplicatelist)
+    dupdict = dict((k, v) for k, v in dict_count.items() if v > 1)
+    return(total, dupdict)
 
 
 ########## metrics code
@@ -747,7 +726,7 @@ with left_col.expander("Dataset A - General Text Statistics"):
                 ds_name_a, text_feature_a, ds_config_a,
                 split=split_a, max_items=num_examples_a, streaming=streaming_a
             )
-    dedup_a= dedup_count(
+    dedup_total_a, dedup_dict_a= dedup(
                 ds_name_a, text_feature_a, ds_config_a,
                 split=split_a, max_items=num_examples_a, streaming=streaming_a
             )
@@ -755,7 +734,7 @@ with left_col.expander("Dataset A - General Text Statistics"):
     st.markdown("There are {0} words after removing stop words".format(str(len(vocab_a))))
     st.markdown("The most common words and their counts are: "+ ', '.join((map(str, common_a))))
     st.markdown("There are {0} missing values in the dataset.".format(str(nancount_a)))
-    st.markdown("There are {0} duplicate items in the dataset. For more information about the duplicates, click the 'Duplicates' tab below.".format(str(dedup_a)))
+    st.markdown("There are {0} duplicate items in the dataset. For more information about the duplicates, click the 'Duplicates' tab below.".format(str(dedup_total_a)))
 
 with right_col.expander("Dataset B - General Text Statistics"):
     language_b = get_language(ds_name_b,text_dset_b[0]['text'])
@@ -765,7 +744,7 @@ with right_col.expander("Dataset B - General Text Statistics"):
                 ds_name_b, text_feature_b, ds_config_b,
                 split=split_b, max_items=num_examples_b, streaming=streaming_b
             )
-    dedup_b= dedup_count(
+    dedup_total_b, dedup_dict_b= dedup(
                 ds_name_b, text_feature_b, ds_config_b,
                 split=split_b, max_items=num_examples_b, streaming=streaming_b
             )
@@ -774,7 +753,7 @@ with right_col.expander("Dataset B - General Text Statistics"):
     st.markdown("There are {0} words after removing stop words".format(str(len(vocab_b))))
     st.markdown("The most common words and their counts are: "+ ', '.join((map(str, common_b))))
     st.markdown("There are {0} missing values in the dataset.".format(str(nancount_b)))
-    st.markdown("There are {0} duplicate items in the dataset. For more information about the duplicates, click the 'Duplicates' tab below.".format(str(dedup_b)))
+    st.markdown("There are {0} duplicate items in the dataset. For more information about the duplicates, click the 'Duplicates' tab below.".format(str(dedup_total_b)))
 
 ### Show the label distribution from the datasets
 with left_col.expander("Dataset A - Label Distribution"):
@@ -921,35 +900,30 @@ with right_col.expander("Show text embedding outliers B", expanded=True):
 with left_col.expander("Show Zipf's Law fit for Dataset A", expanded=False):
     term_freq_df_a= count_vocab_frequencies(text_dset_a)
     st.markdown("_Checking the goodness of fit of our observed distribution to the hypothesized power law distribution using a Kolmogorov–Smirnov (KS) test._")
-    st.pyplot(fit_Zipf(term_freq_df_a), use_container_width=True)
+    st.pyplot(fit_Zipf(term_freq_df_a))
 
 with right_col.expander("Show Zipf's Law Fit for Dataset B", expanded=False):
     term_freq_df_b = count_vocab_frequencies(text_dset_b)
     st.markdown("_Checking the goodness of fit of our observed distribution to the hypothesized power law distribution using a Kolmogorov–Smirnov (KS) test._")
-    st.pyplot(fit_Zipf(term_freq_df_b), use_container_width=True)
+    st.pyplot(fit_Zipf(term_freq_df_b))
 
 
 ### Then, show duplicates
 with left_col.expander("Show Duplicates from Dataset A", expanded=False):
-    st.write("### Here is a list of all the duplicated items:")
-    dedup_list_a= dedup_print(
-                ds_name_a, text_feature_a, ds_config_a,
-                split=split_a, max_items=num_examples_a, streaming=streaming_a
-            )
-    if dedup_list_a == 0:
+    st.write("### Here is a list of all the duplicated items and their counts:")
+
+    if len(dedup_dict_a) == 0:
         st.write("There are no duplicates in this dataset!")
     else:
-        for l in dedup_list_a:
-            st.write(l)
+        dedup_dict_a= sorted(dedup_dict_a.items(), key=lambda x:x[1],reverse= True)
+        for t, n in dedup_dict_a:
+            st.write(n, t)
 
 with right_col.expander("Show Duplicates from Dataset B", expanded=False):
-    st.write("### Here is a list of all the duplicated items:")
-    dedup_list_b= dedup_print(
-                ds_name_b, text_feature_b, ds_config_b,
-                split=split_b, max_items=num_examples_b, streaming=streaming_b
-            )
-    if len(dedup_list_b) == 0:
+    st.write("### Here is a list of all the duplicated items and their counts:")
+    if len(dedup_dict_b) == 0:
         st.write("There are no duplicates in this dataset!")
     else:
-        for q in dedup_list_b:
-            st.write(q)
+        dedup_dict_b= sorted(dedup_dict_b.items(), key=lambda x:x[1],reverse= True)
+        for q,t in dedup_dict_b:
+            st.write(t, q)
