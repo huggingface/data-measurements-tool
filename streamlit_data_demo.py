@@ -64,8 +64,9 @@ colors = [
 ########## preparation functions
 
 _SAMPLE_SIZE = 5000
-_TREE_DEPTH = 10
+_TREE_DEPTH = 12
 _TREE_MIN_NODES = 250
+_MAX_CLUSTER_EXAMPLES = 10000 #  as long as we're using sklearn - already pushing the resources
 
 @st.cache()
 def all_datasets():
@@ -301,7 +302,7 @@ def run_tok_length_analysis(text_dset, cache_name):
     ]
     return (sorted_sents_lengths, fig_tok_length)
 
-device = "cuda:0"
+device = "cuda:0" if torch.cuda.is_available() else "cpu"
 @st.cache(allow_output_mutation=True, hash_funcs={
     Dataset: lambda _: None,
     transformers.models.xlnet.tokenization_xlnet_fast.XLNetTokenizerFast: lambda _: None,
@@ -362,7 +363,7 @@ def run_hierarchical_clustering(text_dset, cache_name):
         cache_file_name=pjoin("cache_dir", f"{cache_name}_space_embeds"),
     )
     # Second step: on to the clustering
-    np_embeds = np.array(text_dset_embeds["embed"])
+    np_embeds = np.array(text_dset_embeds["embed"])[:_MAX_CLUSTER_EXAMPLES]
     clustering_model = AgglomerativeClustering(n_clusters=None, affinity='cosine', linkage='average', distance_threshold=0.)
     clustering_model.fit(np_embeds)
     merged = clustering_model.children_
@@ -377,17 +378,17 @@ def run_hierarchical_clustering(text_dset, cache_name):
         "sent_id_list": [i],
         "weight": 1,
         "depth": 0,
-    } for i in range(text_dset.num_rows)] + [{
-        "nid": text_dset.num_rows + i,
+    } for i in range(min(text_dset.num_rows, _MAX_CLUSTER_EXAMPLES))] + [{
+        "nid": min(text_dset.num_rows, _MAX_CLUSTER_EXAMPLES) + i,
         "parent": -1,
         "child_left": -1,
         "child_right": -1,
         "sent_id_list": [],
         "weight": 0,
         "depth": 0,
-    } for i in range(text_dset.num_rows-1)]
+    } for i in range(min(text_dset.num_rows, _MAX_CLUSTER_EXAMPLES)-1)]
     for inid, (c_a, c_b) in enumerate(merged):
-        nid = inid + text_dset.num_rows
+        nid = inid + min(text_dset.num_rows, _MAX_CLUSTER_EXAMPLES)
         nodes[nid]["child_left"] = int(c_a)
         nodes[nid]["child_right"] = int(c_b)
         nodes[c_a]["parent"] = nid
