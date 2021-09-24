@@ -13,6 +13,7 @@ import torch
 from sklearn.feature_extraction.text import CountVectorizer
 from scipy.stats import hmean, norm, ks_2samp
 import matplotlib.pyplot as plt
+from scipy.stats import zipf
 from collections import Counter, defaultdict
 
 from dataclasses import asdict
@@ -495,7 +496,7 @@ def make_tree_plot(node_list):
     return fig
 
 # vocab counting code
-def count_vocab_frequencies(df, cutoff=3):
+def count_vocab_frequencies(df, cutoff=0):
     """
     Based on an input pandas DataFrame with a 'text' column,
     this function will count the occurrences of all words
@@ -520,72 +521,106 @@ def count_vocab_frequencies(df, cutoff=3):
     term_freq_df = pd.DataFrame([np.sum(tf, axis=0)], columns=cvec.get_feature_names()).transpose()
     term_freq_df.columns = ['total']
     term_freq_df = term_freq_df[term_freq_df['total'] > cutoff]
-    sorted_term_freq_df = pd.DataFrame(term_freq_df.sort_values(by='total')['total'])
+    sorted_term_freq_df = pd.DataFrame(term_freq_df.sort_values(by='total', ascending=False)['total'])
+    print(sorted_term_freq_df)
     return sorted_term_freq_df
 
 
 # Uses the powerlaw package to fit the observed frequencies to a zipfian distribution
 def fit_Zipf(term_df):
-    observed_counts = np.flip(term_df['total'].values)
-    norm = float(sum(observed_counts))
+
+    probability_column = term_df['total']/sum(term_df['total'])
+    # Grrr. This is actually the relative frequency but apparently we call it
+    # 'probability' when we normalize a histogram?!
+    term_df['probability'] = probability_column
+    rank_column = term_df['total'].rank(method='dense', numeric_only=True, ascending=False)
+    term_df['rank'] = rank_column.astype('int64')
+    observed_counts = term_df['total'].values
+    # Turn these into an empirical probability distribution by normalizing by the total sum.
+    # Note -- doesn't seem to matter actually; can remove.
+    sum_total = float(sum(observed_counts))
+    observed_probabilities = observed_counts/sum_total
+    #observed_log_probabilities = np.log(observed_counts) - np.log(norm)
+    # 'fit_method' is MLE by default; doesn't seem to change the results in my initial pokings.
+    # Also tried discrete_approximation="xmax"
+    # Note another method for determining alpha
+    # might be defined by (Newman, 2005 for details): alpha = 1 + n * sum(ln( xi / xmin )) ^ -1
     fit = powerlaw.Fit(observed_counts, fit_method="KS", discrete=True)
-    bin_edges, log_observed_probabilities = fit.pdf(original_data=True)
-    log_predicted_probabilities = fit.power_law.pdf()
-    alpha = fit.power_law.alpha
-    xmin = fit.power_law.xmin
-    distance = fit.power_law.KS()
-    observed_probabilities = np.flip(observed_counts/norm)
-    predicted_probabilities = np.flip(bin_edges/norm)
+    # bins_edges = The edges of the bins of the probability density function.
+    # The portion of the data that is within the bin. Length 1 less than bin_edges, as it corresponds to the spaces between them.
+    # Returns the probability density function (normalized histogram) of the data.
+    pdf_bin_edges, observed_pdf = fit.pdf(original_data=True, linear_bins=True)
+    observed_pdf = np.flip(observed_pdf)
+    pdf_bin_edges = np.flip(pdf_bin_edges)
+    # This seems to basically be the 'Distribution' class described here: https://pythonhosted.org/powerlaw/#powerlaw.Fit.pdf
+    theoretical_distribution = fit.power_law
+    # The likelihoods of the observed data from the theoretical distribution.
+    predicted_likelihoods = theoretical_distribution.likelihoods
+    # The logarithm of the likelihoods of the observed data from the theoretical distribution.
+    predicted_log_likelihoods = theoretical_distribution.loglikelihoods
+    # The probability density function (normalized histogram) of the theoretical distribution
+    predicted_pdf = theoretical_distribution.pdf()
+    predicted_pdf = np.flip(predicted_pdf)
+    alpha = theoretical_distribution.alpha
+    xmin = theoretical_distribution.xmin
+    distance = theoretical_distribution.KS()
+
     st.markdown("The optimal alpha is :\t\t%.4f" % alpha)
-    #st.markdown("Optimal Frequency cut-off:\t%s" % xmin)
-    #st.markdown("Distance:\t\t%.4f" % distance)
-    # Significance testing
-    # Note: We may want to use bootstrapping (instead of the standard KS test p-value tables) to determine statistical significance
-    # See: https://stats.stackexchange.com/questions/264431/how-to-determine-if-zipfs-law-can-be-applied Answer #4
-    ks_test = ks_2samp(observed_probabilities, predicted_probabilities)
+    st.markdown("Optimal Frequency cut-off:\t%s" % xmin)
+    st.markdown("Distance:\t\t%.4f" % distance)
+    ks_test = ks_2samp(observed_pdf, predicted_pdf)
     # print("KS test:", end='\t\t')
     #st.markdown(ks_test)
-    #st.markdown("\nThe KS test p-value is: %.4f" % ks_test.pvalue)
+    st.markdown("\nThe KS test p-value is: %.4f" % ks_test.pvalue)
     if ks_test.pvalue < .01:
         st.markdown("\n Great news! Your data fits a powerlaw with a minimum KS distance of %.4f" % distance)
     else:
         st.markdown("\n Sadly, your data does not fit a powerlaw. =\(")
-    predicted_per_rank = defaultdict(list)
-    j = 0
-    # For each rank in the observed_counts
-    for i in range(len(observed_counts)):
-        observed_count = observed_counts[i]
-        rank = i+1
-        # while the predicted count is higher than the observed count,
-        # set its rank to the observed rank
-        if j < len(bin_edges):
-            while np.flip(bin_edges)[j] >= observed_count:
-                bin_rank = rank
-                j +=1
-                predicted_per_rank[i] += [np.flip(bin_edges)[j-1]]
-                if (j>=len(bin_edges)):
-                    break
+    cutoff = 50
+    summed_total = sum(list(term_df['total'])[:cutoff])
+    # Ignoring rank 0
+    zipf_pmf = [zipf.pmf(p, alpha) * summed_total for p in range(1, cutoff + 1)][1:]
+    zipf_col = pd.DataFrame(zipf_pmf, columns = ['zipf_pmf'])
+    term_df['zipf_pmf'] = zipf_pmf + [np.NaN] * (len(term_df) - len(zipf_pmf))
+    totals = term_df['total'][:cutoff]
+    ranks = list(term_df['rank'])[:cutoff]
+    lst = list(zip(totals,ranks))
+    fig = plt.figure(figsize=(10,10))
+    plt.bar(ranks, totals, color='limegreen')
+    #alpha = 1.37065874
+    #summed_total = sum([p for p, c in lst])
+    #zipf_y = [zipf.pmf(p, alpha) * summed_total for p in range(1, len(lst) + 1)]
+    plt.plot(range(len(zipf_pmf)), zipf_pmf, color='crimson', lw=3)
+    plt.ylabel("Count")
+    plt.xlabel("Rank")
+    plt.xticks(ranks,ranks,rotation='vertical')
+    plt.tight_layout()
+    st.pyplot(fig)
+    return(fit)
 
-    predicted_x_axis = []
-    predicted_y_axis = []
-    for i, j in sorted(predicted_per_rank.items()):
-        predicted_x_axis += [i]
-        predicted_y_axis += [sum(j)/len(j)]
-    observed= observed_probabilities
-    num_tokens = len(observed)
-    predicted_x = np.array(predicted_x_axis)
-    predicted_y = np.array(predicted_y_axis)/norm
-    multiplier=1
-    max_rank = 50
-    y_bins = np.arange(max_rank)
-    smaller_predicted_x = predicted_x[predicted_x <= max_rank]
-    fig= plt.figure(figsize=(10,10))
-    plt.bar(y_bins, observed[:max_rank]*multiplier, align='center', alpha=0.5)
-    plt.plot(smaller_predicted_x, predicted_y[:len(smaller_predicted_x)]*multiplier, color='r', linestyle='--',linewidth=2,alpha=0.5)
-    plt.ylabel('Normalized Frequency')
-    plt.xlabel('Bin')
-    plt.title("Top %s ranks in the dataset, with predictions from a fitted power law in dotted red" % max_rank)
-    return(fig)
+
+def fit_others(fit):
+    st.markdown("_Checking log likelihood ratio to see if the data is better explained by other well-behaved distributions..._")
+    # The first value returned from distribution_compare is the log likelihood ratio
+    better_distro = False
+    trunc = fit.distribution_compare('power_law', 'truncated_power_law')
+    if trunc[0] < 0:
+        st.markdown("Seems a truncated power law is a better fit.")
+        better_distro = True
+
+    lognormal = fit.distribution_compare('power_law', 'lognormal')
+    if lognormal[0] < 0:
+        st.markdown("Seems a lognormal distribution is a better fit.")
+        st.markdown("But don't panic -- that happens sometimes with language.")
+        better_distro = True
+
+    exponential = fit.distribution_compare('power_law', 'exponential')
+    if exponential[0] < 0:
+        st.markdown("Seems an exponential distribution is a better fit. Panic.")
+        better_distro = True
+
+    if not better_distro:
+        st.markdown("\nSeems your data is best fit by a power law. Celebrate!!")
 
 ########## streamlit code
 
@@ -901,18 +936,6 @@ with right_col.expander("Show text embedding outliers B", expanded=True):
     else:
         st.write("To show example distances from the centroid, select `distance to centroid` in the list of analyses box left")
 
-### Fourth, show Zipf stuff
-with left_col.expander("Show Zipf's Law fit for Dataset A", expanded=False):
-    term_freq_df_a= count_vocab_frequencies(text_dset_a)
-    st.markdown("_Checking the goodness of fit of our observed distribution to the hypothesized power law distribution using a Kolmogorov–Smirnov (KS) test._")
-    st.pyplot(fit_Zipf(term_freq_df_a))
-
-with right_col.expander("Show Zipf's Law Fit for Dataset B", expanded=False):
-    term_freq_df_b = count_vocab_frequencies(text_dset_b)
-    st.markdown("_Checking the goodness of fit of our observed distribution to the hypothesized power law distribution using a Kolmogorov–Smirnov (KS) test._")
-    st.pyplot(fit_Zipf(term_freq_df_b))
-
-
 ### Then, show duplicates
 with left_col.expander("Show Duplicates from Dataset A", expanded=False):
     st.write("### Here is a list of all the duplicated items and their counts:")
@@ -932,3 +955,14 @@ with right_col.expander("Show Duplicates from Dataset B", expanded=False):
         dedup_dict_b= sorted(dedup_dict_b.items(), key=lambda x:x[1],reverse= True)
         for q,t in dedup_dict_b:
             st.write(t, q)
+
+### Finally, show Zipf stuff
+with left_col.expander("Show Zipf's Law fit for Dataset A", expanded=False):
+    term_freq_df_a= count_vocab_frequencies(text_dset_a)
+    st.markdown("_Checking the goodness of fit of our observed distribution to the hypothesized power law distribution using a Kolmogorov–Smirnov (KS) test._")
+    fit_others(fit_Zipf(term_freq_df_a))
+
+with right_col.expander("Show Zipf's Law Fit for Dataset B", expanded=False):
+    term_freq_df_b = count_vocab_frequencies(text_dset_b)
+    st.markdown("_Checking the goodness of fit of our observed distribution to the hypothesized power law distribution using a Kolmogorov–Smirnov (KS) test._")
+    fit_others(fit_Zipf(term_freq_df_b))
