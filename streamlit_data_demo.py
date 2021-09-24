@@ -522,7 +522,7 @@ def count_vocab_frequencies(df, cutoff=0):
     term_freq_df.columns = ['total']
     term_freq_df = term_freq_df[term_freq_df['total'] > cutoff]
     sorted_term_freq_df = pd.DataFrame(term_freq_df.sort_values(by='total', ascending=False)['total'])
-    print(sorted_term_freq_df)
+    #print(sorted_term_freq_df)
     return sorted_term_freq_df
 
 
