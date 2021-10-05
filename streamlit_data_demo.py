@@ -1,6 +1,7 @@
 import igraph
 import math
 import numpy as np
+import plotly.graph_objects as go
 import plotly.figure_factory as ff
 import plotly.graph_objects as go
 import plotly.express as px
@@ -504,7 +505,6 @@ def count_vocab_frequencies(df, cutoff=0):
     with the rows corresponding to the different vocabulary words
     and the column to the total count of that word.
     """
-    # Move this up as a constant in larger code.
     batch_size = 10
     cvec = CountVectorizer(token_pattern=u"(?u)\\b\\w+\\b")
     # Needed to modify the minimum token length:
@@ -519,37 +519,31 @@ def count_vocab_frequencies(df, cutoff=0):
         tf.append(batch_result)
         i += 1
     term_freq_df = pd.DataFrame([np.sum(tf, axis=0)], columns=cvec.get_feature_names()).transpose()
-    term_freq_df.columns = ['total']
-    term_freq_df = term_freq_df[term_freq_df['total'] > cutoff]
-    sorted_term_freq_df = pd.DataFrame(term_freq_df.sort_values(by='total', ascending=False)['total'])
-    #print(sorted_term_freq_df)
+    term_freq_df.columns = ['count']
+    term_freq_df.index.name = 'word'
+    term_freq_df = term_freq_df[term_freq_df['count'] > cutoff]
+    sorted_term_freq_df = pd.DataFrame(term_freq_df.sort_values(by='count', ascending=False)['count'])
     return sorted_term_freq_df
 
 
 # Uses the powerlaw package to fit the observed frequencies to a zipfian distribution
 def fit_Zipf(term_df):
-
-    probability_column = term_df['total']/sum(term_df['total'])
-    # Grrr. This is actually the relative frequency but apparently we call it
-    # 'probability' when we normalize a histogram?!
-    term_df['probability'] = probability_column
-    rank_column = term_df['total'].rank(method='dense', numeric_only=True, ascending=False)
+    term_df['proportion'] = term_df['count']/float(sum(term_df['count']))
+    rank_column = term_df['count'].rank(method='dense', numeric_only=True, ascending=False)
     term_df['rank'] = rank_column.astype('int64')
-    observed_counts = term_df['total'].values
-    # Turn these into an empirical probability distribution by normalizing by the total sum.
-    # Note -- doesn't seem to matter actually; can remove.
-    sum_total = float(sum(observed_counts))
-    observed_probabilities = observed_counts/sum_total
-    #observed_log_probabilities = np.log(observed_counts) - np.log(norm)
+    observed_counts = term_df['count'].values
     # 'fit_method' is MLE by default; doesn't seem to change the results in my initial pokings.
     # Also tried discrete_approximation="xmax"
     # Note another method for determining alpha
     # might be defined by (Newman, 2005 for details): alpha = 1 + n * sum(ln( xi / xmin )) ^ -1
     fit = powerlaw.Fit(observed_counts, fit_method="KS", discrete=True)
-    # bins_edges = The edges of the bins of the probability density function.
-    # The portion of the data that is within the bin. Length 1 less than bin_edges, as it corresponds to the spaces between them.
-    # Returns the probability density function (normalized histogram) of the data.
-    pdf_bin_edges, observed_pdf = fit.pdf(original_data=True, linear_bins=True)
+    # Returns:
+    #     pdf_bin_edges = The portion of the data that is within the bin.
+    #     observed_pdf = The probability density function (normalized histogram) of the data.
+    # This should probably be a pmf, not a pdf. But perhaps using discrete=True above helps.
+    # Setting original_data to False uses only the data used for the fit (within xmin and xmax).
+    pdf_bin_edges, observed_pdf = fit.pdf(original_data=False)
+    # Descending, not ascending
     observed_pdf = np.flip(observed_pdf)
     pdf_bin_edges = np.flip(pdf_bin_edges)
     # This seems to basically be the 'Distribution' class described here: https://pythonhosted.org/powerlaw/#powerlaw.Fit.pdf
@@ -560,13 +554,17 @@ def fit_Zipf(term_df):
     predicted_log_likelihoods = theoretical_distribution.loglikelihoods
     # The probability density function (normalized histogram) of the theoretical distribution
     predicted_pdf = theoretical_distribution.pdf()
+    # Descending, not ascending
     predicted_pdf = np.flip(predicted_pdf)
+    # !!!! CRITICAL VALUE FOR ZIPF !!!!
     alpha = theoretical_distribution.alpha
+    # The optimal xmin *beyond which* the scaling regime of the power law fits best. (This means exclusive xmin, right?)
     xmin = theoretical_distribution.xmin
+    xmax = theoretical_distribution.xmax
     distance = theoretical_distribution.KS()
-
-    st.markdown("The optimal alpha is :\t\t%.4f" % alpha)
-    st.markdown("Optimal Frequency cut-off:\t%s" % xmin)
+    st.markdown("Optimal alpha:\t\t%.4f" % alpha)
+    st.markdown("Optimal first rank:\t%s" % xmin)
+    st.markdown("Optimal last rank:\t%s" % xmax)
     st.markdown("Distance:\t\t%.4f" % distance)
     ks_test = ks_2samp(observed_pdf, predicted_pdf)
     # print("KS test:", end='\t\t')
@@ -576,27 +574,35 @@ def fit_Zipf(term_df):
         st.markdown("\n Great news! Your data fits a powerlaw with a minimum KS distance of %.4f" % distance)
     else:
         st.markdown("\n Sadly, your data does not fit a powerlaw. =\(")
-    cutoff = 50
-    summed_total = sum(list(term_df['total'])[:cutoff])
-    # Ignoring rank 0
-    zipf_pmf = [zipf.pmf(p, alpha) * summed_total for p in range(1, cutoff + 1)][1:]
-    zipf_col = pd.DataFrame(zipf_pmf, columns = ['zipf_pmf'])
-    term_df['zipf_pmf'] = zipf_pmf + [np.NaN] * (len(term_df) - len(zipf_pmf))
-    totals = term_df['total'][:cutoff]
-    ranks = list(term_df['rank'])[:cutoff]
-    lst = list(zip(totals,ranks))
-    fig = plt.figure(figsize=(10,10))
-    plt.bar(ranks, totals, color='limegreen')
-    #alpha = 1.37065874
-    #summed_total = sum([p for p, c in lst])
-    #zipf_y = [zipf.pmf(p, alpha) * summed_total for p in range(1, len(lst) + 1)]
-    plt.plot(range(len(zipf_pmf)), zipf_pmf, color='crimson', lw=3)
-    plt.ylabel("Count")
-    plt.xlabel("Rank")
-    plt.xticks(ranks,ranks,rotation='vertical')
-    plt.tight_layout()
-    st.pyplot(fig)
-    return(fit)
+
+    ranked_words = {}
+    unique_counts = pd.unique(term_df['count'])
+    unique_ranks = np.arange(1,len(unique_counts)+1)
+
+    for count, rank in zip(unique_counts,unique_ranks):
+        term_df[term_df['count'] == count]['rank'] = rank
+        ranked_words[rank] = ','.join(term_df[term_df['count'] == count].index)
+    # The fit is based on an optimal xmin (minimum rank)
+    # Let's use this to make count estimates for the zipf pmf
+    pmf_mass = float(sum(pd.unique(term_df[term_df['rank']>xmin]['count'])))
+    # Note that the pmf without the xmin accounting should sum to 1.
+    zipf_pmf = np.array([int(round(zipf.pmf(p, alpha)*pmf_mass)) for p in pd.unique(term_df['rank'])])
+    # Use the hovertext kw argument for hover text
+    ranked_words_list = [word_set for rank, word_set in sorted(ranked_words.items())]
+    fig = go.Figure(data=[go.Bar(x=unique_ranks, y=unique_counts, hovertext=ranked_words_list, name="Word Rank Frequency")])
+
+    fig.add_trace(go.Scatter(x=unique_ranks, y=zipf_pmf, hovertext=ranked_words_list, line=go.scatter.Line(color='crimson', width=3), name='Zipf Predicted Frequency'))
+    # Customize aspect
+    #fig.update_traces(marker_color='limegreen',
+    #                  marker_line_width=1.5, opacity=0.6)
+    fig.update_layout(title_text='Word Counts, Observed and Predicted by Zipf')
+    fig.update_layout(legend=dict(
+    yanchor="top",
+    y=0.99,
+    xanchor="left",
+    x=0.10
+))
+    return(fig)
 
 
 def fit_others(fit):
@@ -960,9 +966,11 @@ with right_col.expander("Show Duplicates from Dataset B", expanded=False):
 with left_col.expander("Show Zipf's Law fit for Dataset A", expanded=False):
     term_freq_df_a= count_vocab_frequencies(text_dset_a)
     st.markdown("_Checking the goodness of fit of our observed distribution to the hypothesized power law distribution using a Kolmogorov–Smirnov (KS) test._")
-    fit_others(fit_Zipf(term_freq_df_a))
+    zipf_a= fit_Zipf(term_freq_df_a)
+    st.plotly_chart(zipf_a, use_container_width=True)
 
 with right_col.expander("Show Zipf's Law Fit for Dataset B", expanded=False):
     term_freq_df_b = count_vocab_frequencies(text_dset_b)
     st.markdown("_Checking the goodness of fit of our observed distribution to the hypothesized power law distribution using a Kolmogorov–Smirnov (KS) test._")
-    fit_others(fit_Zipf(term_freq_df_b))
+    zipf_b= fit_Zipf(term_freq_df_b)
+    st.plotly_chart(zipf_b, use_container_width=True)
