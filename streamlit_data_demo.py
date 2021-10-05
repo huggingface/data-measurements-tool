@@ -589,8 +589,8 @@ def fit_Zipf(term_df):
     zipf_pmf = np.array([int(round(zipf.pmf(p, alpha)*pmf_mass)) for p in pd.unique(term_df['rank'])])
     # Use the hovertext kw argument for hover text
     ranked_words_list = [word_set for rank, word_set in sorted(ranked_words.items())]
-    fig = go.Figure(data=[go.Bar(x=unique_ranks, y=unique_counts, hovertext=ranked_words_list, name="Word Rank Frequency")])
-
+    layout = go.Layout(xaxis=dict(range=[0, 50]))
+    fig = go.Figure(data=[go.Bar(x=unique_ranks, y=unique_counts, hovertext=ranked_words_list, name="Word Rank Frequency")], layout=layout)
     fig.add_trace(go.Scatter(x=unique_ranks, y=zipf_pmf, hovertext=ranked_words_list, line=go.scatter.Line(color='crimson', width=3), name='Zipf Predicted Frequency'))
     # Customize aspect
     #fig.update_traces(marker_color='limegreen',
