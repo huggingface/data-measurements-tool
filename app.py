@@ -27,6 +27,9 @@ logs.propagate = False
 
 if not logs.handlers:
 
+    if not isdir("./log_files/"):
+        mkdir("./log_files/")
+
     # Logging info to log file
     file = logging.FileHandler("./log_files/app.log")
     fileformat = logging.Formatter("%(asctime)s:%(message)s")
