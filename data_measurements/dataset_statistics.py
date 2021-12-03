@@ -18,6 +18,7 @@ import statistics
 from os import mkdir
 from os.path import exists, isdir
 from os.path import join as pjoin
+from pathlib import Path
 
 import nltk
 import numpy as np
@@ -57,6 +58,8 @@ logs.setLevel(logging.WARNING)
 logs.propagate = False
 
 if not logs.handlers:
+
+    Path('./log_files').mkdir(exist_ok=True)
 
     # Logging info to log file
     file = logging.FileHandler("./log_files/dataset_statistics.log")

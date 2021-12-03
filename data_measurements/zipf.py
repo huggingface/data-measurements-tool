@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -32,6 +33,8 @@ logs.setLevel(logging.INFO)
 logs.propagate = False
 
 if not logs.handlers:
+
+    Path('./log_files').mkdir(exist_ok=True)
 
     # Logging info to log file
     file = logging.FileHandler("./log_files/zipf.log")

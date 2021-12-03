@@ -15,6 +15,7 @@
 import logging
 from os import mkdir
 from os.path import isdir
+from pathlib import Path
 
 import streamlit as st
 
@@ -27,8 +28,7 @@ logs.propagate = False
 
 if not logs.handlers:
 
-    if not isdir("./log_files/"):
-        mkdir("./log_files/")
+    Path('./log_files').mkdir(exist_ok=True)
 
     # Logging info to log file
     file = logging.FileHandler("./log_files/app.log")
