@@ -21,12 +21,10 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           GIT_LFS_SKIP_SMUDGE: 1
-        # Forcing for first push, then will switch to do below commented section
-        run: git push https://nateraw:$HF_TOKEN@huggingface.co/spaces/huggingface/data-measurements-tool-2 main --force
-        # run: |
-          # git config --global user.email "naterawdata@gmail.com"
-          # git config --global user.name "nateraw"
-          # git remote add hf https://nateraw:$HF_TOKEN@huggingface.co/spaces/huggingface/data-measurements-tool-2
-          # git fetch --all --prune
-          # git rebase hf/main
-          # git push https://nateraw:$HF_TOKEN@huggingface.co/spaces/huggingface/data-measurements-tool-2 main
+        run: |
+          git config --global user.email "naterawdata@gmail.com"
+          git config --global user.name "nateraw"
+          git remote add hf https://nateraw:$HF_TOKEN@huggingface.co/spaces/huggingface/data-measurements-tool-2
+          git fetch --all --prune
+          git rebase hf/main
+          git push https://nateraw:$HF_TOKEN@huggingface.co/spaces/huggingface/data-measurements-tool-2 main
