@@ -341,7 +341,7 @@ class DatasetStatisticsCacheClass:
         ):
             logs.info("Reading vocab from cache")
             self.load_vocab()
-            self.vocab_counts_filtered_df = filter_vocab(self.vocab_counts_df)
+            self.vocab_counts_filtered_df = filter_words(self.vocab_counts_df)
         else:
             logs.info("Calculating vocab afresh")
             if len(self.tokenized_df) == 0:
@@ -352,7 +352,7 @@ class DatasetStatisticsCacheClass:
             word_count_df = count_vocab_frequencies(self.tokenized_df)
             logs.info("Making dfs with proportion.")
             self.vocab_counts_df = calc_p_word(word_count_df)
-            self.vocab_counts_filtered_df = filter_vocab(self.vocab_counts_df)
+            self.vocab_counts_filtered_df = filter_words(self.vocab_counts_df)
             if save:
                 logs.info("Writing out.")
                 write_df(self.vocab_counts_df, self.vocab_counts_df_fid)
