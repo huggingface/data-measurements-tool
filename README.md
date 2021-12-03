@@ -13,7 +13,6 @@ pinned: false
 
 🚧 Doing Construction - Link Below Not Synced Yet 🚧
 
-[![](https://img.shields.io/badge/version-1.0.0-green.svg)](
 [![Generic badge](https://img.shields.io/badge/🤗-Open%20In%20Spaces-blue.svg)](https://huggingface.co/spaces/huggingface/data-measurements-tool)
 
 # Configuration
