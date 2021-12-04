@@ -15,14 +15,15 @@
 import json
 import logging
 import statistics
+import torch
 from os import mkdir
 from os.path import exists, isdir
 from os.path import join as pjoin
-from pathlib import Path
 
 import nltk
 import numpy as np
 import pandas as pd
+import plotly
 import plotly.express as px
 import plotly.figure_factory as ff
 import plotly.graph_objects as go
@@ -58,8 +59,6 @@ logs.setLevel(logging.WARNING)
 logs.propagate = False
 
 if not logs.handlers:
-
-    Path('./log_files').mkdir(exist_ok=True)
 
     # Logging info to log file
     file = logging.FileHandler("./log_files/dataset_statistics.log")
@@ -263,7 +262,12 @@ class DatasetStatisticsCacheClass:
         self.text_duplicate_counts_df_fid = pjoin(
             self.cache_path, "text_dup_counts_df.feather"
         )
+        self.fig_tok_length_fid = pjoin(self.cache_path, "fig_tok_length.json")
+        self.fig_labels_fid = pjoin(self.cache_path, "fig_labels.json")
+        self.node_list_fid = pjoin(self.cache_path, "node_list.th")
+        self.fig_tree_fid = pjoin(self.cache_path, "fig_tree.json")
         self.zipf_fid = pjoin(self.cache_path, "zipf_basic_stats.json")
+        self.zipf_fig_fid = pjoin(self.cache_path, "zipf_fig.json")
 
     def get_base_dataset(self):
         """Gets a pointer to the truncated base dataset object."""
@@ -307,7 +311,11 @@ class DatasetStatisticsCacheClass:
             write_df(self.text_dup_counts_df, self.text_duplicate_counts_df_fid)
             write_json(self.general_stats_dict, self.general_stats_fid)
 
-    def load_or_prepare_text_lengths(self, use_cache=False):
+    def load_or_prepare_text_lengths(self, use_cache=False, save=True):
+        # TODO: Everything here can be read from cache; it's in a transitory
+        # state atm where just the fig is cached.  Clean up.
+        if use_cache and exists(self.fig_tok_length_fid):
+            self.fig_tok_length = read_plotly(self.fig_tok_length_fid)
         if len(self.tokenized_df) == 0:
             self.tokenized_df = self.do_tokenization()
         self.tokenized_df[LENGTH_FIELD] = self.tokenized_df[TOKENIZED_FIELD].apply(len)
@@ -320,12 +328,28 @@ class DatasetStatisticsCacheClass:
             statistics.stdev(self.tokenized_df[self.our_length_field]), 1
         )
         self.fig_tok_length = make_fig_lengths(self.tokenized_df, self.our_length_field)
+        if save:
+            write_plotly(self.fig_tok_length, self.fig_tok_length_fid)
 
-    def load_or_prepare_embeddings(self, use_cache=False):
-        self.embeddings = Embeddings(self, use_cache=use_cache)
-        self.embeddings.make_hierarchical_clustering()
-        self.fig_tree = self.embeddings.fig_tree
-        self.node_list = self.embeddings.node_list
+    def load_or_prepare_embeddings(self, use_cache=False, save=True):
+        if use_cache and exists(self.node_list_fid) and exists(self.fig_tree_fid):
+            self.node_list = torch.load(self.node_list_fid)
+            self.fig_tree = read_plotly(self.fig_tree_fid)
+        elif use_cache and exists(self.node_list_fid):
+            self.node_list = torch.load(self.node_list_fid)
+            self.fig_tree = make_tree_plot(self.node_list,
+                                           self.text_dset)
+            if save:
+                write_plotly(self.fig_tree, self.fig_tree_fid)
+        else:
+            self.embeddings = Embeddings(self, use_cache=use_cache)
+            self.embeddings.make_hierarchical_clustering()
+            self.node_list = self.embeddings.node_list
+            self.fig_tree = make_tree_plot(self.node_list,
+                                           self.text_dset)
+            if save:
+                torch.save(self.node_list, self.node_list_fid)
+                write_plotly(self.fig_tree, self.fig_tree_fid)
 
     # get vocab with word counts
     def load_or_prepare_vocab(self, use_cache=True, save=True):
@@ -341,7 +365,7 @@ class DatasetStatisticsCacheClass:
         ):
             logs.info("Reading vocab from cache")
             self.load_vocab()
-            self.vocab_counts_filtered_df = filter_words(self.vocab_counts_df)
+            self.vocab_counts_filtered_df = filter_vocab(self.vocab_counts_df)
         else:
             logs.info("Calculating vocab afresh")
             if len(self.tokenized_df) == 0:
@@ -352,7 +376,7 @@ class DatasetStatisticsCacheClass:
             word_count_df = count_vocab_frequencies(self.tokenized_df)
             logs.info("Making dfs with proportion.")
             self.vocab_counts_df = calc_p_word(word_count_df)
-            self.vocab_counts_filtered_df = filter_words(self.vocab_counts_df)
+            self.vocab_counts_filtered_df = filter_vocab(self.vocab_counts_df)
             if save:
                 logs.info("Writing out.")
                 write_df(self.vocab_counts_df, self.vocab_counts_df_fid)
@@ -365,17 +389,31 @@ class DatasetStatisticsCacheClass:
         self.npmi_stats = nPMIStatisticsCacheClass(self, use_cache=use_cache)
         self.npmi_stats.load_or_prepare_npmi_terms()
 
-    def load_or_prepare_zipf(self, use_cache=False):
-        if use_cache and exists(self.zipf_fid):
+    def load_or_prepare_zipf(self, use_cache=False, save=True):
+        # TODO: Current UI only uses the fig, meaning the self.z here is irrelevant
+        # when only reading from cache. Either the UI should use it, or it should
+        # be removed when reading in cache
+        if use_cache and exists(self.zipf_fig_fid) and exists(self.zipf_fid):
+            with open(self.zipf_fid, "r") as f:
+                zipf_dict = json.load(f)
+            self.z = Zipf()
+            self.z.load(zipf_dict)
+            self.zipf_fig = read_plotly(self.zipf_fig_fid)
+        elif use_cache and exists(self.zipf_fid):
             # TODO: Read zipf data so that the vocab is there.
             with open(self.zipf_fid, "r") as f:
                 zipf_dict = json.load(f)
             self.z = Zipf()
             self.z.load(zipf_dict)
+            self.zipf_fig = make_zipf_fig(self.vocab_counts_df, self.z)
+            if save:
+                write_plotly(self.zipf_fig, self.zipf_fig_fid)
         else:
             self.z = Zipf(self.vocab_counts_df)
-            write_zipf_data(self.z, self.zipf_fid)
-        self.zipf_fig = make_zipf_fig(self.vocab_counts_df, self.z)
+            self.zipf_fig = make_zipf_fig(self.vocab_counts_df, self.z)
+            if save:
+                write_zipf_data(self.z, self.zipf_fid)
+                write_plotly(self.zipf_fig, self.zipf_fig_fid)
 
     def prepare_general_text_stats(self):
         text_nan_count = int(self.tokenized_df.isnull().sum().sum())
@@ -476,6 +514,8 @@ class DatasetStatisticsCacheClass:
         self.label_field = label_field
 
     def load_or_prepare_labels(self, use_cache=False, save=True):
+        # TODO: This is in a transitory state for creating fig cache.
+        # Clean up to be caching and reading everything correctly.
         """
         Extracts labels from the Dataset
         :param use_cache:
@@ -483,9 +523,17 @@ class DatasetStatisticsCacheClass:
         """
         # extracted labels
         if len(self.label_field) > 0:
-            if use_cache and exists(self.label_dset_fid):
+            if use_cache and exists(self.fig_labels_fid):
+                self.fig_labels = read_plotly(self.fig_labels_fid)
+            elif use_cache and exists(self.label_dset_fid):
                 # load extracted labels
                 self.label_dset = load_from_disk(self.label_dset_fid)
+                self.label_df = self.label_dset.to_pandas()
+                self.fig_labels = make_fig_labels(
+                    self.label_df, self.label_names, OUR_LABEL_FIELD
+                )
+                if save:
+                    write_plotly(self.fig_labels, self.fig_labels_fid)
             else:
                 self.get_base_dataset()
                 self.label_dset = self.dset.map(
@@ -495,14 +543,14 @@ class DatasetStatisticsCacheClass:
                     batched=True,
                     remove_columns=list(self.dset.features),
                 )
+                self.label_df = self.label_dset.to_pandas()
+                self.fig_labels = make_fig_labels(
+                    self.label_df, self.label_names, OUR_LABEL_FIELD
+                )
                 if save:
                     # save extracted label instances
                     self.label_dset.save_to_disk(self.label_dset_fid)
-            self.label_df = self.label_dset.to_pandas()
-
-            self.fig_labels = make_fig_labels(
-                self.label_df, self.label_names, OUR_LABEL_FIELD
-            )
+                    write_plotly(self.fig_labels, self.fig_labels_fid)
 
     def load_vocab(self):
         with open(self.vocab_counts_df_fid, "rb") as f:
@@ -796,7 +844,7 @@ def calc_p_word(word_count_df):
     return vocab_counts_df
 
 
-def filter_words(vocab_counts_df):
+def filter_vocab(vocab_counts_df):
     # TODO: Add warnings (which words are missing) to log file?
     filtered_vocab_counts_df = vocab_counts_df.drop(_CLOSED_CLASS,
                                                     errors="ignore")
@@ -808,13 +856,18 @@ def filter_words(vocab_counts_df):
 
 ## Figures ##
 
+def write_plotly(fig, fid):
+    write_json(plotly.io.to_json(fig), fid)
+
+def read_plotly(fid):
+    fig = plotly.io.from_json(json.load(open(fid, encoding="utf-8")))
+    return fig
 
 def make_fig_lengths(tokenized_df, length_field):
     fig_tok_length = px.histogram(
         tokenized_df, x=length_field, marginal="rug", hover_data=[length_field]
     )
     return fig_tok_length
-
 
 def make_fig_labels(label_df, label_names, label_field):
     labels = label_df[label_field].unique()
@@ -896,6 +949,89 @@ def make_zipf_fig(vocab_counts_df, z):
     return fig
 
 
+def make_tree_plot(node_list, text_dset):
+    nid_map = dict([(node["nid"], nid) for nid, node in enumerate(node_list)])
+
+    for nid, node in enumerate(node_list):
+        node["label"] = node.get(
+            "label",
+            f"{nid:2d} - {node['weight']:5d} items <br>"
+            + "<br>".join(
+                [
+                    "> " + txt[:64] + ("..." if len(txt) >= 63 else "")
+                    for txt in list(
+                        set(text_dset.select(node["example_ids"])[OUR_TEXT_FIELD])
+                    )[:5]
+                ]
+            ),
+        )
+
+    # make plot nodes
+    # TODO: something more efficient than set to remove duplicates
+    labels = [node["label"] for node in node_list]
+
+    root = node_list[0]
+    root["X"] = 0
+    root["Y"] = 0
+
+    def rec_make_coordinates(node):
+        total_weight = 0
+        add_weight = len(node["example_ids"]) - sum(
+            [child["weight"] for child in node["children"]]
+        )
+        for child in node["children"]:
+            child["X"] = node["X"] + total_weight
+            child["Y"] = node["Y"] - 1
+            total_weight += child["weight"] + add_weight / len(node["children"])
+            rec_make_coordinates(child)
+
+    rec_make_coordinates(root)
+
+    E = []  # list of edges
+    Xn = []
+    Yn = []
+    Xe = []
+    Ye = []
+    for nid, node in enumerate(node_list):
+        Xn += [node["X"]]
+        Yn += [node["Y"]]
+        for child in node["children"]:
+            E += [(nid, nid_map[child["nid"]])]
+            Xe += [node["X"], child["X"], None]
+            Ye += [node["Y"], child["Y"], None]
+
+    # make figure
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=Xe,
+            y=Ye,
+            mode="lines",
+            line=dict(color="rgb(210,210,210)", width=1),
+            hoverinfo="none",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=Xn,
+            y=Yn,
+            mode="markers",
+            name="nodes",
+            marker=dict(
+                symbol="circle-dot",
+                size=18,
+                color="#6175c1",
+                line=dict(color="rgb(50,50,50)", width=1)
+                # '#DB4551',
+            ),
+            text=labels,
+            hoverinfo="text",
+            opacity=0.8,
+        )
+    )
+    return fig
+
+
 ## Input/Output ###
 
 
@@ -949,7 +1085,6 @@ def write_json(json_dict, json_fid):
     with open(json_fid, "w", encoding="utf-8") as f:
         json.dump(json_dict, f)
 
-
 def write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files):
     """
     Saves the calculated nPMI statistics to their output files.
@@ -968,7 +1103,6 @@ def write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files):
         subgroup_pmi_df.to_csv(f)
     with open(subgroup_cooc_fid, "w+") as f:
         subgroup_cooc_df.to_csv(f)
-
 
 def write_zipf_data(z, zipf_fid):
     zipf_dict = {}
