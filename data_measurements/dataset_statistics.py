@@ -436,24 +436,34 @@ class DatasetStatisticsCacheClass:
         with open(text_duplicate_counts_df_fid, "rb") as f:
             self.text_dup_counts_df = feather.read_feather(f)
 
-    def load_or_prepare_dataset(self, use_cache=True, use_df=False, save=True):
+    def load_or_prepare_dataset(self, use_cache=True, save=True):
         """
-         Prepares the HF datasets and data frames containing the untokenized and tokenized
-         text as well as the label values. If cache is not being used (use_cache=False), writes the datasets to text.
-        :param use_cache:
-        :param use_df: Whether to used stored dataframes rather than dset files
-        :return:
+        Prepares the HF datasets and data frames containing the untokenized and
+        tokenized text as well as the label values.
+        self.tokenized_df is used further for calculating text lengths,
+        word counts, etc.
+        Args:
+            use_cache: Used stored data if there; otherwise calculate afresh
+            save: Store the calculated data to disk.
+
+        Returns:
+
         """
-        ## Raw text first, then tokenization.
-        # Use what has been previously stored in DataFrame form or Dataset form.
-        if (
-            use_cache
-            and use_df
-            and exists(self.tokenized_df_fid)
-        ):
+        self.load_or_prepare_text_dset(save, use_cache)
+        self.load_or_prepare_tokenized_df(save, use_cache)
+
+    def load_or_prepare_tokenized_df(self, save, use_cache):
+        if (use_cache and exists(self.tokenized_df_fid)):
             self.tokenized_df = feather.read_feather(self.tokenized_df_fid)
-        elif (
-            use_cache and exists(self.text_dset_fid)):
+        else:
+            # tokenize all text instances
+            self.tokenized_df = self.do_tokenization()
+            if save:
+                # save tokenized text
+                write_df(self.tokenized_df, self.tokenized_df_fid)
+
+    def load_or_prepare_text_dset(self, save, use_cache):
+        if (use_cache and exists(self.text_dset_fid)):
             # load extracted text
             self.text_dset = load_from_disk(self.text_dset_fid)
             logs.warning("Loaded dataset from disk")
@@ -473,11 +483,6 @@ class DatasetStatisticsCacheClass:
                 # save extracted text instances
                 logs.warning("Saving dataset to disk")
                 self.text_dset.save_to_disk(self.text_dset_fid)
-            # tokenize all text instances
-            self.tokenized_df = self.do_tokenization()
-            if save:
-                # save tokenized text
-                write_df(self.tokenized_df, self.tokenized_df_fid)
 
     def do_tokenization(self):
         """
