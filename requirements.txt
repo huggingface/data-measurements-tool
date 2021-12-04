@@ -1,5 +1,5 @@
 langdetect==1.0.9
-nltk==3.6.2
+nltk>=3.6.4
 plotly==5.3.1
 transformers>=4.8.2
 torch==1.9.0
