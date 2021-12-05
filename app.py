@@ -118,7 +118,6 @@ def load_or_prepare(ds_args, show_embeddings, use_cache=False):
     if show_embeddings:
         logs.warning("Loading Embeddings")
         dstats.load_or_prepare_embeddings()
-        print(dstats.fig_tree)
     # TODO: This has now been moved to calculation when the npmi widget is loaded.
     logs.warning("Loading Terms for nPMI")
     dstats.load_or_prepare_npmi_terms()

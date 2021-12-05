@@ -305,20 +305,14 @@ class DatasetStatisticsCacheClass:
             and exists(self.dup_counts_df_fid)
             and exists(self.sorted_top_vocab_df_fid)
         ):
-            print('Loading cached general stats')
+            logs.info('Loading cached general stats')
             self.load_general_stats()
         else:
-            print('Preparing general stats')
+            logs.info('Preparing general stats')
             self.prepare_general_stats()
             if save:
-                print(self.sorted_top_vocab_df)
-                print(self.sorted_top_vocab_df_fid)
                 write_df(self.sorted_top_vocab_df, self.sorted_top_vocab_df_fid)
-                print(self.dup_counts_df)
-                print(self.dup_counts_df_fid)
                 write_df(self.dup_counts_df, self.dup_counts_df_fid)
-                print(self.general_stats_dict)
-                print(self.general_stats_fid)
                 write_json(self.general_stats_dict, self.general_stats_fid)
 
 
