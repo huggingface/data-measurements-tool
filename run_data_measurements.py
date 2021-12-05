@@ -25,7 +25,11 @@ def load_or_prepare_widgets(ds_args, show_embeddings=False, use_cache=False):
     # General stats widget
     dstats.load_or_prepare_general_stats()
     # Labels widget
-    dstats.load_or_prepare_labels()
+    try:
+        dstats.set_label_field("label")
+        dstats.load_or_prepare_labels()
+    except:
+        pass
     # Text lengths widget
     dstats.load_or_prepare_text_lengths()
     if show_embeddings:
@@ -76,9 +80,10 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
             print("Figure saved to %s." % fig_tok_length_fid)
         print("Done!")
 
-    if (all and dstats.label_field) or dataset_args["calculation"] == "labels":
+    if all or dataset_args["calculation"] == "labels":
         if not dstats.label_field:
-            print("Warning: You asked for label calculation, but didn't provide the labels field name.  Assuming it is 'label'...")
+            print("Warning: You asked for label calculation, but didn't provide "
+                  "the labels field name.  Assuming it is 'label'...")
             dstats.set_label_field("label")
             print("\n* Calculating label distribution.")
             dstats.load_or_prepare_labels()
@@ -187,9 +192,6 @@ def main():
 
          Example for hate speech18 dataset:
          python3 run_data_measurements.py --dataset="hate_speech18" --config="default" --split="train" --feature="text"
-
-         Example for Glue dataset:
-         python3 run_data_measurements.py --dataset="glue" --config="ax" --split="train" --feature="premise"
 
          Example for IMDB dataset:
          python3 run_data_measurements.py --dataset="imdb" --config="plain_text" --split="train" --label_field="label" --feature="text"
