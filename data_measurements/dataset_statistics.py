@@ -219,6 +219,7 @@ class DatasetStatisticsCacheClass:
         self.avg_length = None
         self.std_length = None
         self.general_stats_dict = None
+        self.num_uniq_lengths = 0
         # clustering text by embeddings
         # the hierarchical clustering tree is represented as a list of nodes,
         # the first is the root
@@ -351,6 +352,7 @@ class DatasetStatisticsCacheClass:
                 self.length_stats_dict = json.load(f)
             self.avg_length = self.length_stats_dict["avg length"]
             self.std_length = self.length_stats_dict["std length"]
+            self.num_uniq_lengths = self.length_stats_dict["num lengths"]
         else:
             self.prepare_text_length_stats()
             if save:
@@ -367,14 +369,16 @@ class DatasetStatisticsCacheClass:
         )
 
     def prepare_text_length_stats(self):
-        if self.tokenized_df is None or LENGTH_FIELD not in self.tokenized_df.columns:
+        if self.tokenized_df is None or LENGTH_FIELD not in self.tokenized_df.columns or self.length_df is None:
             self.prepare_length_df()
         avg_length = sum(self.tokenized_df[LENGTH_FIELD])/len(self.tokenized_df[LENGTH_FIELD])
         self.avg_length = round(avg_length, 1)
         std_length = statistics.stdev(self.tokenized_df[LENGTH_FIELD])
         self.std_length = round(std_length, 1)
+        self.num_uniq_lengths = len(self.length_df["length"].unique())
         self.length_stats_dict = {"avg length": self.avg_length,
-                                  "std length": self.std_length}
+                                  "std length": self.std_length,
+                                  "num lengths": self.num_uniq_lengths}
 
     def prepare_fig_text_lengths(self):
         if self.tokenized_df is None or LENGTH_FIELD not in self.tokenized_df.columns:

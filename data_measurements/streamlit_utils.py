@@ -147,9 +147,7 @@ def expander_label_distribution(fig_labels, column_id):
             st.markdown("No labels were found in the dataset")
 
 
-def expander_text_lengths(dstats,
-    column_id,
-):
+def expander_text_lengths(dstats, column_id):
     _TEXT_LENGTH_CAPTION = (
         "Use this widget to identify outliers, particularly suspiciously long outliers."
     )
@@ -176,7 +174,7 @@ def expander_text_lengths(dstats,
         start_id_show_lengths = st.slider(
             f"Show the shortest sentences{column_id} starting at:",
             0,
-            len(dstats.length_df["length"].unique()),
+            dstats.num_uniq_lengths,
             value=0,
             step=1,
         )
