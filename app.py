@@ -143,7 +143,7 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id, use_cache=T
     logs.info("showing header")
     st_utils.expander_header(dstats, ds_name_to_dict, column_id)
     logs.info("showing general stats")
-    st_utils.expander_general_stats(dstats, _SHOW_TOP_N_WORDS, column_id)
+    st_utils.expander_general_stats(dstats, column_id)
     st_utils.expander_label_distribution(dstats.label_df, dstats.fig_labels, column_id)
     st_utils.expander_text_lengths(
         dstats.tokenized_df,
@@ -154,7 +154,7 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id, use_cache=T
         LENGTH_FIELD,
         column_id,
     )
-    st_utils.expander_text_duplicates(dstats.text_dup_counts_df, column_id)
+    st_utils.expander_text_duplicates(dstats, column_id)
 
     # We do the loading of these after the others in order to have some time
     # to compute while the user works with the details above.
@@ -191,7 +191,6 @@ def main():
 
     # When not doing new development, use the cache.
     use_cache = True
-    # TODO: Better handling of this eg, st.sidebar.checkbox("Show clustering")=
     show_embeddings = st.sidebar.checkbox("Show embeddings")
     # List of datasets for which embeddings are hard to compute:
 

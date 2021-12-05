@@ -33,6 +33,8 @@ from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 
 from .dataset_utils import (
+TOT_WORDS,
+TOT_OPEN_WORDS,
     CNT,
     DEDUP_TOT,
     EMBEDDING_FIELD,
@@ -143,12 +145,8 @@ _TREE_MIN_NODES = 250
 # as long as we're using sklearn - already pushing the resources
 _MAX_CLUSTER_EXAMPLES = 5000
 _NUM_VOCAB_BATCHES = 2000
-
-
+_TOP_N = 100
 _CVEC = CountVectorizer(token_pattern="(?u)\\b\\w+\\b", lowercase=True)
-
-num_rows = 200000
-
 
 class DatasetStatisticsCacheClass:
     def __init__(
@@ -193,7 +191,7 @@ class DatasetStatisticsCacheClass:
         self.label_dset = None
         ## Data frames
         # Tokenized text
-        self.tokenized_df = []
+        self.tokenized_df = None
         # save sentence length histogram in the class so it doesn't ge re-computed
         self.fig_tok_length = None
         # Data Frame version of self.label_dset
@@ -205,12 +203,14 @@ class DatasetStatisticsCacheClass:
         # Vocabulary filtered to remove stopwords
         self.vocab_counts_filtered_df = None
         ## General statistics and duplicates
+        self.total_words = 0
+        self.total_open_words = 0
         # Number of NaN values (NOT empty strings)
         self.text_nan_count = 0
         # Number of text items that appear more than once in the dataset
         self.dedup_total = 0
         # Duplicated text items along with their number of occurences ("count")
-        self.text_dup_counts_df = None
+        self.dup_counts_df = None
         self.avg_length = None
         self.std_length = None
         self.general_stats_dict = None
@@ -258,10 +258,12 @@ class DatasetStatisticsCacheClass:
         self.tokenized_df_fid = pjoin(self.cache_path, "tokenized_df.feather")
         self.label_dset_fid = pjoin(self.cache_path, "label_dset")
         self.vocab_counts_df_fid = pjoin(self.cache_path, "vocab_counts.feather")
-        self.general_stats_fid = pjoin(self.cache_path, "general_stats.json")
-        self.text_duplicate_counts_df_fid = pjoin(
-            self.cache_path, "text_dup_counts_df.feather"
+        self.general_stats_fid = pjoin(self.cache_path, "general_stats_dict.json")
+        self.dup_counts_df_fid = pjoin(
+            self.cache_path, "dup_counts_df.feather"
         )
+        self.sorted_top_vocab_df_fid = pjoin(self.cache_path,
+                                             "sorted_top_vocab.feather")
         self.fig_tok_length_fid = pjoin(self.cache_path, "fig_tok_length.json")
         self.fig_labels_fid = pjoin(self.cache_path, "fig_labels.json")
         self.node_list_fid = pjoin(self.cache_path, "node_list.th")
@@ -285,38 +287,47 @@ class DatasetStatisticsCacheClass:
         self.get_base_dataset()
         return self.dset[:100]
 
-    def load_or_prepare_general_stats(self, use_cache=False):
-        """Data structures used in calculating general statistics and duplicates"""
+    def load_or_prepare_general_stats(self, use_cache=False, save=True):
+        """
+        Content for expander_general_stats widget.
+        Provides statistics for total words, total open words,
+        the sorted top vocab, the NaN count, and the duplicate count.
+        Args:
+            use_cache:
 
-        # TODO: These probably don't need to be feather files, could be csv.
+        Returns:
+
+        """
         # General statistics
         if (
             use_cache
             and exists(self.general_stats_fid)
-            and exists(self.text_duplicate_counts_df_fid)
+            and exists(self.dup_counts_df_fid)
+            and exists(self.sorted_top_vocab_df_fid)
         ):
-            self.load_general_stats(
-                self.general_stats_fid, self.text_duplicate_counts_df_fid
-            )
+            print('Loading cached general stats')
+            self.load_general_stats()
         else:
-            (
-                self.text_nan_count,
-                self.dedup_total,
-                self.text_dup_counts_df,
-            ) = self.prepare_general_text_stats()
-            self.general_stats_dict = {
-                TEXT_NAN_CNT: self.text_nan_count,
-                DEDUP_TOT: self.dedup_total,
-            }
-            write_df(self.text_dup_counts_df, self.text_duplicate_counts_df_fid)
-            write_json(self.general_stats_dict, self.general_stats_fid)
+            print('Preparing general stats')
+            self.prepare_general_stats()
+            if save:
+                print(self.sorted_top_vocab_df)
+                print(self.sorted_top_vocab_df_fid)
+                write_df(self.sorted_top_vocab_df, self.sorted_top_vocab_df_fid)
+                print(self.dup_counts_df)
+                print(self.dup_counts_df_fid)
+                write_df(self.dup_counts_df, self.dup_counts_df_fid)
+                print(self.general_stats_dict)
+                print(self.general_stats_fid)
+                write_json(self.general_stats_dict, self.general_stats_fid)
+
 
     def load_or_prepare_text_lengths(self, use_cache=False, save=True):
         # TODO: Everything here can be read from cache; it's in a transitory
         # state atm where just the fig is cached.  Clean up.
         if use_cache and exists(self.fig_tok_length_fid):
             self.fig_tok_length = read_plotly(self.fig_tok_length_fid)
-        if len(self.tokenized_df) == 0:
+        if self.tokenized_df is None:
             self.tokenized_df = self.do_tokenization()
         self.tokenized_df[LENGTH_FIELD] = self.tokenized_df[TOKENIZED_FIELD].apply(len)
         self.avg_length = round(
@@ -385,56 +396,54 @@ class DatasetStatisticsCacheClass:
         logs.info("filtered vocab")
         logs.info(self.vocab_counts_filtered_df)
 
-    def load_or_prepare_npmi_terms(self, use_cache=False):
-        self.npmi_stats = nPMIStatisticsCacheClass(self, use_cache=use_cache)
-        self.npmi_stats.load_or_prepare_npmi_terms()
+    def load_vocab(self):
+        with open(self.vocab_counts_df_fid, "rb") as f:
+            self.vocab_counts_df = feather.read_feather(f)
+        # Handling for changes in how the index is saved.
+        self.vocab_counts_df = self._set_idx_col_names(self.vocab_counts_df)
 
-    def load_or_prepare_zipf(self, use_cache=False, save=True):
-        # TODO: Current UI only uses the fig, meaning the self.z here is irrelevant
-        # when only reading from cache. Either the UI should use it, or it should
-        # be removed when reading in cache
-        if use_cache and exists(self.zipf_fig_fid) and exists(self.zipf_fid):
-            with open(self.zipf_fid, "r") as f:
-                zipf_dict = json.load(f)
-            self.z = Zipf()
-            self.z.load(zipf_dict)
-            self.zipf_fig = read_plotly(self.zipf_fig_fid)
-        elif use_cache and exists(self.zipf_fid):
-            # TODO: Read zipf data so that the vocab is there.
-            with open(self.zipf_fid, "r") as f:
-                zipf_dict = json.load(f)
-            self.z = Zipf()
-            self.z.load(zipf_dict)
-            self.zipf_fig = make_zipf_fig(self.vocab_counts_df, self.z)
-            if save:
-                write_plotly(self.zipf_fig, self.zipf_fig_fid)
-        else:
-            self.z = Zipf(self.vocab_counts_df)
-            self.zipf_fig = make_zipf_fig(self.vocab_counts_df, self.z)
-            if save:
-                write_zipf_data(self.z, self.zipf_fid)
-                write_plotly(self.zipf_fig, self.zipf_fig_fid)
+    def load_general_stats(self):
+        self.general_stats_dict = json.load(open(self.general_stats_fid, encoding="utf-8"))
+        with open(self.dup_counts_df_fid, "rb") as f:
+            self.dup_counts_df = feather.read_feather(f)
+        with open(self.sorted_top_vocab_df_fid, "rb") as f:
+            self.sorted_top_vocab_df = feather.read_feather(f)
+        self.text_nan_count = self.general_stats_dict[TEXT_NAN_CNT]
+        self.dedup_total = self.general_stats_dict[DEDUP_TOT]
+        self.total_words = self.general_stats_dict[TOT_WORDS]
+        self.total_open_words = self.general_stats_dict[TOT_OPEN_WORDS]
 
-    def prepare_general_text_stats(self):
-        text_nan_count = int(self.tokenized_df.isnull().sum().sum())
-        dup_df = self.tokenized_df[self.tokenized_df.duplicated([self.our_text_field])]
-        dedup_df = pd.DataFrame(
+    def prepare_general_stats(self):
+        if self.tokenized_df is None:
+            logs.warning("Tokenized dataset not yet loaded; doing so.")
+            self.load_or_prepare_dataset()
+        if self.vocab_counts_df is None:
+            logs.warning("Vocab not yet loaded; doing so.")
+            self.load_or_prepare_vocab()
+        self.sorted_top_vocab_df = self.vocab_counts_filtered_df.sort_values(
+            "count", ascending=False
+        ).head(_TOP_N)
+        print('basics')
+        self.total_words = len(self.vocab_counts_df)
+        self.total_open_words = len(self.vocab_counts_filtered_df)
+        self.text_nan_count = int(self.tokenized_df.isnull().sum().sum())
+        dup_df = self.tokenized_df[self.tokenized_df.duplicated([OUR_TEXT_FIELD])]
+        print('dup df')
+        self.dup_counts_df = pd.DataFrame(
             dup_df.pivot_table(
-                columns=[self.our_text_field], aggfunc="size"
+                columns=[OUR_TEXT_FIELD], aggfunc="size"
             ).sort_values(ascending=False),
             columns=[CNT],
         )
-        dedup_df.index = dedup_df.index.map(str)
-        dedup_df[OUR_TEXT_FIELD] = dedup_df.index
-        dedup_total = sum(dedup_df[CNT])
-        return text_nan_count, dedup_total, dedup_df
-
-    def load_general_stats(self, general_stats_fid, text_duplicate_counts_df_fid):
-        general_stats = json.load(open(general_stats_fid, encoding="utf-8"))
-        self.text_nan_count = general_stats[TEXT_NAN_CNT]
-        self.dedup_total = general_stats[DEDUP_TOT]
-        with open(text_duplicate_counts_df_fid, "rb") as f:
-            self.text_dup_counts_df = feather.read_feather(f)
+        print('deddup df')
+        self.dup_counts_df[OUR_TEXT_FIELD] = self.dup_counts_df.index.copy()
+        self.dedup_total = sum(self.dup_counts_df[CNT])
+        self.general_stats_dict = {
+            TOT_WORDS: self.total_words,
+            TOT_OPEN_WORDS: self.total_open_words,
+            TEXT_NAN_CNT: self.text_nan_count,
+            DEDUP_TOT: self.dedup_total,
+        }
 
     def load_or_prepare_dataset(self, use_cache=True, save=True):
         """
@@ -449,20 +458,24 @@ class DatasetStatisticsCacheClass:
         Returns:
 
         """
-        self.load_or_prepare_text_dset(save, use_cache)
-        self.load_or_prepare_tokenized_df(save, use_cache)
+        logs.info("Doing text dset.")
+        self.load_or_prepare_text_dset(use_cache, save)
+        logs.info("Doing tokenized dataframe")
+        self.load_or_prepare_tokenized_df(use_cache, save)
 
-    def load_or_prepare_tokenized_df(self, save, use_cache):
+
+    def load_or_prepare_tokenized_df(self, use_cache, save):
         if (use_cache and exists(self.tokenized_df_fid)):
             self.tokenized_df = feather.read_feather(self.tokenized_df_fid)
         else:
             # tokenize all text instances
             self.tokenized_df = self.do_tokenization()
             if save:
+                logs.warning("Saving tokenized dataset to disk")
                 # save tokenized text
                 write_df(self.tokenized_df, self.tokenized_df_fid)
 
-    def load_or_prepare_text_dset(self, save, use_cache):
+    def load_or_prepare_text_dset(self, use_cache, save):
         if (use_cache and exists(self.text_dset_fid)):
             # load extracted text
             self.text_dset = load_from_disk(self.text_dset_fid)
@@ -557,11 +570,35 @@ class DatasetStatisticsCacheClass:
                     self.label_dset.save_to_disk(self.label_dset_fid)
                     write_plotly(self.fig_labels, self.fig_labels_fid)
 
-    def load_vocab(self):
-        with open(self.vocab_counts_df_fid, "rb") as f:
-            self.vocab_counts_df = feather.read_feather(f)
-        # Handling for changes in how the index is saved.
-        self.vocab_counts_df = self._set_idx_col_names(self.vocab_counts_df)
+    def load_or_prepare_npmi_terms(self, use_cache=False):
+        self.npmi_stats = nPMIStatisticsCacheClass(self, use_cache=use_cache)
+        self.npmi_stats.load_or_prepare_npmi_terms()
+
+    def load_or_prepare_zipf(self, use_cache=False, save=True):
+        # TODO: Current UI only uses the fig, meaning the self.z here is irrelevant
+        # when only reading from cache. Either the UI should use it, or it should
+        # be removed when reading in cache
+        if use_cache and exists(self.zipf_fig_fid) and exists(self.zipf_fid):
+            with open(self.zipf_fid, "r") as f:
+                zipf_dict = json.load(f)
+            self.z = Zipf()
+            self.z.load(zipf_dict)
+            self.zipf_fig = read_plotly(self.zipf_fig_fid)
+        elif use_cache and exists(self.zipf_fid):
+            # TODO: Read zipf data so that the vocab is there.
+            with open(self.zipf_fid, "r") as f:
+                zipf_dict = json.load(f)
+            self.z = Zipf()
+            self.z.load(zipf_dict)
+            self.zipf_fig = make_zipf_fig(self.vocab_counts_df, self.z)
+            if save:
+                write_plotly(self.zipf_fig, self.zipf_fig_fid)
+        else:
+            self.z = Zipf(self.vocab_counts_df)
+            self.zipf_fig = make_zipf_fig(self.vocab_counts_df, self.z)
+            if save:
+                write_zipf_data(self.z, self.zipf_fid)
+                write_plotly(self.zipf_fig, self.zipf_fig_fid)
 
     def _set_idx_col_names(self, input_vocab_df):
         if input_vocab_df.index.name != VOCAB and VOCAB in input_vocab_df.columns:

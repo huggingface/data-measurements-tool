@@ -102,32 +102,34 @@ def expander_header(dstats, ds_name_to_dict, column_id):
         st.dataframe(dstats.get_dataset_peek())
 
 
-def expander_general_stats(dstats, top_n, column_id):
+def expander_general_stats(dstats, column_id):
     with st.expander(f"General Text Statistics{column_id}"):
         st.caption(
-            "Use this widget to check whether the terms you see most represented in the dataset make sense for the goals of the dataset."
+            "Use this widget to check whether the terms you see most represented"
+            " in the dataset make sense for the goals of the dataset."
         )
         st.markdown(
-            "There are {0} total words".format(str(len(dstats.vocab_counts_df)))
+            "There are {0} total words".format(str(dstats.total_words))
         )
         st.markdown(
             "There are {0} words after removing closed "
-            "class words".format(str(len(dstats.vocab_counts_filtered_df)))
+            "class words".format(str(dstats.total_open_words))
         )
-        sorted_top_vocab_df = dstats.vocab_counts_filtered_df.sort_values(
-            "count", ascending=False
-        ).head(top_n)
         st.markdown(
-            "The most common [open class words](https://dictionary.apa.org/open-class-words) and their counts are: "
+            "The most common "
+            "[open class words](https://dictionary.apa.org/open-class-words) "
+            "and their counts are: "
         )
-        st.dataframe(sorted_top_vocab_df)
+        st.dataframe(dstats.sorted_top_vocab_df)
         st.markdown(
             "There are {0} missing values in the dataset.".format(
                 str(dstats.text_nan_count)
             )
         )
         st.markdown(
-            "There are {0} duplicate items in the dataset. For more information about the duplicates, click the 'Duplicates' tab below.".format(
+            "There are {0} duplicate items in the dataset. "
+            "For more information about the duplicates, "
+            "click the 'Duplicates' tab below.".format(
                 str(dstats.dedup_total)
             )
         )
@@ -269,7 +271,8 @@ def expander_text_embeddings(
 
 
 ### Then, show duplicates
-def expander_text_duplicates(dedup_df, column_id):
+def expander_text_duplicates(dstats, column_id):
+    # TODO: Saving/loading figure
     with st.expander(f"Text Duplicates{column_id}", expanded=False):
         st.caption(
             "Use this widget to identify text strings that appear more than once."
@@ -277,16 +280,15 @@ def expander_text_duplicates(dedup_df, column_id):
         st.markdown(
             "A model's training and testing may be negatively affected by unwarranted duplicates ([Lee et al., 2021](https://arxiv.org/abs/2107.06499))."
         )
-        dedup_df["count"] = dedup_df["count"] + 1
         st.markdown("------")
         st.write(
             "### Here is the list of all the duplicated items and their counts in your dataset:"
         )
         # Eh...adding 1 because otherwise it looks too weird for duplicate counts when the value is just 1.
-        if len(dedup_df) == 0:
+        if len(dstats.dup_counts_df) == 0:
             st.write("There are no duplicates in this dataset! 🥳")
         else:
-            gb = GridOptionsBuilder.from_dataframe(dedup_df)
+            gb = GridOptionsBuilder.from_dataframe(dstats.dup_counts_df)
             gb.configure_column(
                 f"text{column_id}",
                 wrapText=True,
@@ -296,7 +298,7 @@ def expander_text_duplicates(dedup_df, column_id):
                 use_container_width=True,
             )
             go = gb.build()
-            AgGrid(dedup_df, gridOptions=go)
+            AgGrid(dstats.dup_counts_df, gridOptions=go)
 
 
 def expander_npmi_description(min_vocab):
