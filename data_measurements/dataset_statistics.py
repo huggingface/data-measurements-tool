@@ -185,6 +185,7 @@ class DatasetStatisticsCacheClass:
         self.dset = None  # original dataset
         # HF dataset with all of the self.text_field instances in self.dset
         self.text_dset = None
+        self.dset_peek = None
         # HF dataset with text embeddings in the same order as self.text_dset
         self.embeddings_dset = None
         # HF dataset with all of the self.label_field instances in self.dset
@@ -254,6 +255,7 @@ class DatasetStatisticsCacheClass:
             logs.warning("Creating cache directory %s." % self.cache_path)
             mkdir(self.cache_path)
         self.dset_fid = pjoin(self.cache_path, "base_dset")
+        self.dset_peek_fid = pjoin(self.cache_path, "dset_peek.json")
         self.text_dset_fid = pjoin(self.cache_path, "text_dset")
         self.tokenized_df_fid = pjoin(self.cache_path, "tokenized_df.feather")
         self.label_dset_fid = pjoin(self.cache_path, "label_dset")
@@ -282,10 +284,6 @@ class DatasetStatisticsCacheClass:
                 use_cache=True,
                 use_streaming=True,
             )
-
-    def get_dataset_peek(self):
-        self.get_base_dataset()
-        return self.dset[:100]
 
     def load_or_prepare_general_stats(self, use_cache=False, save=True):
         """
@@ -462,7 +460,19 @@ class DatasetStatisticsCacheClass:
         self.load_or_prepare_text_dset(use_cache, save)
         logs.info("Doing tokenized dataframe")
         self.load_or_prepare_tokenized_df(use_cache, save)
+        logs.info("Doing dataset peek")
+        self.load_or_prepare_dset_peek(save, use_cache)
 
+    def load_or_prepare_dset_peek(self, save, use_cache):
+        if use_cache and exists(self.dset_peek_fid):
+            with open(self.dset_peek_fid, "r") as f:
+                self.dset_peek = json.load(f)["dset peek"]
+        else:
+            if self.dset is None:
+                self.get_base_dataset()
+            self.dset_peek = self.dset[:100]
+            if save:
+                write_json({"dset_peek": self.dset_peek}, self.dset_peek_fid)
 
     def load_or_prepare_tokenized_df(self, use_cache, save):
         if (use_cache and exists(self.tokenized_df_fid)):
@@ -483,19 +493,22 @@ class DatasetStatisticsCacheClass:
             logs.info(self.text_dset)
         # ...Or load it from the server and store it anew
         else:
-            self.get_base_dataset()
-            # extract all text instances
-            self.text_dset = self.dset.map(
-                lambda examples: extract_field(
-                    examples, self.text_field, OUR_TEXT_FIELD
-                ),
-                batched=True,
-                remove_columns=list(self.dset.features),
-            )
+            self.prepare_text_dset()
             if save:
                 # save extracted text instances
                 logs.warning("Saving dataset to disk")
                 self.text_dset.save_to_disk(self.text_dset_fid)
+
+    def prepare_text_dset(self):
+        self.get_base_dataset()
+        # extract all text instances
+        self.text_dset = self.dset.map(
+            lambda examples: extract_field(
+                examples, self.text_field, OUR_TEXT_FIELD
+            ),
+            batched=True,
+            remove_columns=list(self.dset.features),
+        )
 
     def do_tokenization(self):
         """

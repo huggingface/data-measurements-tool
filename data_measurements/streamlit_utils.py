@@ -99,7 +99,7 @@ def expander_header(dstats, ds_name_to_dict, column_id):
         st.markdown(
             ds_name_to_dict[dstats.dset_name][dstats.dset_config][HF_DESC_FIELD]
         )
-        st.dataframe(dstats.get_dataset_peek())
+        st.dataframe(dstats.dset_peek)
 
 
 def expander_general_stats(dstats, column_id):
