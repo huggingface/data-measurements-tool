@@ -1,10 +1,12 @@
 import argparse
 import json
 import textwrap
-from os.path import join as pjoin
+from os import mkdir
+from os.path import join as pjoin, isdir
 
 from data_measurements import dataset_statistics
 from data_measurements import dataset_utils
+
 
 
 def load_or_prepare_widgets(ds_args, show_embeddings=False, use_cache=False):
@@ -18,6 +20,14 @@ def load_or_prepare_widgets(ds_args, show_embeddings=False, use_cache=False):
     Returns:
 
     """
+
+    if not isdir(ds_args["cache_dir"]):
+        print("Creating cache")
+        # We need to preprocess everything.
+        # This should eventually all go into a prepare_dataset CLI
+        mkdir(ds_args["cache_dir"])
+
+
     dstats = dataset_statistics.DatasetStatisticsCacheClass(**ds_args,
                                                             use_cache=use_cache)
     # Header widget
