@@ -177,15 +177,7 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id, use_cache=T
     logs.info("showing general stats")
     st_utils.expander_general_stats(dstats, column_id)
     st_utils.expander_label_distribution(dstats.fig_labels, column_id)
-    st_utils.expander_text_lengths(
-        dstats.tokenized_df,
-        dstats.fig_tok_length,
-        dstats.avg_length,
-        dstats.std_length,
-        OUR_TEXT_FIELD,
-        LENGTH_FIELD,
-        column_id,
-    )
+    st_utils.expander_text_lengths(dstats, column_id)
     st_utils.expander_text_duplicates(dstats, column_id)
 
     # We do the loading of these after the others in order to have some time
@@ -197,8 +189,7 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id, use_cache=T
     )
     available_terms = npmi_stats.get_available_terms()
     st_utils.npmi_widget(
-        column_id, available_terms, npmi_stats, _MIN_VOCAB_COUNT, use_cache=use_cache
-    )
+        column_id, available_terms, npmi_stats, _MIN_VOCAB_COUNT)
     logs.info("showing zipf")
     st_utils.expander_zipf(dstats.z, dstats.zipf_fig, column_id)
     if show_embeddings:
@@ -222,7 +213,7 @@ def main():
     compare_mode = st.sidebar.checkbox("Comparison mode")
 
     # When not doing new development, use the cache.
-    use_cache = False
+    use_cache = True
     show_embeddings = st.sidebar.checkbox("Show embeddings")
     # List of datasets for which embeddings are hard to compute:
 

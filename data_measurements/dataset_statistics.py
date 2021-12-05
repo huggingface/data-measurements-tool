@@ -197,6 +197,7 @@ class DatasetStatisticsCacheClass:
         # Tokenized text
         self.tokenized_df = None
         # save sentence length histogram in the class so it doesn't ge re-computed
+        self.length_df = None
         self.fig_tok_length = None
         # Data Frame version of self.label_dset
         self.label_df = None
@@ -262,6 +263,8 @@ class DatasetStatisticsCacheClass:
         self.text_dset_fid = pjoin(self.cache_path, "text_dset")
         self.tokenized_df_fid = pjoin(self.cache_path, "tokenized_df.feather")
         self.label_dset_fid = pjoin(self.cache_path, "label_dset")
+        self.length_df_fid = pjoin(self.cache_path, "length_df.feather")
+        self.length_stats_fid = pjoin(self.cache_path, "length_stats.json")
         self.vocab_counts_df_fid = pjoin(self.cache_path, "vocab_counts.feather")
         self.general_stats_fid = pjoin(self.cache_path, "general_stats_dict.json")
         self.dup_counts_df_fid = pjoin(
@@ -317,24 +320,66 @@ class DatasetStatisticsCacheClass:
 
 
     def load_or_prepare_text_lengths(self, save=True):
-        # TODO: Everything here can be read from cache; it's in a transitory
-        # state atm where just the fig is cached.  Clean up.
-        if self.use_cache and exists(self.fig_tok_length_fid):
+        """
+        The text length widget relies on this function, which provides
+        a figure of the text lengths, some text length statistics, and
+        a text length dataframe to peruse.
+        Args:
+            save:
+        Returns:
+
+        """
+        # Text length figure
+        if (self.use_cache and exists(self.fig_tok_length_fid)):
             self.fig_tok_length = read_plotly(self.fig_tok_length_fid)
+        else:
+            self.prepare_fig_text_lengths()
+            if save:
+                write_plotly(self.fig_tok_length, self.fig_tok_length_fid)
+
+        # Text length dataframe
+        if self.use_cache and exists(self.length_df_fid):
+            self.length_df = feather.read_feather(self.length_df_fid)
+        else:
+            self.prepare_length_df()
+            if save:
+                write_df(self.length_df, self.length_df_fid)
+
+        # Text length stats.
+        if self.use_cache and exists(self.length_stats_fid):
+            with open(self.length_stats_fid, "r") as f:
+                self.length_stats_dict = json.load(f)
+            self.avg_length = self.length_stats_dict["avg length"]
+            self.std_length = self.length_stats_dict["std length"]
+        else:
+            self.prepare_text_length_stats()
+            if save:
+                write_json(self.length_stats_dict, self.length_stats_fid)
+
+    def prepare_length_df(self):
         if self.tokenized_df is None:
             self.tokenized_df = self.do_tokenization()
-        self.tokenized_df[LENGTH_FIELD] = self.tokenized_df[TOKENIZED_FIELD].apply(len)
-        self.avg_length = round(
-            sum(self.tokenized_df[self.our_length_field])
-            / len(self.tokenized_df[self.our_length_field]),
-            1,
+        self.tokenized_df[LENGTH_FIELD] = self.tokenized_df[
+            TOKENIZED_FIELD].apply(len)
+        self.length_df = self.tokenized_df[
+            [LENGTH_FIELD, OUR_TEXT_FIELD]].sort_values(
+            by=[LENGTH_FIELD], ascending=True
         )
-        self.std_length = round(
-            statistics.stdev(self.tokenized_df[self.our_length_field]), 1
-        )
-        self.fig_tok_length = make_fig_lengths(self.tokenized_df, self.our_length_field)
-        if save:
-            write_plotly(self.fig_tok_length, self.fig_tok_length_fid)
+
+    def prepare_text_length_stats(self):
+        if self.tokenized_df is None or LENGTH_FIELD not in self.tokenized_df.columns:
+            self.prepare_length_df()
+        avg_length = sum(self.tokenized_df[LENGTH_FIELD])/len(self.tokenized_df[LENGTH_FIELD])
+        self.avg_length = round(avg_length, 1)
+        std_length = statistics.stdev(self.tokenized_df[LENGTH_FIELD])
+        self.std_length = round(std_length, 1)
+        self.length_stats_dict = {"avg length": self.avg_length,
+                                  "std length": self.std_length}
+
+    def prepare_fig_text_lengths(self):
+        if self.tokenized_df is None or LENGTH_FIELD not in self.tokenized_df.columns:
+            self.prepare_length_df()
+        self.fig_tok_length = make_fig_lengths(self.tokenized_df, LENGTH_FIELD)
 
     def load_or_prepare_embeddings(self, save=True):
         if self.use_cache and exists(self.node_list_fid) and exists(self.fig_tree_fid):

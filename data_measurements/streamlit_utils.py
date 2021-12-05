@@ -147,13 +147,7 @@ def expander_label_distribution(fig_labels, column_id):
             st.markdown("No labels were found in the dataset")
 
 
-def expander_text_lengths(
-    tokenized_df,
-    fig_tok_length,
-    avg_length,
-    std_length,
-    text_field_name,
-    length_field_name,
+def expander_text_lengths(dstats,
     column_id,
 ):
     _TEXT_LENGTH_CAPTION = (
@@ -165,31 +159,28 @@ def expander_text_lengths(
             "Below, you can see how the lengths of the text instances in your dataset are distributed."
         )
         st.markdown(
-            "Any unexpected peaks or valleys in the distribution may help to identify data instances you want to remove or augment."
+            "Any unexpected peaks or valleys in the distribution may help to identify instances you want to remove or augment."
         )
         st.markdown(
             "### Here is the relative frequency of different text lengths in your dataset:"
         )
-        st.plotly_chart(fig_tok_length, use_container_width=True)
-        data = tokenized_df[[length_field_name, text_field_name]].sort_values(
-            by=["length"], ascending=True
-        )
+        st.plotly_chart(dstats.fig_tok_length, use_container_width=True)
         st.markdown(
             "The average length of text instances is **"
-            + str(avg_length)
+            + str(dstats.avg_length)
             + " words**, with a standard deviation of **"
-            + str(std_length)
+            + str(dstats.std_length)
             + "**."
         )
 
         start_id_show_lengths = st.slider(
             f"Show the shortest sentences{column_id} starting at:",
             0,
-            len(data["length"].unique()),
+            len(dstats.length_df["length"].unique()),
             value=0,
             step=1,
         )
-        st.dataframe(data[data["length"] == start_id_show_lengths].set_index("length"))
+        st.dataframe(dstats.length_df[dstats.length_df["length"] == start_id_show_lengths].set_index("length"))
 
 
 ### Third, use a sentence embedding model
@@ -404,7 +395,7 @@ with an ideal α value of 1."""
 
 
 ### Finally finally finally, show nPMI stuff.
-def npmi_widget(column_id, available_terms, npmi_stats, min_vocab, use_cache=False):
+def npmi_widget(column_id, available_terms, npmi_stats, min_vocab):
     """
     Part of the main app, but uses a user interaction so pulled out as its own f'n.
     :param use_cache:
