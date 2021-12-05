@@ -100,30 +100,63 @@ def load_or_prepare(ds_args, show_embeddings, use_cache=False):
         mkdir(CACHE_DIR)
     if use_cache:
         logs.warning("Using cache")
-    dstats = dataset_statistics.DatasetStatisticsCacheClass(CACHE_DIR, **ds_args)
+    dstats = dataset_statistics.DatasetStatisticsCacheClass(CACHE_DIR, **ds_args, use_cache=use_cache)
     logs.warning("Loading Dataset")
-    dstats.load_or_prepare_dataset(use_cache=use_cache)
+    dstats.load_or_prepare_dataset()
     logs.warning("Extracting Labels")
-    dstats.load_or_prepare_labels(use_cache=use_cache)
+    dstats.load_or_prepare_labels()
     logs.warning("Computing Text Lengths")
-    dstats.load_or_prepare_text_lengths(use_cache=use_cache)
+    dstats.load_or_prepare_text_lengths()
+    logs.warning("Computing Duplicates")
+    dstats.load_or_prepare_text_duplicates()
     logs.warning("Extracting Vocabulary")
-    dstats.load_or_prepare_vocab(use_cache=use_cache)
+    dstats.load_or_prepare_vocab()
     logs.warning("Calculating General Statistics...")
-    dstats.load_or_prepare_general_stats(use_cache=use_cache)
+    dstats.load_or_prepare_general_stats()
     logs.warning("Completed Calculation.")
     logs.warning("Calculating Fine-Grained Statistics...")
     if show_embeddings:
         logs.warning("Loading Embeddings")
-        dstats.load_or_prepare_embeddings(use_cache=use_cache)
+        dstats.load_or_prepare_embeddings()
         print(dstats.fig_tree)
     # TODO: This has now been moved to calculation when the npmi widget is loaded.
     logs.warning("Loading Terms for nPMI")
-    dstats.load_or_prepare_npmi_terms(use_cache=use_cache)
+    dstats.load_or_prepare_npmi_terms()
     logs.warning("Loading Zipf")
-    dstats.load_or_prepare_zipf(use_cache=use_cache)
+    dstats.load_or_prepare_zipf()
     return dstats
 
+def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False):
+    """
+    Loader specifically for the widgets used in the app.
+    Args:
+        ds_args:
+        show_embeddings:
+        use_cache:
+
+    Returns:
+
+    """
+    if not isdir(CACHE_DIR):
+        logs.warning("Creating cache")
+        # We need to preprocess everything.
+        # This should eventually all go into a prepare_dataset CLI
+        mkdir(CACHE_DIR)
+    if use_cache:
+        logs.warning("Using cache")
+    dstats = dataset_statistics.DatasetStatisticsCacheClass(CACHE_DIR, **ds_args, use_cache=use_cache)
+    # Header widget
+    dstats.load_or_prepare_dset_peek()
+    # General stats widget
+    dstats.load_or_prepare_general_stats()
+    # Labels widget
+    dstats.load_or_prepare_labels()
+    # Text lengths widget
+    dstats.load_or_prepare_text_lengths()
+    if show_embeddings:
+        # Embeddings widget
+        dstats.load_or_prepare_embeddings()
+    dstats.load_or_prepare_text_duplicates()
 
 def show_column(dstats, ds_name_to_dict, show_embeddings, column_id, use_cache=True):
     """
@@ -144,7 +177,7 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id, use_cache=T
     st_utils.expander_header(dstats, ds_name_to_dict, column_id)
     logs.info("showing general stats")
     st_utils.expander_general_stats(dstats, column_id)
-    st_utils.expander_label_distribution(dstats.label_df, dstats.fig_labels, column_id)
+    st_utils.expander_label_distribution(dstats.fig_labels, column_id)
     st_utils.expander_text_lengths(
         dstats.tokenized_df,
         dstats.fig_tok_length,
@@ -163,7 +196,7 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id, use_cache=T
     npmi_stats = dataset_statistics.nPMIStatisticsCacheClass(
         dstats, use_cache=use_cache
     )
-    available_terms = npmi_stats.get_available_terms(use_cache=use_cache)
+    available_terms = npmi_stats.get_available_terms()
     st_utils.npmi_widget(
         column_id, available_terms, npmi_stats, _MIN_VOCAB_COUNT, use_cache=use_cache
     )
@@ -190,7 +223,7 @@ def main():
     compare_mode = st.sidebar.checkbox("Comparison mode")
 
     # When not doing new development, use the cache.
-    use_cache = True
+    use_cache = False
     show_embeddings = st.sidebar.checkbox("Show embeddings")
     # List of datasets for which embeddings are hard to compute:
 

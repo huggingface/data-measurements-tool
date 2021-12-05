@@ -136,12 +136,12 @@ def expander_general_stats(dstats, column_id):
 
 
 ### Show the label distribution from the datasets
-def expander_label_distribution(label_df, fig_labels, column_id):
+def expander_label_distribution(fig_labels, column_id):
     with st.expander(f"Label Distribution{column_id}", expanded=False):
         st.caption(
             "Use this widget to see how balanced the labels in your dataset are."
         )
-        if label_df is not None:
+        if fig_labels is not None:
             st.plotly_chart(fig_labels, use_container_width=True)
         else:
             st.markdown("No labels were found in the dataset")
@@ -285,7 +285,7 @@ def expander_text_duplicates(dstats, column_id):
             "### Here is the list of all the duplicated items and their counts in your dataset:"
         )
         # Eh...adding 1 because otherwise it looks too weird for duplicate counts when the value is just 1.
-        if len(dstats.dup_counts_df) == 0:
+        if dstats.dup_counts_df is None:
             st.write("There are no duplicates in this dataset! 🥳")
         else:
             gb = GridOptionsBuilder.from_dataframe(dstats.dup_counts_df)
