@@ -231,10 +231,6 @@ class DatasetStatisticsCacheClass:
         # nPMI
         # Holds a nPMIStatisticsCacheClass object
         self.npmi_stats = None
-        # TODO: Users ideally can type in whatever words they want.
-        self.termlist = _IDENTITY_TERMS
-        # termlist terms that are available more than _MIN_VOCAB_COUNT times
-        self.available_terms = _IDENTITY_TERMS
         # TODO: Have lowercase be an option for a user to set.
         self.to_lowercase = True
         # The minimum amount of times a word should occur to be included in
@@ -627,24 +623,27 @@ class DatasetStatisticsCacheClass:
                 if save:
                     write_plotly(self.fig_labels, self.fig_labels_fid)
             else:
-                self.get_base_dataset()
-                self.label_dset = self.dset.map(
-                    lambda examples: extract_field(
-                        examples, self.label_field, OUR_LABEL_FIELD
-                    ),
-                    batched=True,
-                    remove_columns=list(self.dset.features),
-                )
-                self.label_df = self.label_dset.to_pandas()
-                self.fig_labels = make_fig_labels(
-                    self.label_df, self.label_names, OUR_LABEL_FIELD
-                )
+                self.prepare_labels()
                 if save:
                     # save extracted label instances
                     self.label_dset.save_to_disk(self.label_dset_fid)
                     write_plotly(self.fig_labels, self.fig_labels_fid)
 
-    def load_or_prepare_npmi_terms(self):
+    def prepare_labels(self):
+        self.get_base_dataset()
+        self.label_dset = self.dset.map(
+            lambda examples: extract_field(
+                examples, self.label_field, OUR_LABEL_FIELD
+            ),
+            batched=True,
+            remove_columns=list(self.dset.features),
+        )
+        self.label_df = self.label_dset.to_pandas()
+        self.fig_labels = make_fig_labels(
+            self.label_df, self.label_names, OUR_LABEL_FIELD
+        )
+
+    def load_or_prepare_npmi(self):
         self.npmi_stats = nPMIStatisticsCacheClass(self, use_cache=self.use_cache)
         self.npmi_stats.load_or_prepare_npmi_terms()
 
@@ -693,7 +692,10 @@ class nPMIStatisticsCacheClass:
             # We need to preprocess everything.
             mkdir(self.pmi_cache_path)
         self.joint_npmi_df_dict = {}
-        self.termlist = self.dstats.termlist
+        # TODO: Users ideally can type in whatever words they want.
+        self.termlist = _IDENTITY_TERMS
+        # termlist terms that are available more than _MIN_VOCAB_COUNT times
+        self.available_terms = _IDENTITY_TERMS
         logs.info(self.termlist)
         self.use_cache = use_cache
         # TODO: Let users specify
@@ -701,8 +703,6 @@ class nPMIStatisticsCacheClass:
         self.min_vocab_count = self.dstats.min_vocab_count
         self.subgroup_files = {}
         self.npmi_terms_fid = pjoin(self.dstats.cache_path, "npmi_terms.json")
-        self.available_terms = self.dstats.available_terms
-        logs.info(self.available_terms)
 
     def load_or_prepare_npmi_terms(self):
         """

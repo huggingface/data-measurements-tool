@@ -118,9 +118,8 @@ def load_or_prepare(ds_args, show_embeddings, use_cache=False):
     if show_embeddings:
         logs.warning("Loading Embeddings")
         dstats.load_or_prepare_embeddings()
-    # TODO: This has now been moved to calculation when the npmi widget is loaded.
-    logs.warning("Loading Terms for nPMI")
-    dstats.load_or_prepare_npmi_terms()
+    logs.warning("Loading nPMI")
+    dstats.load_or_prepare_npmi()
     logs.warning("Loading Zipf")
     dstats.load_or_prepare_zipf()
     return dstats
@@ -156,6 +155,8 @@ def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False):
         # Embeddings widget
         dstats.load_or_prepare_embeddings()
     dstats.load_or_prepare_text_duplicates()
+    dstats.load_or_prepare_npmi()
+    dstats.load_or_prepare_zipf()
 
 def show_column(dstats, ds_name_to_dict, show_embeddings, column_id, use_cache=True):
     """
@@ -179,17 +180,9 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id, use_cache=T
     st_utils.expander_label_distribution(dstats.fig_labels, column_id)
     st_utils.expander_text_lengths(dstats, column_id)
     st_utils.expander_text_duplicates(dstats, column_id)
-
-    # We do the loading of these after the others in order to have some time
-    # to compute while the user works with the details above.
     # Uses an interaction; handled a bit differently than other widgets.
     logs.info("showing npmi widget")
-    npmi_stats = dataset_statistics.nPMIStatisticsCacheClass(
-        dstats, use_cache=use_cache
-    )
-    available_terms = npmi_stats.get_available_terms()
-    st_utils.npmi_widget(
-        column_id, available_terms, npmi_stats, _MIN_VOCAB_COUNT)
+    st_utils.npmi_widget(dstats.npmi_stats, _MIN_VOCAB_COUNT, column_id)
     logs.info("showing zipf")
     st_utils.expander_zipf(dstats.z, dstats.zipf_fig, column_id)
     if show_embeddings:

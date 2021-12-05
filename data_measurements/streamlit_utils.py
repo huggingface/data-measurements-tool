@@ -273,7 +273,6 @@ def expander_text_duplicates(dstats, column_id):
         st.write(
             "### Here is the list of all the duplicated items and their counts in your dataset:"
         )
-        # Eh...adding 1 because otherwise it looks too weird for duplicate counts when the value is just 1.
         if dstats.dup_counts_df is None:
             st.write("There are no duplicates in this dataset! 🥳")
         else:
@@ -393,7 +392,7 @@ with an ideal α value of 1."""
 
 
 ### Finally finally finally, show nPMI stuff.
-def npmi_widget(column_id, available_terms, npmi_stats, min_vocab):
+def npmi_widget(npmi_stats, min_vocab, column_id):
     """
     Part of the main app, but uses a user interaction so pulled out as its own f'n.
     :param use_cache:
@@ -403,16 +402,16 @@ def npmi_widget(column_id, available_terms, npmi_stats, min_vocab):
     :return:
     """
     with st.expander(f"Word Association{column_id}: nPMI", expanded=False):
-        if len(available_terms) > 0:
+        if len(npmi_stats.available_terms) > 0:
             expander_npmi_description(min_vocab)
             st.markdown("-----")
             term1 = st.selectbox(
                 f"What is the first term you want to select?{column_id}",
-                available_terms,
+                npmi_stats.available_terms,
             )
             term2 = st.selectbox(
                 f"What is the second term you want to select?{column_id}",
-                reversed(available_terms),
+                reversed(npmi_stats.available_terms),
             )
             # We calculate/grab nPMI data based on a canonical (alphabetic)
             # subgroup ordering.
