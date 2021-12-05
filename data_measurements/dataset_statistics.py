@@ -244,37 +244,60 @@ class DatasetStatisticsCacheClass:
         # path to the directory used for caching
         if not isinstance(text_field, str):
             text_field = "-".join(text_field)
-        if isinstance(label_field, str):
-            label_field = label_field
-        else:
-            label_field = "-".join(label_field)
+        #if isinstance(label_field, str):
+        #    label_field = label_field
+        #else:
+        #    label_field = "-".join(label_field)
         self.cache_path = pjoin(
             self.cache_dir,
-            f"{dset_name}_{dset_config}_{split_name}_{text_field}_{label_field}",
+            f"{dset_name}_{dset_config}_{split_name}_{text_field}", #{label_field},
         )
         if not isdir(self.cache_path):
             logs.warning("Creating cache directory %s." % self.cache_path)
             mkdir(self.cache_path)
+
+        # Cache files not needed for UI
         self.dset_fid = pjoin(self.cache_path, "base_dset")
-        self.dset_peek_fid = pjoin(self.cache_path, "dset_peek.json")
-        self.text_dset_fid = pjoin(self.cache_path, "text_dset")
         self.tokenized_df_fid = pjoin(self.cache_path, "tokenized_df.feather")
         self.label_dset_fid = pjoin(self.cache_path, "label_dset")
+
+        # Needed for UI -- embeddings
+        self.text_dset_fid = pjoin(self.cache_path, "text_dset")
+        # Needed for UI
+        self.dset_peek_json_fid = pjoin(self.cache_path, "dset_peek.json")
+
+        ## Label cache files.
+        # Needed for UI
+        self.fig_labels_json_fid = pjoin(self.cache_path, "fig_labels.json")
+
+        ## Length cache files
+        # Needed for UI
         self.length_df_fid = pjoin(self.cache_path, "length_df.feather")
-        self.length_stats_fid = pjoin(self.cache_path, "length_stats.json")
+        # Needed for UI
+        self.length_stats_json_fid = pjoin(self.cache_path, "length_stats.json")
         self.vocab_counts_df_fid = pjoin(self.cache_path, "vocab_counts.feather")
-        self.general_stats_fid = pjoin(self.cache_path, "general_stats_dict.json")
-        self.dup_counts_df_fid = pjoin(
-            self.cache_path, "dup_counts_df.feather"
-        )
+        # Needed for UI
+        self.dup_counts_df_fid = pjoin(self.cache_path, "dup_counts_df.feather")
+        # Needed for UI
+        self.fig_tok_length_fid = pjoin(self.cache_path, "fig_tok_length.json")
+
+        ## General text stats
+        # Needed for UI
+        self.general_stats_json_fid = pjoin(self.cache_path, "general_stats_dict.json")
+        # Needed for UI
         self.sorted_top_vocab_df_fid = pjoin(self.cache_path,
                                              "sorted_top_vocab.feather")
-        self.fig_tok_length_fid = pjoin(self.cache_path, "fig_tok_length.json")
-        self.fig_labels_fid = pjoin(self.cache_path, "fig_labels.json")
-        self.node_list_fid = pjoin(self.cache_path, "node_list.th")
-        self.fig_tree_fid = pjoin(self.cache_path, "fig_tree.json")
+        ## Zipf cache files
+        # Needed for UI
         self.zipf_fid = pjoin(self.cache_path, "zipf_basic_stats.json")
+        # Needed for UI
         self.zipf_fig_fid = pjoin(self.cache_path, "zipf_fig.json")
+
+        ## Embeddings cache files
+        # Needed for UI
+        self.node_list_fid = pjoin(self.cache_path, "node_list.th")
+        # Needed for UI
+        self.fig_tree_json_fid = pjoin(self.cache_path, "fig_tree.json")
 
     def get_base_dataset(self):
         """Gets a pointer to the truncated base dataset object."""
@@ -301,7 +324,7 @@ class DatasetStatisticsCacheClass:
         # General statistics
         if (
             self.use_cache
-            and exists(self.general_stats_fid)
+            and exists(self.general_stats_json_fid)
             and exists(self.dup_counts_df_fid)
             and exists(self.sorted_top_vocab_df_fid)
         ):
@@ -313,7 +336,7 @@ class DatasetStatisticsCacheClass:
             if save:
                 write_df(self.sorted_top_vocab_df, self.sorted_top_vocab_df_fid)
                 write_df(self.dup_counts_df, self.dup_counts_df_fid)
-                write_json(self.general_stats_dict, self.general_stats_fid)
+                write_json(self.general_stats_dict, self.general_stats_json_fid)
 
 
     def load_or_prepare_text_lengths(self, save=True):
@@ -343,8 +366,8 @@ class DatasetStatisticsCacheClass:
                 write_df(self.length_df, self.length_df_fid)
 
         # Text length stats.
-        if self.use_cache and exists(self.length_stats_fid):
-            with open(self.length_stats_fid, "r") as f:
+        if self.use_cache and exists(self.length_stats_json_fid):
+            with open(self.length_stats_json_fid, "r") as f:
                 self.length_stats_dict = json.load(f)
             self.avg_length = self.length_stats_dict["avg length"]
             self.std_length = self.length_stats_dict["std length"]
@@ -352,7 +375,7 @@ class DatasetStatisticsCacheClass:
         else:
             self.prepare_text_length_stats()
             if save:
-                write_json(self.length_stats_dict, self.length_stats_fid)
+                write_json(self.length_stats_dict, self.length_stats_json_fid)
 
     def prepare_length_df(self):
         if self.tokenized_df is None:
@@ -382,15 +405,15 @@ class DatasetStatisticsCacheClass:
         self.fig_tok_length = make_fig_lengths(self.tokenized_df, LENGTH_FIELD)
 
     def load_or_prepare_embeddings(self, save=True):
-        if self.use_cache and exists(self.node_list_fid) and exists(self.fig_tree_fid):
+        if self.use_cache and exists(self.node_list_fid) and exists(self.fig_tree_json_fid):
             self.node_list = torch.load(self.node_list_fid)
-            self.fig_tree = read_plotly(self.fig_tree_fid)
+            self.fig_tree = read_plotly(self.fig_tree_json_fid)
         elif self.use_cache and exists(self.node_list_fid):
             self.node_list = torch.load(self.node_list_fid)
             self.fig_tree = make_tree_plot(self.node_list,
                                            self.text_dset)
             if save:
-                write_plotly(self.fig_tree, self.fig_tree_fid)
+                write_plotly(self.fig_tree, self.fig_tree_json_fid)
         else:
             self.embeddings = Embeddings(self, use_cache=self.use_cache)
             self.embeddings.make_hierarchical_clustering()
@@ -399,7 +422,7 @@ class DatasetStatisticsCacheClass:
                                            self.text_dset)
             if save:
                 torch.save(self.node_list, self.node_list_fid)
-                write_plotly(self.fig_tree, self.fig_tree_fid)
+                write_plotly(self.fig_tree, self.fig_tree_json_fid)
 
     # get vocab with word counts
     def load_or_prepare_vocab(self, save=True):
@@ -457,7 +480,7 @@ class DatasetStatisticsCacheClass:
                 write_df(self.dup_counts_df, self.dup_counts_df_fid)
 
     def load_general_stats(self):
-        self.general_stats_dict = json.load(open(self.general_stats_fid, encoding="utf-8"))
+        self.general_stats_dict = json.load(open(self.general_stats_json_fid, encoding="utf-8"))
         with open(self.sorted_top_vocab_df_fid, "rb") as f:
             self.sorted_top_vocab_df = feather.read_feather(f)
         self.text_nan_count = self.general_stats_dict[TEXT_NAN_CNT]
@@ -520,15 +543,15 @@ class DatasetStatisticsCacheClass:
         self.load_or_prepare_dset_peek(save)
 
     def load_or_prepare_dset_peek(self, save=True):
-        if self.use_cache and exists(self.dset_peek_fid):
-            with open(self.dset_peek_fid, "r") as f:
+        if self.use_cache and exists(self.dset_peek_json_fid):
+            with open(self.dset_peek_json_fid, "r") as f:
                 self.dset_peek = json.load(f)["dset peek"]
         else:
             if self.dset is None:
                 self.get_base_dataset()
             self.dset_peek = self.dset[:100]
             if save:
-                write_json({"dset peek": self.dset_peek}, self.dset_peek_fid)
+                write_json({"dset peek": self.dset_peek}, self.dset_peek_json_fid)
 
     def load_or_prepare_tokenized_df(self, save=True):
         if (self.use_cache and exists(self.tokenized_df_fid)):
@@ -611,8 +634,8 @@ class DatasetStatisticsCacheClass:
         """
         # extracted labels
         if len(self.label_field) > 0:
-            if self.use_cache and exists(self.fig_labels_fid):
-                self.fig_labels = read_plotly(self.fig_labels_fid)
+            if self.use_cache and exists(self.fig_labels_json_fid):
+                self.fig_labels = read_plotly(self.fig_labels_json_fid)
             elif self.use_cache and exists(self.label_dset_fid):
                 # load extracted labels
                 self.label_dset = load_from_disk(self.label_dset_fid)
@@ -621,13 +644,13 @@ class DatasetStatisticsCacheClass:
                     self.label_df, self.label_names, OUR_LABEL_FIELD
                 )
                 if save:
-                    write_plotly(self.fig_labels, self.fig_labels_fid)
+                    write_plotly(self.fig_labels, self.fig_labels_json_fid)
             else:
                 self.prepare_labels()
                 if save:
                     # save extracted label instances
                     self.label_dset.save_to_disk(self.label_dset_fid)
-                    write_plotly(self.fig_labels, self.fig_labels_fid)
+                    write_plotly(self.fig_labels, self.fig_labels_json_fid)
 
     def prepare_labels(self):
         self.get_base_dataset()
