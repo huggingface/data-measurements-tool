@@ -395,6 +395,20 @@ with an ideal α value of 1."""
         # st.markdown("Checking the goodness of fit of our observed distribution")
         # st.markdown("to the hypothesized power law distribution")
         # st.markdown("using a Kolmogorov–Smirnov (KS) test.")
+
+
+        placeholder = st.empty()
+        with placeholder.container():
+            placeholder.plotly_chart(dstats.zipf_fig, use_container_width=True)
+            zipf_term = placeholder.selectbox(
+                f"What is the first term you want to select?",
+                ['i','and','you']
+            )
+
+        dstats.zipf_fig.add_annotation(x=20, y=1070,
+            text="Text annotation with arrow",
+            showarrow=True,
+            arrowhead=1)
         st.plotly_chart(dstats.zipf_fig, use_container_width=True)
         compare_example = st.text_area(
             label="Enter a word here to see the observed word count and the expected count under Zipf's law",
