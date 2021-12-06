@@ -143,7 +143,7 @@ def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False):
         logs.warning("Using cache")
     dstats = dataset_statistics.DatasetStatisticsCacheClass(CACHE_DIR, **ds_args, use_cache=use_cache)
     # Don't recalculate; we're live
-    dstats.set_deployment(True)
+    dstats.set_deployment(False)
     # Header widget
     dstats.load_or_prepare_dset_peek()
     # General stats widget
@@ -156,6 +156,7 @@ def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False):
         # Embeddings widget
         dstats.load_or_prepare_embeddings()
     dstats.load_or_prepare_text_duplicates()
+    dstats.load_or_prepare_vocab()
     dstats.load_or_prepare_npmi()
     dstats.load_or_prepare_zipf()
     return dstats
@@ -185,7 +186,7 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id):
     logs.info("showing npmi widget")
     st_utils.npmi_widget(dstats.npmi_stats, _MIN_VOCAB_COUNT, column_id)
     logs.info("showing zipf")
-    st_utils.expander_zipf(dstats.z, dstats.zipf_fig, column_id)
+    st_utils.expander_zipf(dstats, column_id)
     if show_embeddings:
         st_utils.expander_text_embeddings(
             dstats.text_dset,

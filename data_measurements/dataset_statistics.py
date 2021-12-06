@@ -300,6 +300,7 @@ class DatasetStatisticsCacheClass:
         self.node_list_fid = pjoin(self.cache_path, "node_list.th")
         # Needed for UI
         self.fig_tree_json_fid = pjoin(self.cache_path, "fig_tree.json")
+        self.zipf_counts = None
 
         self.live = False
 
@@ -701,7 +702,7 @@ class DatasetStatisticsCacheClass:
         # TODO: Current UI only uses the fig, meaning the self.z here is irrelevant
         # when only reading from cache. Either the UI should use it, or it should
         # be removed when reading in cache
-        if self.use_cache and exists(self.zipf_fig_fid) and exists(self.zipf_fid):
+        if self.use_cache and exists(self.zipf_fig_fid) and exists(self.zipf_fid) and False:
             with open(self.zipf_fid, "r") as f:
                 zipf_dict = json.load(f)
             self.z = Zipf()
@@ -713,6 +714,7 @@ class DatasetStatisticsCacheClass:
                 zipf_dict = json.load(f)
             self.z = Zipf()
             self.z.load(zipf_dict)
+            self.zipf_counts = self.z.calc_zipf_counts(self.vocab_counts_df)
             self.zipf_fig = make_zipf_fig(self.vocab_counts_df, self.z)
             if save:
                 write_plotly(self.zipf_fig, self.zipf_fig_fid)
@@ -768,24 +770,28 @@ class nPMIStatisticsCacheClass:
             and exists(self.npmi_terms_fid)
             and json.load(open(self.npmi_terms_fid))["available terms"] != []
         ):
-            available_terms = json.load(open(self.npmi_terms_fid))["available terms"]
+            self.available_terms = json.load(open(self.npmi_terms_fid))["available terms"]
         else:
-            true_false = [
-                term in self.dstats.vocab_counts_df.index for term in self.termlist
-            ]
-            word_list_tmp = [x for x, y in zip(self.termlist, true_false) if y]
-            true_false_counts = [
-                self.dstats.vocab_counts_df.loc[word, CNT] >= self.min_vocab_count
-                for word in word_list_tmp
-            ]
-            available_terms = [
-                word for word, y in zip(word_list_tmp, true_false_counts) if y
-            ]
-            logs.info(available_terms)
-            with open(self.npmi_terms_fid, "w+") as f:
-                json.dump({"available terms": available_terms}, f)
-        self.available_terms = available_terms
-        return available_terms
+            if not self.live:
+                if self.dstats.vocab_counts_df is None:
+                    self.dstats.load_or_prepare_vocab()
+
+                true_false = [
+                    term in self.dstats.vocab_counts_df.index for term in self.termlist
+                ]
+                word_list_tmp = [x for x, y in zip(self.termlist, true_false) if y]
+                true_false_counts = [
+                    self.dstats.vocab_counts_df.loc[word, CNT] >= self.min_vocab_count
+                    for word in word_list_tmp
+                ]
+                available_terms = [
+                    word for word, y in zip(word_list_tmp, true_false_counts) if y
+                ]
+                logs.info(available_terms)
+                with open(self.npmi_terms_fid, "w+") as f:
+                    json.dump({"available terms": available_terms}, f)
+            self.available_terms = available_terms
+        return self.available_terms
 
     def load_or_prepare_joint_npmi(self, subgroup_pair):
         """
@@ -886,7 +892,8 @@ class nPMIStatisticsCacheClass:
         # Calculating nPMI statistics
         for subgroup in subgroup_pair:
             # If the subgroup data is already computed, grab it.
-            # TODO: Should we set idx and column names similarly to how we set them for cached files?
+            # TODO: Should we set idx and column names similarly to
+            #  how we set them for cached files?
             if subgroup not in subgroup_dict:
                 logs.info("Calculating statistics for %s" % subgroup)
                 vocab_cooc_df, pmi_df, npmi_df = npmi_obj.calc_metrics(subgroup)

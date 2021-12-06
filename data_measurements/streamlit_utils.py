@@ -331,7 +331,7 @@ def expander_npmi_description(min_vocab):
 
 
 ### Finally, show Zipf stuff
-def expander_zipf(z, zipf_fig, column_id):
+def expander_zipf(dstats, column_id):
     _ZIPF_CAPTION = """This shows how close the observed language is to an ideal
     natural language distribution following [Zipf's law](https://en.wikipedia.org/wiki/Zipf%27s_law),
     calculated by minimizing the [Kolmogorov-Smirnov (KS) statistic](https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test)."""
@@ -339,13 +339,13 @@ def expander_zipf(z, zipf_fig, column_id):
     powerlaw_eq = r"""p(x) \propto x^{- \alpha}"""
     zipf_summary = (
         "The optimal alpha based on this dataset is: **"
-        + str(round(z.alpha, 2))
+        + str(round(dstats.z.alpha, 2))
         + "**, with a KS distance of: **"
-        + str(round(z.distance, 2))
+        + str(round(dstats.z.distance, 2))
     )
     zipf_summary += (
         "**.  This was fit with a minimum rank value of: **"
-        + str(int(z.xmin))
+        + str(int(dstats.z.xmin))
         + "**, which is the optimal rank *beyond which* the scaling regime of the power law fits best."
     )
 
@@ -353,9 +353,9 @@ def expander_zipf(z, zipf_fig, column_id):
     xmin_warning = "The minimum rank for this fit is a bit on the high side, which means that the frequencies of your most common words aren't distributed as would be expected by Zipf's law."
     fit_results_table = pd.DataFrame.from_dict(
         {
-            r"Alpha:": [str("%.2f" % z.alpha)],
-            "KS distance:": [str("%.2f" % z.distance)],
-            "Min rank:": [str("%s" % int(z.xmin))],
+            r"Alpha:": [str("%.2f" % dstats.z.alpha)],
+            "KS distance:": [str("%.2f" % dstats.z.distance)],
+            "Min rank:": [str("%s" % int(dstats.z.xmin))],
         },
         columns=["Results"],
         orient="index",
@@ -365,7 +365,9 @@ def expander_zipf(z, zipf_fig, column_id):
         f"Vocabulary Distribution{column_id}: Zipf's Law Fit", expanded=False
     ):
         st.caption(
-            "Use this widget for the counts of different words in your dataset, measuring the difference between the observed count and the expected count under Zipf's law."
+            "Use this widget for the counts of different words in your dataset, "
+            "measuring the difference between the observed count and the "
+            "expected count under Zipf's law."
         )
         st.markdown(_ZIPF_CAPTION)
         st.write(
@@ -393,18 +395,33 @@ with an ideal α value of 1."""
         # st.markdown("Checking the goodness of fit of our observed distribution")
         # st.markdown("to the hypothesized power law distribution")
         # st.markdown("using a Kolmogorov–Smirnov (KS) test.")
-        st.plotly_chart(zipf_fig, use_container_width=True)
-        if z.alpha > 2:
+        st.plotly_chart(dstats.zipf_fig, use_container_width=True)
+        compare_example = st.text_area(
+            label="Enter a word here to see the observed word count and the expected count under Zipf's law",
+            key=f"search_zipf_vocab_{column_id}",
+        )
+        word_row = None
+        print(dstats.vocab_counts_df[0])
+        print(dstats.zipf_counts)
+        print(compare_example)
+        if compare_example != "":
+            try:
+                word_row = dstats.vocab_counts_df[dstats.vocab_counts_df['vocab']==compare_example]
+            except:
+                word_row = None
+                st.markdown("Word not available")
+        if word_row is not None:
+            st.dataframe(word_row)
+
+        if dstats.z.alpha > 2:
             st.markdown(alpha_warning)
-        if z.xmin > 5:
+        if dstats.z.xmin > 5:
             st.markdown(xmin_warning)
 
 
 ### Finally finally finally, show nPMI stuff.
 def npmi_widget(npmi_stats, min_vocab, column_id):
     """
-    Part of the main app, but uses a user interaction so pulled out as its own f'n.
-    :param use_cache:
     :param column_id:
     :param npmi_stats:
     :param min_vocab:
