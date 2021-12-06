@@ -402,27 +402,26 @@ with an ideal α value of 1."""
             placeholder.plotly_chart(dstats.zipf_fig, use_container_width=True)
             zipf_term = placeholder.selectbox(
                 f"What is the first term you want to select?",
-                ['i','and','you']
+                dstats.vocab_counts_df['vocab']
             )
-
+        UI_result = None
+        obs_exp_dict = dict(zip(dstats.z.uniq_counts, dstats.zipf_counts))
+        if zipf_term != "":
+            try:
+                UI_result = compare_obs_exp_zipf(zipf_term, dstats, obs_exp_dict)
+            except:
+                st.markdown("Word not available")
+        if UI_result is not None:
+            st.dataframe(UI_result)
         dstats.zipf_fig.add_annotation(x=20, y=1070,
             text="Text annotation with arrow",
             showarrow=True,
             arrowhead=1)
         st.plotly_chart(dstats.zipf_fig, use_container_width=True)
-        compare_example = st.text_area(
-            label="Enter a word here to see the observed word count and the expected count under Zipf's law",
-            key=f"search_zipf_vocab_{column_id}",
-        )
-        UI_result = None
-        obs_exp_dict = dict(zip(dstats.z.uniq_counts, dstats.zipf_counts))
-        if compare_example != "":
-            try:
-                UI_result = compare_obs_exp_zipf(compare_example, dstats, obs_exp_dict)
-            except:
-                st.markdown("Word not available")
-        if UI_result is not None:
-            st.dataframe(UI_result)
+        #compare_example = st.text_area(
+        ##    label="Enter a word here to see the observed word count and the expected count under Zipf's law",
+        #    key=f"search_zipf_vocab_{column_id}",
+        #)
 
         if dstats.z.alpha > 2:
             st.markdown(alpha_warning)

@@ -188,18 +188,25 @@ class nPMI:
         return paired_results_dict
 
     def calc_metrics(self, subgroup):
-        # Index of the subgroup word in the sparse vector
-        subgroup_idx = self.vocab_counts_df.index.get_loc(subgroup)
-        logs.info("Calculating co-occurrences...")
-        df_coo = self.calc_cooccurrences(subgroup, subgroup_idx)
-        vocab_cooc_df = self.set_idx_cols(df_coo, subgroup)
-        logs.info(vocab_cooc_df)
-        logs.info("Calculating PMI...")
-        pmi_df = self.calc_PMI(vocab_cooc_df, subgroup)
-        logs.info(pmi_df)
-        logs.info("Calculating nPMI...")
-        npmi_df = self.calc_nPMI(pmi_df, vocab_cooc_df, subgroup)
-        logs.info(npmi_df)
+        vocab_cooc_df = None
+        pmi_df = None
+        npmi_df = None
+        if self.vocab_counts_df is not None:
+            try:
+                # Index of the subgroup word in the sparse vector
+                subgroup_idx = self.vocab_counts_df.index.get_loc(subgroup)
+                logs.info("Calculating co-occurrences...")
+                df_coo = self.calc_cooccurrences(subgroup, subgroup_idx)
+                vocab_cooc_df = self.set_idx_cols(df_coo, subgroup)
+                logs.info(vocab_cooc_df)
+                logs.info("Calculating PMI...")
+                pmi_df = self.calc_PMI(vocab_cooc_df, subgroup)
+                logs.info(pmi_df)
+                logs.info("Calculating nPMI...")
+                npmi_df = self.calc_nPMI(pmi_df, vocab_cooc_df, subgroup)
+                logs.info(npmi_df)
+            except:
+                pass
         return vocab_cooc_df, pmi_df, npmi_df
 
     def set_idx_cols(self, df_coo, subgroup):
