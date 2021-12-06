@@ -796,6 +796,8 @@ class nPMIStatisticsCacheClass:
         """
         # Canonical ordering for subgroup_list
         subgroup_pair = sorted(subgroup_pair)
+        subgroup1 = subgroup_pair[0]
+        subgroup2 = subgroup_pair[1]
         subgroups_str = "-".join(subgroup_pair)
         if not isdir(self.pmi_cache_path):
             logs.warning("Creating cache")
@@ -810,6 +812,8 @@ class nPMIStatisticsCacheClass:
             # When everything is already computed for the selected subgroups.
             logs.info("Loading cached joint npmi")
             joint_npmi_df = self.load_joint_npmi_df(joint_npmi_fid)
+            npmi_display_cols = ['npmi-bias', subgroup1 + '-npmi', subgroup2 + '-npmi', subgroup1 + '-count', subgroup2 + '-count']
+            joint_npmi_df = joint_npmi_df[npmi_display_cols]
             # When maybe some things have been computed for the selected subgroups.
         else:
             if not self.live:
