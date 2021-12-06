@@ -702,11 +702,13 @@ class DatasetStatisticsCacheClass:
         # TODO: Current UI only uses the fig, meaning the self.z here is irrelevant
         # when only reading from cache. Either the UI should use it, or it should
         # be removed when reading in cache
-        if self.use_cache and exists(self.zipf_fig_fid) and exists(self.zipf_fid) and False:
+        if self.use_cache and exists(self.zipf_fig_fid) and exists(self.zipf_fid):
             with open(self.zipf_fid, "r") as f:
                 zipf_dict = json.load(f)
             self.z = Zipf()
             self.z.load(zipf_dict)
+            # TODO: Should this be cached?
+            self.zipf_counts = self.z.calc_zipf_counts(self.vocab_counts_df)
             self.zipf_fig = read_plotly(self.zipf_fig_fid)
         elif self.use_cache and exists(self.zipf_fid):
             # TODO: Read zipf data so that the vocab is there.
@@ -714,7 +716,6 @@ class DatasetStatisticsCacheClass:
                 zipf_dict = json.load(f)
             self.z = Zipf()
             self.z.load(zipf_dict)
-            self.zipf_counts = self.z.calc_zipf_counts(self.vocab_counts_df)
             self.zipf_fig = make_zipf_fig(self.vocab_counts_df, self.z)
             if save:
                 write_plotly(self.zipf_fig, self.zipf_fig_fid)
