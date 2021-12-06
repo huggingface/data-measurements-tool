@@ -101,20 +101,18 @@ def load_or_prepare(ds_args, show_embeddings, use_cache=False):
     if use_cache:
         logs.warning("Using cache")
     dstats = dataset_statistics.DatasetStatisticsCacheClass(CACHE_DIR, **ds_args, use_cache=use_cache)
-    logs.warning("Loading Dataset")
+    logs.warning("Loading dataset")
     dstats.load_or_prepare_dataset()
-    logs.warning("Extracting Labels")
+    logs.warning("Loading labels")
     dstats.load_or_prepare_labels()
-    logs.warning("Computing Text Lengths")
+    logs.warning("Loading text lengths")
     dstats.load_or_prepare_text_lengths()
-    logs.warning("Computing Duplicates")
+    logs.warning("Loading duplicates")
     dstats.load_or_prepare_text_duplicates()
-    logs.warning("Extracting Vocabulary")
+    logs.warning("Loading vocabulary")
     dstats.load_or_prepare_vocab()
-    logs.warning("Calculating General Statistics...")
+    logs.warning("Loading general statistics...")
     dstats.load_or_prepare_general_stats()
-    logs.warning("Completed Calculation.")
-    logs.warning("Calculating Fine-Grained Statistics...")
     if show_embeddings:
         logs.warning("Loading Embeddings")
         dstats.load_or_prepare_embeddings()
@@ -135,6 +133,7 @@ def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False):
     Returns:
 
     """
+
     if not isdir(CACHE_DIR):
         logs.warning("Creating cache")
         # We need to preprocess everything.
@@ -143,6 +142,8 @@ def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False):
     if use_cache:
         logs.warning("Using cache")
     dstats = dataset_statistics.DatasetStatisticsCacheClass(CACHE_DIR, **ds_args, use_cache=use_cache)
+    # Don't recalculate; we're live
+    dstats.set_deployment(True)
     # Header widget
     dstats.load_or_prepare_dset_peek()
     # General stats widget
@@ -157,23 +158,21 @@ def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False):
     dstats.load_or_prepare_text_duplicates()
     dstats.load_or_prepare_npmi()
     dstats.load_or_prepare_zipf()
-    # Don't recalculate; we're live
-    dstats.set_deployment(True)
+    return dstats
 
-def show_column(dstats, ds_name_to_dict, show_embeddings, column_id, use_cache=True):
+def show_column(dstats, ds_name_to_dict, show_embeddings, column_id):
     """
     Function for displaying the elements in the right column of the streamlit app.
     Args:
         ds_name_to_dict (dict): the dataset name and options in dictionary form
         show_embeddings (Bool): whether embeddings should we loaded and displayed for this dataset
         column_id (str): what column of the dataset the analysis is done on
-        use_cache (Bool): whether the cache is used by default or not
     Returns:
         The function displays the information using the functions defined in the st_utils class.
     """
     # Note that at this point we assume we can use cache; default value is True.
     # start showing stuff
-    title_str = f"### Showing{column_id}: {dstats.dset_name} - {dstats.dset_config} - {'-'.join(dstats.text_field)}"
+    title_str = f"### Showing{column_id}: {dstats.dset_name} - {dstats.dset_config} - {dstats.split_name} - {'-'.join(dstats.text_field)}"
     st.markdown(title_str)
     logs.info("showing header")
     st_utils.expander_header(dstats, ds_name_to_dict, column_id)
@@ -230,7 +229,7 @@ def main():
     else:
         logs.warning("Using Single Dataset Mode")
         dataset_args = st_utils.sidebar_selection(ds_name_to_dict, "")
-        dstats = load_or_prepare(dataset_args, show_embeddings, use_cache=use_cache)
+        dstats = load_or_prepare_widgets(dataset_args, show_embeddings, use_cache=use_cache)
         show_column(dstats, ds_name_to_dict, show_embeddings, "")
 
 

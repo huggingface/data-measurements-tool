@@ -178,6 +178,7 @@ class DatasetStatisticsCacheClass:
         self.dset_config = dset_config
         # name of the split to analyze
         self.split_name = split_name
+        # TODO: Chould this be "feature" ?
         # which text fields are we analysing?
         self.text_field = text_field
         # which label fields are we analysing?
@@ -207,6 +208,7 @@ class DatasetStatisticsCacheClass:
         self.vocab_counts_df = None
         # Vocabulary filtered to remove stopwords
         self.vocab_counts_filtered_df = None
+        self.sorted_top_vocab_df = None
         ## General statistics and duplicates
         self.total_words = 0
         self.total_open_words = 0
@@ -340,12 +342,13 @@ class DatasetStatisticsCacheClass:
             logs.info('Loading cached general stats')
             self.load_general_stats()
         else:
-            logs.info('Preparing general stats')
-            self.prepare_general_stats()
-            if save:
-                write_df(self.sorted_top_vocab_df, self.sorted_top_vocab_df_fid)
-                write_df(self.dup_counts_df, self.dup_counts_df_fid)
-                write_json(self.general_stats_dict, self.general_stats_json_fid)
+            if not self.live:
+                logs.info('Preparing general stats')
+                self.prepare_general_stats()
+                if save:
+                    write_df(self.sorted_top_vocab_df, self.sorted_top_vocab_df_fid)
+                    write_df(self.dup_counts_df, self.dup_counts_df_fid)
+                    write_json(self.general_stats_dict, self.general_stats_json_fid)
 
 
     def load_or_prepare_text_lengths(self, save=True):
@@ -362,17 +365,19 @@ class DatasetStatisticsCacheClass:
         if (self.use_cache and exists(self.fig_tok_length_fid)):
             self.fig_tok_length = read_plotly(self.fig_tok_length_fid)
         else:
-            self.prepare_fig_text_lengths()
-            if save:
-                write_plotly(self.fig_tok_length, self.fig_tok_length_fid)
+            if not self.live:
+                self.prepare_fig_text_lengths()
+                if save:
+                    write_plotly(self.fig_tok_length, self.fig_tok_length_fid)
 
         # Text length dataframe
         if self.use_cache and exists(self.length_df_fid):
             self.length_df = feather.read_feather(self.length_df_fid)
         else:
-            self.prepare_length_df()
-            if save:
-                write_df(self.length_df, self.length_df_fid)
+            if not self.live:
+                self.prepare_length_df()
+                if save:
+                    write_df(self.length_df, self.length_df_fid)
 
         # Text length stats.
         if self.use_cache and exists(self.length_stats_json_fid):
@@ -382,9 +387,10 @@ class DatasetStatisticsCacheClass:
             self.std_length = self.length_stats_dict["std length"]
             self.num_uniq_lengths = self.length_stats_dict["num lengths"]
         else:
-            self.prepare_text_length_stats()
-            if save:
-                write_json(self.length_stats_dict, self.length_stats_json_fid)
+            if not self.live:
+                self.prepare_text_length_stats()
+                if save:
+                    write_json(self.length_stats_dict, self.length_stats_json_fid)
 
     def prepare_length_df(self):
         if not self.live:
@@ -481,15 +487,17 @@ class DatasetStatisticsCacheClass:
             with open(self.dup_counts_df_fid, "rb") as f:
                 self.dup_counts_df = feather.read_feather(f)
         elif self.dup_counts_df is None:
-            self.prepare_text_duplicates()
-            if save:
-                write_df(self.dup_counts_df, self.dup_counts_df_fid)
+            if not self.live:
+                self.prepare_text_duplicates()
+                if save:
+                    write_df(self.dup_counts_df, self.dup_counts_df_fid)
         else:
-            # This happens when self.dup_counts_df is already defined;
-            # This happens when general_statistics were calculated first,
-            # since general statistics requires the number of duplicates
-            if save:
-                write_df(self.dup_counts_df, self.dup_counts_df_fid)
+            if not self.live:
+                # This happens when self.dup_counts_df is already defined;
+                # This happens when general_statistics were calculated first,
+                # since general statistics requires the number of duplicates
+                if save:
+                    write_df(self.dup_counts_df, self.dup_counts_df_fid)
 
     def load_general_stats(self):
         self.general_stats_dict = json.load(open(self.general_stats_json_fid, encoding="utf-8"))
@@ -815,6 +823,8 @@ class nPMIStatisticsCacheClass:
                     write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files)
                 with open(joint_npmi_fid, "w+") as f:
                     joint_npmi_df.to_csv(f)
+            else:
+                joint_npmi_df = pd.DataFrame()
         logs.info("The joint npmi df is")
         logs.info(joint_npmi_df)
         return joint_npmi_df

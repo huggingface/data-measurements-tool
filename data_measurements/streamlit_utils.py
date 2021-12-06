@@ -126,13 +126,18 @@ def expander_general_stats(dstats, column_id):
                 str(dstats.text_nan_count)
             )
         )
-        st.markdown(
-            "There are {0} duplicate items in the dataset. "
-            "For more information about the duplicates, "
-            "click the 'Duplicates' tab below.".format(
-                str(dstats.dedup_total)
+        if dstats.dedup_total > 0:
+            st.markdown(
+                "There are {0} duplicate items in the dataset. "
+                "For more information about the duplicates, "
+                "click the 'Duplicates' tab below.".format(
+                    str(dstats.dedup_total)
+                )
             )
-        )
+        else:
+            st.markdown(
+                "There are 0 duplicate items in the dataset. ")
+
 
 
 ### Show the label distribution from the datasets
