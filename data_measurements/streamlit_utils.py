@@ -400,23 +400,32 @@ with an ideal α value of 1."""
             label="Enter a word here to see the observed word count and the expected count under Zipf's law",
             key=f"search_zipf_vocab_{column_id}",
         )
-        word_row = None
-        print(dstats.vocab_counts_df[0])
-        print(dstats.zipf_counts)
-        print(compare_example)
+        UI_result = None
+        obs_exp_dict = dict(zip(dstats.z.uniq_counts, dstats.zipf_counts))
         if compare_example != "":
             try:
-                word_row = dstats.vocab_counts_df[dstats.vocab_counts_df['vocab']==compare_example]
+                UI_result = compare_obs_exp_zipf(compare_example, dstats, obs_exp_dict)
             except:
-                word_row = None
                 st.markdown("Word not available")
-        if word_row is not None:
-            st.dataframe(word_row)
+        if UI_result is not None:
+            st.dataframe(UI_result)
 
         if dstats.z.alpha > 2:
             st.markdown(alpha_warning)
         if dstats.z.xmin > 5:
             st.markdown(xmin_warning)
+
+
+def compare_obs_exp_zipf(compare_example, dstats, obs_exp_dict):
+    word_row = dstats.vocab_counts_df[
+        dstats.vocab_counts_df['vocab'] == compare_example]
+    word_count = word_row.iat[0, 0]
+    exp_count = obs_exp_dict[word_count]
+    proportion = word_row['proportion'][0]
+    UI_result_dict = {"word": [compare_example], "proportion": [proportion],
+                      "observed count": [word_count], "zipf count": [exp_count]}
+    UI_result = pd.DataFrame.from_dict(UI_result_dict).set_index("word")
+    return UI_result
 
 
 ### Finally finally finally, show nPMI stuff.
