@@ -727,6 +727,7 @@ class nPMIStatisticsCacheClass:
     by calling the nPMI class with the user's selections."""
 
     def __init__(self, dataset_stats, use_cache=False):
+        self.live = dataset_stats.live
         self.dstats = dataset_stats
         self.pmi_cache_path = pjoin(self.dstats.cache_path, "pmi_files")
         if not isdir(self.pmi_cache_path):
