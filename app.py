@@ -157,6 +157,8 @@ def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False):
     dstats.load_or_prepare_text_duplicates()
     dstats.load_or_prepare_npmi()
     dstats.load_or_prepare_zipf()
+    # Don't recalculate; we're live
+    dstats.set_deployment(True)
 
 def show_column(dstats, ds_name_to_dict, show_embeddings, column_id, use_cache=True):
     """

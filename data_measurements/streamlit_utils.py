@@ -178,7 +178,11 @@ def expander_text_lengths(dstats, column_id):
             value=0,
             step=1,
         )
-        st.dataframe(dstats.length_df[dstats.length_df["length"] == start_id_show_lengths].set_index("length"))
+
+        # This is quite a large file and is breaking our ability to navigate the app development.
+        # Just passing if it's not already there for launch v0
+        if dstats.length_df is not None:
+            st.dataframe(dstats.length_df[dstats.length_df["length"] == start_id_show_lengths].set_index("length"))
 
 
 ### Third, use a sentence embedding model
@@ -273,7 +277,7 @@ def expander_text_duplicates(dstats, column_id):
         st.write(
             "### Here is the list of all the duplicated items and their counts in your dataset:"
         )
-        if dstats.dup_counts_df is None:
+        if dstats.dup_counts_df is None or dstats.dup_counts_df.empty:
             st.write("There are no duplicates in this dataset! 🥳")
         else:
             gb = GridOptionsBuilder.from_dataframe(dstats.dup_counts_df)
