@@ -28,6 +28,9 @@ import plotly.express as px
 import plotly.figure_factory as ff
 import plotly.graph_objects as go
 import pyarrow.feather as feather
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import seaborn as sns
 from datasets import load_from_disk
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
