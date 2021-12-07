@@ -245,9 +245,6 @@ class DatasetStatisticsCacheClass:
             self.cache_dir,
             f"{dset_name}_{dset_config}_{split_name}_{text_field}",  # {label_field},
         )
-        if not isdir(self.cache_path):
-            logs.warning("Creating cache directory %s." % self.cache_path)
-            mkdir(self.cache_path)
 
         # Cache files not needed for UI
         self.dset_fid = pjoin(self.cache_path, "base_dset")
@@ -301,6 +298,21 @@ class DatasetStatisticsCacheClass:
         written out/recalculated, but instead that part of the UI can be punted.
         """
         self.live = live
+
+    def check_cache_dir(self):
+        """
+        First function to call to create the cache directory.
+        If in deployment mode and cache directory does not already exist,
+        return False.
+        """
+        if self.live:
+            return isdir(self.cache_path)
+        else:
+            if not isdir(self.cache_path):
+                logs.warning("Creating cache directory %s." % self.cache_path)
+                mkdir(self.cache_path)
+            return isdir(self.cache_path)
+
 
     def get_base_dataset(self):
         """Gets a pointer to the truncated base dataset object."""
@@ -443,7 +455,7 @@ class DatasetStatisticsCacheClass:
             self.vocab_counts_filtered_df = filter_vocab(self.vocab_counts_df)
         else:
             logs.info("Calculating vocab afresh")
-            if len(self.tokenized_df) == 0:
+            if self.tokenized_df is None:
                 self.tokenized_df = self.do_tokenization()
                 if save:
                     logs.info("Writing out.")
@@ -498,7 +510,7 @@ class DatasetStatisticsCacheClass:
         if not self.live:
             if self.tokenized_df is None:
                 logs.warning("Tokenized dataset not yet loaded; doing so.")
-                self.load_or_prepare_dataset()
+                self.load_or_prepare_tokenized_df()
             if self.vocab_counts_df is None:
                 logs.warning("Vocab not yet loaded; doing so.")
                 self.load_or_prepare_vocab()
@@ -544,8 +556,8 @@ class DatasetStatisticsCacheClass:
         """
         logs.info("Doing text dset.")
         self.load_or_prepare_text_dset(save)
-        logs.info("Doing tokenized dataframe")
-        self.load_or_prepare_tokenized_df(save)
+        #logs.info("Doing tokenized dataframe")
+        #self.load_or_prepare_tokenized_df(save)
         logs.info("Doing dataset peek")
         self.load_or_prepare_dset_peek(save)
 
@@ -554,11 +566,12 @@ class DatasetStatisticsCacheClass:
             with open(self.dset_peek_json_fid, "r") as f:
                 self.dset_peek = json.load(f)["dset peek"]
         else:
-            if self.dset is None:
-                self.get_base_dataset()
-            self.dset_peek = self.dset[:100]
-            if save:
-                write_json({"dset peek": self.dset_peek}, self.dset_peek_json_fid)
+            if not self.live:
+                if self.dset is None:
+                    self.get_base_dataset()
+                self.dset_peek = self.dset[:100]
+                if save:
+                    write_json({"dset peek": self.dset_peek}, self.dset_peek_json_fid)
 
     def load_or_prepare_tokenized_df(self, save=True):
         if self.use_cache and exists(self.tokenized_df_fid):

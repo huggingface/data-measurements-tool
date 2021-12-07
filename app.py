@@ -14,7 +14,7 @@
 
 import logging
 from os import mkdir
-from os.path import isdir
+from os.path import exists, isdir
 from pathlib import Path
 
 import streamlit as st
@@ -117,7 +117,10 @@ def load_or_prepare(ds_args, show_embeddings, use_cache=False):
         logs.warning("Loading Embeddings")
         dstats.load_or_prepare_embeddings()
     logs.warning("Loading nPMI")
-    dstats.load_or_prepare_npmi()
+    try:
+        dstats.load_or_prepare_npmi()
+    except:
+        logs.warning("Missing a cache for npmi")
     logs.warning("Loading Zipf")
     dstats.load_or_prepare_zipf()
     return dstats
@@ -140,33 +143,63 @@ def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False):
 
     """
 
-    if not isdir(CACHE_DIR):
-        logs.warning("Creating cache")
-        # We need to preprocess everything.
-        # This should eventually all go into a prepare_dataset CLI
-        mkdir(CACHE_DIR)
     if use_cache:
         logs.warning("Using cache")
-    dstats = dataset_statistics.DatasetStatisticsCacheClass(CACHE_DIR, **ds_args, use_cache=use_cache)
-    # Don't recalculate; we're live
-    dstats.set_deployment(True)
-    # We need to have the text_dset loaded for further load_or_prepare
-    dstats.load_or_prepare_dataset()
-    # Header widget
-    dstats.load_or_prepare_dset_peek()
-    # General stats widget
-    dstats.load_or_prepare_general_stats()
-    # Labels widget
-    dstats.load_or_prepare_labels()
-    # Text lengths widget
-    dstats.load_or_prepare_text_lengths()
-    if show_embeddings:
-        # Embeddings widget
-        dstats.load_or_prepare_embeddings()
-    dstats.load_or_prepare_text_duplicates()
-    dstats.load_or_prepare_npmi()
-    dstats.load_or_prepare_zipf()
-    return dstats
+    if True:
+    #try:
+        dstats = dataset_statistics.DatasetStatisticsCacheClass(CACHE_DIR, **ds_args, use_cache=use_cache)
+        # Don't recalculate; we're live
+        dstats.set_deployment(True)
+        # checks whether the cache_dir exists in deployment mode
+        # creates cache_dir if not and if in development mode
+        cache_dir_exists = dstats.check_cache_dir()
+    #except:
+    #    logs.warning("We're screwed")
+    if cache_dir_exists:
+        try:
+            # We need to have the text_dset loaded for further load_or_prepare
+            dstats.load_or_prepare_dataset()
+        except:
+            logs.warning("Missing a cache for load or prepare dataset")
+        try:
+            # Header widget
+            dstats.load_or_prepare_dset_peek()
+        except:
+            logs.warning("Missing a cache for dset peek")
+        try:
+            # General stats widget
+            dstats.load_or_prepare_general_stats()
+        except:
+            logs.warning("Missing a cache for general stats")
+        try:
+            # Labels widget
+            dstats.load_or_prepare_labels()
+        except:
+            logs.warning("Missing a cache for prepare labels")
+        try:
+            # Text lengths widget
+            dstats.load_or_prepare_text_lengths()
+        except:
+            logs.warning("Missing a cache for text lengths")
+        if show_embeddings:
+            try:
+                # Embeddings widget
+                dstats.load_or_prepare_embeddings()
+            except:
+                logs.warning("Missing a cache for embeddings")
+        try:
+            dstats.load_or_prepare_text_duplicates()
+        except:
+            logs.warning("Missing a cache for text duplicates")
+        try:
+            dstats.load_or_prepare_npmi()
+        except:
+            logs.warning("Missing a cache for npmi")
+        try:
+            dstats.load_or_prepare_zipf()
+        except:
+            logs.warning("Missing a cache for zipf")
+    return dstats, cache_dir_exists
 
 def show_column(dstats, ds_name_to_dict, show_embeddings, column_id):
     """
@@ -216,7 +249,7 @@ def main():
 
     # When not doing new development, use the cache.
     use_cache = True
-    show_embeddings = st.sidebar.checkbox("Show embeddings")
+    show_embeddings = st.sidebar.checkbox("Show text clusters")
     # List of datasets for which embeddings are hard to compute:
 
     if compare_mode:
@@ -224,21 +257,33 @@ def main():
         dataset_args_left = st_utils.sidebar_selection(ds_name_to_dict, " A")
         dataset_args_right = st_utils.sidebar_selection(ds_name_to_dict, " B")
         left_col, _, right_col = st.columns([10, 1, 10])
-        dstats_left = load_or_prepare(
+        dstats_left, cache_exists_left = load_or_prepare_widgets(
             dataset_args_left, show_embeddings, use_cache=use_cache
         )
         with left_col:
-            show_column(dstats_left, ds_name_to_dict, show_embeddings, " A")
-        dstats_right = load_or_prepare(
+            if cache_exists_left:
+                show_column(dstats_left, ds_name_to_dict, show_embeddings, " A")
+            else:
+                st.markdown("### Missing pre-computed data measures!")
+                st.write(dataset_args_left)
+        dstats_right, cache_exists_right = load_or_prepare_widgets(
             dataset_args_right, show_embeddings, use_cache=use_cache
         )
         with right_col:
-            show_column(dstats_right, ds_name_to_dict, show_embeddings, " B")
+            if cache_exists_right:
+                show_column(dstats_right, ds_name_to_dict, show_embeddings, " B")
+            else:
+                st.markdown("### Missing pre-computed data measures!")
+                st.write(dataset_args_right)
     else:
         logs.warning("Using Single Dataset Mode")
         dataset_args = st_utils.sidebar_selection(ds_name_to_dict, "")
-        dstats = load_or_prepare_widgets(dataset_args, show_embeddings, use_cache=use_cache)
-        show_column(dstats, ds_name_to_dict, show_embeddings, "")
+        dstats, cache_exists = load_or_prepare_widgets(dataset_args, show_embeddings, use_cache=use_cache)
+        if cache_exists:
+            show_column(dstats, ds_name_to_dict, show_embeddings, "")
+        else:
+            st.markdown("### Missing pre-computed data measures!")
+            st.write(dataset_args)
 
 
 if __name__ == "__main__":
