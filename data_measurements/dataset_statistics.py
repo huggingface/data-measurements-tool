@@ -303,6 +303,7 @@ class DatasetStatisticsCacheClass:
         self.node_list_fid = pjoin(self.cache_path, "node_list.th")
         # Needed for UI
         self.fig_tree_json_fid = pjoin(self.cache_path, "fig_tree.json")
+        self.zipf_counts = None
 
         self.live = False
 
@@ -366,6 +367,7 @@ class DatasetStatisticsCacheClass:
         """
         # Text length figure
         if (self.use_cache and exists(self.fig_tok_length_fid)):
+            self.fig_tok_length_png = mpimg.imread(self.fig_tok_length_fid)
             self.fig_tok_length = read_plotly(self.fig_tok_length_fid)
         else:
             if not self.live:
@@ -709,6 +711,8 @@ class DatasetStatisticsCacheClass:
                 zipf_dict = json.load(f)
             self.z = Zipf()
             self.z.load(zipf_dict)
+            # TODO: Should this be cached?
+            self.zipf_counts = self.z.calc_zipf_counts(self.vocab_counts_df)
             self.zipf_fig = read_plotly(self.zipf_fig_fid)
         elif self.use_cache and exists(self.zipf_fid):
             # TODO: Read zipf data so that the vocab is there.
@@ -771,26 +775,30 @@ class nPMIStatisticsCacheClass:
             and exists(self.npmi_terms_fid)
             and json.load(open(self.npmi_terms_fid))["available terms"] != []
         ):
-            available_terms = json.load(open(self.npmi_terms_fid))["available terms"]
+            self.available_terms = json.load(open(self.npmi_terms_fid))["available terms"]
         else:
-            true_false = [
-                term in self.dstats.vocab_counts_df.index for term in self.termlist
-            ]
-            word_list_tmp = [x for x, y in zip(self.termlist, true_false) if y]
-            true_false_counts = [
-                self.dstats.vocab_counts_df.loc[word, CNT] >= self.min_vocab_count
-                for word in word_list_tmp
-            ]
-            available_terms = [
-                word for word, y in zip(word_list_tmp, true_false_counts) if y
-            ]
-            logs.info(available_terms)
-            with open(self.npmi_terms_fid, "w+") as f:
-                json.dump({"available terms": available_terms}, f)
-        self.available_terms = available_terms
-        return available_terms
+            if not self.live:
+                if self.dstats.vocab_counts_df is None:
+                    self.dstats.load_or_prepare_vocab()
 
-    def load_or_prepare_joint_npmi(self, subgroup_pair):
+                true_false = [
+                    term in self.dstats.vocab_counts_df.index for term in self.termlist
+                ]
+                word_list_tmp = [x for x, y in zip(self.termlist, true_false) if y]
+                true_false_counts = [
+                    self.dstats.vocab_counts_df.loc[word, CNT] >= self.min_vocab_count
+                    for word in word_list_tmp
+                ]
+                available_terms = [
+                    word for word, y in zip(word_list_tmp, true_false_counts) if y
+                ]
+                logs.info(available_terms)
+                with open(self.npmi_terms_fid, "w+") as f:
+                    json.dump({"available terms": available_terms}, f)
+            self.available_terms = available_terms
+        return self.available_terms
+
+    def load_or_prepare_joint_npmi(self, subgroup_pair, save=True):
         """
         Run on-the fly, while the app is already open,
         as it depends on the subgroup terms that the user chooses
@@ -824,12 +832,14 @@ class nPMIStatisticsCacheClass:
                 joint_npmi_df, subgroup_dict = self.prepare_joint_npmi_df(
                     subgroup_pair, subgroup_files
                 )
-                # Cache new results
-                logs.info("Writing out.")
-                for subgroup in subgroup_pair:
-                    write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files)
-                with open(joint_npmi_fid, "w+") as f:
-                    joint_npmi_df.to_csv(f)
+                if save:
+                    if joint_npmi_df is not None:
+                        # Cache new results
+                        logs.info("Writing out.")
+                        for subgroup in subgroup_pair:
+                            write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files)
+                        with open(joint_npmi_fid, "w+") as f:
+                            joint_npmi_df.to_csv(f)
             else:
                 joint_npmi_df = pd.DataFrame()
         logs.info("The joint npmi df is")
@@ -871,7 +881,7 @@ class nPMIStatisticsCacheClass:
                 subgroup_dict[subgroup] = cached_results
         logs.info("Calculating for subgroup list")
         joint_npmi_df, subgroup_dict = self.do_npmi(subgroup_pair, subgroup_dict)
-        return joint_npmi_df.dropna(), subgroup_dict
+        return joint_npmi_df, subgroup_dict
 
     # TODO: Update pairwise assumption
     def do_npmi(self, subgroup_pair, subgroup_dict):
@@ -882,6 +892,7 @@ class nPMIStatisticsCacheClass:
         :return: Selected identity term's co-occurrence counts with
                  other words, pmi per word, and nPMI per word.
         """
+        no_results = False
         logs.info("Initializing npmi class")
         npmi_obj = self.set_npmi_obj()
         # Canonical ordering used
@@ -889,18 +900,26 @@ class nPMIStatisticsCacheClass:
         # Calculating nPMI statistics
         for subgroup in subgroup_pair:
             # If the subgroup data is already computed, grab it.
-            # TODO: Should we set idx and column names similarly to how we set them for cached files?
+            # TODO: Should we set idx and column names similarly to
+            #  how we set them for cached files?
             if subgroup not in subgroup_dict:
                 logs.info("Calculating statistics for %s" % subgroup)
                 vocab_cooc_df, pmi_df, npmi_df = npmi_obj.calc_metrics(subgroup)
-                # Store the nPMI information for the current subgroups
-                subgroup_dict[subgroup] = (vocab_cooc_df, pmi_df, npmi_df)
-        # Pair the subgroups together, indexed by all words that
-        # co-occur between them.
-        logs.info("Computing pairwise npmi bias")
-        paired_results = npmi_obj.calc_paired_metrics(subgroup_pair, subgroup_dict)
-        UI_results = make_npmi_fig(paired_results, subgroup_pair)
-        return UI_results, subgroup_dict
+                if vocab_cooc_df is None:
+                    no_results = True
+                else:
+                    # Store the nPMI information for the current subgroups
+                    subgroup_dict[subgroup] = (vocab_cooc_df, pmi_df, npmi_df)
+        if no_results:
+            logs.warning("Couldn't grap the npmi files -- Under construction")
+            return None, None
+        else:
+            # Pair the subgroups together, indexed by all words that
+            # co-occur between them.
+            logs.info("Computing pairwise npmi bias")
+            paired_results = npmi_obj.calc_paired_metrics(subgroup_pair, subgroup_dict)
+            UI_results = make_npmi_fig(paired_results, subgroup_pair)
+        return UI_results.dropna(), subgroup_dict
 
     def set_npmi_obj(self):
         """
@@ -1291,3 +1310,4 @@ def write_zipf_data(z, zipf_fid):
     zipf_dict["uniq_ranks"] = [int(rank) for rank in z.uniq_ranks]
     with open(zipf_fid, "w+", encoding="utf-8") as f:
         json.dump(zipf_dict, f)
+
