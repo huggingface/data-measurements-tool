@@ -15,11 +15,12 @@
 import json
 import logging
 import statistics
-import torch
 from os import mkdir
 from os.path import exists, isdir
 from os.path import join as pjoin
 
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 import nltk
 import numpy as np
 import pandas as pd
@@ -28,31 +29,17 @@ import plotly.express as px
 import plotly.figure_factory as ff
 import plotly.graph_objects as go
 import pyarrow.feather as feather
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
 import seaborn as sns
+import torch
 from datasets import load_from_disk
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 
-from .dataset_utils import (
-TOT_WORDS,
-TOT_OPEN_WORDS,
-    CNT,
-    DEDUP_TOT,
-    EMBEDDING_FIELD,
-    LENGTH_FIELD,
-    OUR_LABEL_FIELD,
-    OUR_TEXT_FIELD,
-    PROP,
-    TEXT_NAN_CNT,
-    TOKENIZED_FIELD,
-    TXT_LEN,
-    VOCAB,
-    WORD,
-    extract_field,
-    load_truncated_dataset,
-)
+from .dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD,
+                            OUR_LABEL_FIELD, OUR_TEXT_FIELD, PROP,
+                            TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
+                            TOT_WORDS, TXT_LEN, VOCAB, WORD, extract_field,
+                            load_truncated_dataset)
 from .embeddings import Embeddings
 from .npmi import nPMI
 from .zipf import Zipf
@@ -150,6 +137,7 @@ _MAX_CLUSTER_EXAMPLES = 5000
 _NUM_VOCAB_BATCHES = 2000
 _TOP_N = 100
 _CVEC = CountVectorizer(token_pattern="(?u)\\b\\w+\\b", lowercase=True)
+
 
 class DatasetStatisticsCacheClass:
     def __init__(
@@ -249,13 +237,13 @@ class DatasetStatisticsCacheClass:
         # path to the directory used for caching
         if not isinstance(text_field, str):
             text_field = "-".join(text_field)
-        #if isinstance(label_field, str):
+        # if isinstance(label_field, str):
         #    label_field = label_field
-        #else:
+        # else:
         #    label_field = "-".join(label_field)
         self.cache_path = pjoin(
             self.cache_dir,
-            f"{dset_name}_{dset_config}_{split_name}_{text_field}", #{label_field},
+            f"{dset_name}_{dset_config}_{split_name}_{text_field}",  # {label_field},
         )
         if not isdir(self.cache_path):
             logs.warning("Creating cache directory %s." % self.cache_path)
@@ -284,14 +272,15 @@ class DatasetStatisticsCacheClass:
         # Needed for UI
         self.dup_counts_df_fid = pjoin(self.cache_path, "dup_counts_df.feather")
         # Needed for UI
-        self.fig_tok_length_fid = pjoin(self.cache_path, "fig_tok_length.json")
+        self.fig_tok_length_fid = pjoin(self.cache_path, "fig_tok_length.png")
 
         ## General text stats
         # Needed for UI
         self.general_stats_json_fid = pjoin(self.cache_path, "general_stats_dict.json")
         # Needed for UI
-        self.sorted_top_vocab_df_fid = pjoin(self.cache_path,
-                                             "sorted_top_vocab.feather")
+        self.sorted_top_vocab_df_fid = pjoin(
+            self.cache_path, "sorted_top_vocab.feather"
+        )
         ## Zipf cache files
         # Needed for UI
         self.zipf_fid = pjoin(self.cache_path, "zipf_basic_stats.json")
@@ -303,7 +292,6 @@ class DatasetStatisticsCacheClass:
         self.node_list_fid = pjoin(self.cache_path, "node_list.th")
         # Needed for UI
         self.fig_tree_json_fid = pjoin(self.cache_path, "fig_tree.json")
-        self.zipf_counts = None
 
         self.live = False
 
@@ -343,17 +331,16 @@ class DatasetStatisticsCacheClass:
             and exists(self.dup_counts_df_fid)
             and exists(self.sorted_top_vocab_df_fid)
         ):
-            logs.info('Loading cached general stats')
+            logs.info("Loading cached general stats")
             self.load_general_stats()
         else:
             if not self.live:
-                logs.info('Preparing general stats')
+                logs.info("Preparing general stats")
                 self.prepare_general_stats()
                 if save:
                     write_df(self.sorted_top_vocab_df, self.sorted_top_vocab_df_fid)
                     write_df(self.dup_counts_df, self.dup_counts_df_fid)
                     write_json(self.general_stats_dict, self.general_stats_json_fid)
-
 
     def load_or_prepare_text_lengths(self, save=True):
         """
@@ -366,15 +353,13 @@ class DatasetStatisticsCacheClass:
 
         """
         # Text length figure
-        if (self.use_cache and exists(self.fig_tok_length_fid)):
+        if self.use_cache and exists(self.fig_tok_length_fid):
             self.fig_tok_length_png = mpimg.imread(self.fig_tok_length_fid)
-            self.fig_tok_length = read_plotly(self.fig_tok_length_fid)
         else:
             if not self.live:
                 self.prepare_fig_text_lengths()
                 if save:
-                    write_plotly(self.fig_tok_length, self.fig_tok_length_fid)
-
+                    self.fig_tok_length.savefig(self.fig_tok_length_fid)
         # Text length dataframe
         if self.use_cache and exists(self.length_df_fid):
             self.length_df = feather.read_feather(self.length_df_fid)
@@ -401,51 +386,48 @@ class DatasetStatisticsCacheClass:
         if not self.live:
             if self.tokenized_df is None:
                 self.tokenized_df = self.do_tokenization()
-            self.tokenized_df[LENGTH_FIELD] = self.tokenized_df[
-                TOKENIZED_FIELD].apply(len)
-            self.length_df = self.tokenized_df[
-                [LENGTH_FIELD, OUR_TEXT_FIELD]].sort_values(
-                by=[LENGTH_FIELD], ascending=True
+            self.tokenized_df[LENGTH_FIELD] = self.tokenized_df[TOKENIZED_FIELD].apply(
+                len
             )
+            self.length_df = self.tokenized_df[
+                [LENGTH_FIELD, OUR_TEXT_FIELD]
+            ].sort_values(by=[LENGTH_FIELD], ascending=True)
 
     def prepare_text_length_stats(self):
         if not self.live:
-            if self.tokenized_df is None or LENGTH_FIELD not in self.tokenized_df.columns or self.length_df is None:
+            if (
+                self.tokenized_df is None
+                or LENGTH_FIELD not in self.tokenized_df.columns
+                or self.length_df is None
+            ):
                 self.prepare_length_df()
-            avg_length = sum(self.tokenized_df[LENGTH_FIELD])/len(self.tokenized_df[LENGTH_FIELD])
+            avg_length = sum(self.tokenized_df[LENGTH_FIELD]) / len(
+                self.tokenized_df[LENGTH_FIELD]
+            )
             self.avg_length = round(avg_length, 1)
             std_length = statistics.stdev(self.tokenized_df[LENGTH_FIELD])
             self.std_length = round(std_length, 1)
             self.num_uniq_lengths = len(self.length_df["length"].unique())
-            self.length_stats_dict = {"avg length": self.avg_length,
-                                      "std length": self.std_length,
-                                      "num lengths": self.num_uniq_lengths}
+            self.length_stats_dict = {
+                "avg length": self.avg_length,
+                "std length": self.std_length,
+                "num lengths": self.num_uniq_lengths,
+            }
 
     def prepare_fig_text_lengths(self):
         if not self.live:
-            if self.tokenized_df is None or LENGTH_FIELD not in self.tokenized_df.columns:
+            if (
+                self.tokenized_df is None
+                or LENGTH_FIELD not in self.tokenized_df.columns
+            ):
                 self.prepare_length_df()
             self.fig_tok_length = make_fig_lengths(self.tokenized_df, LENGTH_FIELD)
 
-    def load_or_prepare_embeddings(self, save=True):
-        if self.use_cache and exists(self.node_list_fid) and exists(self.fig_tree_json_fid):
-            self.node_list = torch.load(self.node_list_fid)
-            self.fig_tree = read_plotly(self.fig_tree_json_fid)
-        elif self.use_cache and exists(self.node_list_fid):
-            self.node_list = torch.load(self.node_list_fid)
-            self.fig_tree = make_tree_plot(self.node_list,
-                                           self.text_dset)
-            if save:
-                write_plotly(self.fig_tree, self.fig_tree_json_fid)
-        else:
-            self.embeddings = Embeddings(self, use_cache=self.use_cache)
-            self.embeddings.make_hierarchical_clustering()
-            self.node_list = self.embeddings.node_list
-            self.fig_tree = make_tree_plot(self.node_list,
-                                           self.text_dset)
-            if save:
-                torch.save(self.node_list, self.node_list_fid)
-                write_plotly(self.fig_tree, self.fig_tree_json_fid)
+    def load_or_prepare_embeddings(self):
+        self.embeddings = Embeddings(self, use_cache=self.use_cache)
+        self.embeddings.make_hierarchical_clustering()
+        self.node_list = self.embeddings.node_list
+        self.fig_tree = self.embeddings.fig_tree
 
     # get vocab with word counts
     def load_or_prepare_vocab(self, save=True):
@@ -455,10 +437,7 @@ class DatasetStatisticsCacheClass:
         :param
         :return:
         """
-        if (
-            self.use_cache
-            and exists(self.vocab_counts_df_fid)
-        ):
+        if self.use_cache and exists(self.vocab_counts_df_fid):
             logs.info("Reading vocab from cache")
             self.load_vocab()
             self.vocab_counts_filtered_df = filter_vocab(self.vocab_counts_df)
@@ -505,7 +484,9 @@ class DatasetStatisticsCacheClass:
                     write_df(self.dup_counts_df, self.dup_counts_df_fid)
 
     def load_general_stats(self):
-        self.general_stats_dict = json.load(open(self.general_stats_json_fid, encoding="utf-8"))
+        self.general_stats_dict = json.load(
+            open(self.general_stats_json_fid, encoding="utf-8")
+        )
         with open(self.sorted_top_vocab_df_fid, "rb") as f:
             self.sorted_top_vocab_df = feather.read_feather(f)
         self.text_nan_count = self.general_stats_dict[TEXT_NAN_CNT]
@@ -540,8 +521,7 @@ class DatasetStatisticsCacheClass:
         if not self.live:
             if self.tokenized_df is None:
                 self.load_or_prepare_tokenized_df()
-            dup_df = self.tokenized_df[
-                self.tokenized_df.duplicated([OUR_TEXT_FIELD])]
+            dup_df = self.tokenized_df[self.tokenized_df.duplicated([OUR_TEXT_FIELD])]
             self.dup_counts_df = pd.DataFrame(
                 dup_df.pivot_table(
                     columns=[OUR_TEXT_FIELD], aggfunc="size"
@@ -581,7 +561,7 @@ class DatasetStatisticsCacheClass:
                 write_json({"dset peek": self.dset_peek}, self.dset_peek_json_fid)
 
     def load_or_prepare_tokenized_df(self, save=True):
-        if (self.use_cache and exists(self.tokenized_df_fid)):
+        if self.use_cache and exists(self.tokenized_df_fid):
             self.tokenized_df = feather.read_feather(self.tokenized_df_fid)
         else:
             if not self.live:
@@ -593,7 +573,7 @@ class DatasetStatisticsCacheClass:
                     write_df(self.tokenized_df, self.tokenized_df_fid)
 
     def load_or_prepare_text_dset(self, save=True):
-        if (self.use_cache and exists(self.text_dset_fid)):
+        if self.use_cache and exists(self.text_dset_fid):
             # load extracted text
             self.text_dset = load_from_disk(self.text_dset_fid)
             logs.warning("Loaded dataset from disk")
@@ -711,8 +691,6 @@ class DatasetStatisticsCacheClass:
                 zipf_dict = json.load(f)
             self.z = Zipf()
             self.z.load(zipf_dict)
-            # TODO: Should this be cached?
-            self.zipf_counts = self.z.calc_zipf_counts(self.vocab_counts_df)
             self.zipf_fig = read_plotly(self.zipf_fig_fid)
         elif self.use_cache and exists(self.zipf_fid):
             # TODO: Read zipf data so that the vocab is there.
@@ -775,30 +753,26 @@ class nPMIStatisticsCacheClass:
             and exists(self.npmi_terms_fid)
             and json.load(open(self.npmi_terms_fid))["available terms"] != []
         ):
-            self.available_terms = json.load(open(self.npmi_terms_fid))["available terms"]
+            available_terms = json.load(open(self.npmi_terms_fid))["available terms"]
         else:
-            if not self.live:
-                if self.dstats.vocab_counts_df is None:
-                    self.dstats.load_or_prepare_vocab()
+            true_false = [
+                term in self.dstats.vocab_counts_df.index for term in self.termlist
+            ]
+            word_list_tmp = [x for x, y in zip(self.termlist, true_false) if y]
+            true_false_counts = [
+                self.dstats.vocab_counts_df.loc[word, CNT] >= self.min_vocab_count
+                for word in word_list_tmp
+            ]
+            available_terms = [
+                word for word, y in zip(word_list_tmp, true_false_counts) if y
+            ]
+            logs.info(available_terms)
+            with open(self.npmi_terms_fid, "w+") as f:
+                json.dump({"available terms": available_terms}, f)
+        self.available_terms = available_terms
+        return available_terms
 
-                true_false = [
-                    term in self.dstats.vocab_counts_df.index for term in self.termlist
-                ]
-                word_list_tmp = [x for x, y in zip(self.termlist, true_false) if y]
-                true_false_counts = [
-                    self.dstats.vocab_counts_df.loc[word, CNT] >= self.min_vocab_count
-                    for word in word_list_tmp
-                ]
-                available_terms = [
-                    word for word, y in zip(word_list_tmp, true_false_counts) if y
-                ]
-                logs.info(available_terms)
-                with open(self.npmi_terms_fid, "w+") as f:
-                    json.dump({"available terms": available_terms}, f)
-            self.available_terms = available_terms
-        return self.available_terms
-
-    def load_or_prepare_joint_npmi(self, subgroup_pair, save=True):
+    def load_or_prepare_joint_npmi(self, subgroup_pair):
         """
         Run on-the fly, while the app is already open,
         as it depends on the subgroup terms that the user chooses
@@ -823,7 +797,13 @@ class nPMIStatisticsCacheClass:
             # When everything is already computed for the selected subgroups.
             logs.info("Loading cached joint npmi")
             joint_npmi_df = self.load_joint_npmi_df(joint_npmi_fid)
-            npmi_display_cols = ['npmi-bias', subgroup1 + '-npmi', subgroup2 + '-npmi', subgroup1 + '-count', subgroup2 + '-count']
+            npmi_display_cols = [
+                "npmi-bias",
+                subgroup1 + "-npmi",
+                subgroup2 + "-npmi",
+                subgroup1 + "-count",
+                subgroup2 + "-count",
+            ]
             joint_npmi_df = joint_npmi_df[npmi_display_cols]
             # When maybe some things have been computed for the selected subgroups.
         else:
@@ -832,14 +812,12 @@ class nPMIStatisticsCacheClass:
                 joint_npmi_df, subgroup_dict = self.prepare_joint_npmi_df(
                     subgroup_pair, subgroup_files
                 )
-                if save:
-                    if joint_npmi_df is not None:
-                        # Cache new results
-                        logs.info("Writing out.")
-                        for subgroup in subgroup_pair:
-                            write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files)
-                        with open(joint_npmi_fid, "w+") as f:
-                            joint_npmi_df.to_csv(f)
+                # Cache new results
+                logs.info("Writing out.")
+                for subgroup in subgroup_pair:
+                    write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files)
+                with open(joint_npmi_fid, "w+") as f:
+                    joint_npmi_df.to_csv(f)
             else:
                 joint_npmi_df = pd.DataFrame()
         logs.info("The joint npmi df is")
@@ -881,7 +859,7 @@ class nPMIStatisticsCacheClass:
                 subgroup_dict[subgroup] = cached_results
         logs.info("Calculating for subgroup list")
         joint_npmi_df, subgroup_dict = self.do_npmi(subgroup_pair, subgroup_dict)
-        return joint_npmi_df, subgroup_dict
+        return joint_npmi_df.dropna(), subgroup_dict
 
     # TODO: Update pairwise assumption
     def do_npmi(self, subgroup_pair, subgroup_dict):
@@ -892,7 +870,6 @@ class nPMIStatisticsCacheClass:
         :return: Selected identity term's co-occurrence counts with
                  other words, pmi per word, and nPMI per word.
         """
-        no_results = False
         logs.info("Initializing npmi class")
         npmi_obj = self.set_npmi_obj()
         # Canonical ordering used
@@ -900,26 +877,18 @@ class nPMIStatisticsCacheClass:
         # Calculating nPMI statistics
         for subgroup in subgroup_pair:
             # If the subgroup data is already computed, grab it.
-            # TODO: Should we set idx and column names similarly to
-            #  how we set them for cached files?
+            # TODO: Should we set idx and column names similarly to how we set them for cached files?
             if subgroup not in subgroup_dict:
                 logs.info("Calculating statistics for %s" % subgroup)
                 vocab_cooc_df, pmi_df, npmi_df = npmi_obj.calc_metrics(subgroup)
-                if vocab_cooc_df is None:
-                    no_results = True
-                else:
-                    # Store the nPMI information for the current subgroups
-                    subgroup_dict[subgroup] = (vocab_cooc_df, pmi_df, npmi_df)
-        if no_results:
-            logs.warning("Couldn't grap the npmi files -- Under construction")
-            return None, None
-        else:
-            # Pair the subgroups together, indexed by all words that
-            # co-occur between them.
-            logs.info("Computing pairwise npmi bias")
-            paired_results = npmi_obj.calc_paired_metrics(subgroup_pair, subgroup_dict)
-            UI_results = make_npmi_fig(paired_results, subgroup_pair)
-        return UI_results.dropna(), subgroup_dict
+                # Store the nPMI information for the current subgroups
+                subgroup_dict[subgroup] = (vocab_cooc_df, pmi_df, npmi_df)
+        # Pair the subgroups together, indexed by all words that
+        # co-occur between them.
+        logs.info("Computing pairwise npmi bias")
+        paired_results = npmi_obj.calc_paired_metrics(subgroup_pair, subgroup_dict)
+        UI_results = make_npmi_fig(paired_results, subgroup_pair)
+        return UI_results, subgroup_dict
 
     def set_npmi_obj(self):
         """
@@ -993,8 +962,10 @@ class nPMIStatisticsCacheClass:
     def get_available_terms(self):
         return self.load_or_prepare_npmi_terms()
 
+
 def dummy(doc):
     return doc
+
 
 def count_vocab_frequencies(tokenized_df):
     """
@@ -1010,7 +981,9 @@ def count_vocab_frequencies(tokenized_df):
     )
     # We do this to calculate per-word statistics
     # Fast calculation of single word counts
-    logs.info("Fitting dummy tokenization to make matrix using the previous tokenization")
+    logs.info(
+        "Fitting dummy tokenization to make matrix using the previous tokenization"
+    )
     cvec.fit(tokenized_df[TOKENIZED_FIELD])
     document_matrix = cvec.transform(tokenized_df[TOKENIZED_FIELD])
     batches = np.linspace(0, tokenized_df.shape[0], _NUM_VOCAB_BATCHES).astype(int)
@@ -1031,6 +1004,7 @@ def count_vocab_frequencies(tokenized_df):
     word_count_df.index.name = WORD
     return word_count_df
 
+
 def calc_p_word(word_count_df):
     # p(word)
     word_count_df[PROP] = word_count_df[CNT] / float(sum(word_count_df[CNT]))
@@ -1041,8 +1015,7 @@ def calc_p_word(word_count_df):
 
 def filter_vocab(vocab_counts_df):
     # TODO: Add warnings (which words are missing) to log file?
-    filtered_vocab_counts_df = vocab_counts_df.drop(_CLOSED_CLASS,
-                                                    errors="ignore")
+    filtered_vocab_counts_df = vocab_counts_df.drop(_CLOSED_CLASS, errors="ignore")
     filtered_count = filtered_vocab_counts_df[CNT]
     filtered_count_denom = float(sum(filtered_vocab_counts_df[CNT]))
     filtered_vocab_counts_df[PROP] = filtered_count / filtered_count_denom
@@ -1051,18 +1024,22 @@ def filter_vocab(vocab_counts_df):
 
 ## Figures ##
 
+
 def write_plotly(fig, fid):
     write_json(plotly.io.to_json(fig), fid)
+
 
 def read_plotly(fid):
     fig = plotly.io.from_json(json.load(open(fid, encoding="utf-8")))
     return fig
 
+
 def make_fig_lengths(tokenized_df, length_field):
-    fig_tok_length = px.histogram(
-        tokenized_df, x=length_field, marginal="rug", hover_data=[length_field]
-    )
+    fig_tok_length, axs = plt.subplots(figsize=(15, 6), dpi=150)
+    sns.histplot(data=tokenized_df[length_field], kde=True, bins=100, ax=axs)
+    sns.rugplot(data=tokenized_df[length_field], ax=axs)
     return fig_tok_length
+
 
 def make_fig_labels(label_df, label_names, label_field):
     labels = label_df[label_field].unique()
@@ -1144,89 +1121,6 @@ def make_zipf_fig(vocab_counts_df, z):
     return fig
 
 
-def make_tree_plot(node_list, text_dset):
-    nid_map = dict([(node["nid"], nid) for nid, node in enumerate(node_list)])
-
-    for nid, node in enumerate(node_list):
-        node["label"] = node.get(
-            "label",
-            f"{nid:2d} - {node['weight']:5d} items <br>"
-            + "<br>".join(
-                [
-                    "> " + txt[:64] + ("..." if len(txt) >= 63 else "")
-                    for txt in list(
-                        set(text_dset.select(node["example_ids"])[OUR_TEXT_FIELD])
-                    )[:5]
-                ]
-            ),
-        )
-
-    # make plot nodes
-    # TODO: something more efficient than set to remove duplicates
-    labels = [node["label"] for node in node_list]
-
-    root = node_list[0]
-    root["X"] = 0
-    root["Y"] = 0
-
-    def rec_make_coordinates(node):
-        total_weight = 0
-        add_weight = len(node["example_ids"]) - sum(
-            [child["weight"] for child in node["children"]]
-        )
-        for child in node["children"]:
-            child["X"] = node["X"] + total_weight
-            child["Y"] = node["Y"] - 1
-            total_weight += child["weight"] + add_weight / len(node["children"])
-            rec_make_coordinates(child)
-
-    rec_make_coordinates(root)
-
-    E = []  # list of edges
-    Xn = []
-    Yn = []
-    Xe = []
-    Ye = []
-    for nid, node in enumerate(node_list):
-        Xn += [node["X"]]
-        Yn += [node["Y"]]
-        for child in node["children"]:
-            E += [(nid, nid_map[child["nid"]])]
-            Xe += [node["X"], child["X"], None]
-            Ye += [node["Y"], child["Y"], None]
-
-    # make figure
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=Xe,
-            y=Ye,
-            mode="lines",
-            line=dict(color="rgb(210,210,210)", width=1),
-            hoverinfo="none",
-        )
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=Xn,
-            y=Yn,
-            mode="markers",
-            name="nodes",
-            marker=dict(
-                symbol="circle-dot",
-                size=18,
-                color="#6175c1",
-                line=dict(color="rgb(50,50,50)", width=1)
-                # '#DB4551',
-            ),
-            text=labels,
-            hoverinfo="text",
-            opacity=0.8,
-        )
-    )
-    return fig
-
-
 ## Input/Output ###
 
 
@@ -1280,6 +1174,7 @@ def write_json(json_dict, json_fid):
     with open(json_fid, "w", encoding="utf-8") as f:
         json.dump(json_dict, f)
 
+
 def write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files):
     """
     Saves the calculated nPMI statistics to their output files.
@@ -1299,6 +1194,7 @@ def write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files):
     with open(subgroup_cooc_fid, "w+") as f:
         subgroup_cooc_df.to_csv(f)
 
+
 def write_zipf_data(z, zipf_fid):
     zipf_dict = {}
     zipf_dict["xmin"] = int(z.xmin)
@@ -1310,4 +1206,3 @@ def write_zipf_data(z, zipf_fid):
     zipf_dict["uniq_ranks"] = [int(rank) for rank in z.uniq_ranks]
     with open(zipf_fid, "w+", encoding="utf-8") as f:
         json.dump(zipf_dict, f)
-
