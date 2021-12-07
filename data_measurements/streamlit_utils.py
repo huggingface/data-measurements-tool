@@ -21,6 +21,7 @@ from st_aggrid import AgGrid, GridOptionsBuilder
 
 from .dataset_utils import HF_DESC_FIELD, HF_FEATURE_FIELD, HF_LABEL_FIELD
 
+
 def sidebar_header():
     st.sidebar.markdown(
         """
@@ -107,9 +108,7 @@ def expander_general_stats(dstats, column_id):
             "Use this widget to check whether the terms you see most represented"
             " in the dataset make sense for the goals of the dataset."
         )
-        st.markdown(
-            "There are {0} total words".format(str(dstats.total_words))
-        )
+        st.markdown("There are {0} total words".format(str(dstats.total_words)))
         st.markdown(
             "There are {0} words after removing closed "
             "class words".format(str(dstats.total_open_words))
@@ -129,14 +128,10 @@ def expander_general_stats(dstats, column_id):
             st.markdown(
                 "There are {0} duplicate items in the dataset. "
                 "For more information about the duplicates, "
-                "click the 'Duplicates' tab below.".format(
-                    str(dstats.dedup_total)
-                )
+                "click the 'Duplicates' tab below.".format(str(dstats.dedup_total))
             )
         else:
-            st.markdown(
-                "There are 0 duplicate items in the dataset. ")
-
+            st.markdown("There are 0 duplicate items in the dataset. ")
 
 
 ### Show the label distribution from the datasets
@@ -166,7 +161,6 @@ def expander_text_lengths(dstats, column_id):
         st.markdown(
             "### Here is the relative frequency of different text lengths in your dataset:"
         )
-        #TODO: figure out more elegant way to do this:
         try:
             st.image(dstats.fig_tok_length_png)
         except:
@@ -181,8 +175,16 @@ def expander_text_lengths(dstats, column_id):
         # This is quite a large file and is breaking our ability to navigate the app development.
         # Just passing if it's not already there for launch v0
         if dstats.length_df is not None:
-            start_id_show_lengths= st.selectbox("Show examples of length:", sorted(dstats.length_df["length"].unique().tolist()))
-            st.table(dstats.length_df[dstats.length_df["length"] == start_id_show_lengths].set_index("length"))
+            start_id_show_lengths = st.selectbox(
+                "Show examples of length:",
+                sorted(dstats.length_df["length"].unique().tolist()),
+                key=f"select_show_length_{column_id}",
+            )
+            st.table(
+                dstats.length_df[
+                    dstats.length_df["length"] == start_id_show_lengths
+                ].set_index("length")
+            )
 
 
 ### Third, use a sentence embedding model

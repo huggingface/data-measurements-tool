@@ -122,6 +122,12 @@ def load_or_prepare(ds_args, show_embeddings, use_cache=False):
     dstats.load_or_prepare_zipf()
     return dstats
 
+@st.cache(
+    hash_funcs={
+        dataset_statistics.DatasetStatisticsCacheClass: lambda dstats: dstats.cache_path
+    },
+    allow_output_mutation=True,
+)
 def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False):
     """
     Loader specifically for the widgets used in the app.
@@ -144,6 +150,8 @@ def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False):
     dstats = dataset_statistics.DatasetStatisticsCacheClass(CACHE_DIR, **ds_args, use_cache=use_cache)
     # Don't recalculate; we're live
     dstats.set_deployment(True)
+    # We need to have the text_dset loaded for further load_or_prepare
+    dstats.load_or_prepare_dataset()
     # Header widget
     dstats.load_or_prepare_dset_peek()
     # General stats widget

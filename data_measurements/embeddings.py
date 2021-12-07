@@ -146,11 +146,12 @@ class Embeddings:
                 [(node["nid"], nid) for nid, node in enumerate(self.node_list)]
             )
             torch.save((self.node_list, self.nid_map), self.node_list_fid)
+        print(exists(self.fig_tree_fid), self.fig_tree_fid)
         if self.use_cache and exists(self.fig_tree_fid):
             self.fig_tree = read_json(self.fig_tree_fid)
         else:
             self.fig_tree = make_tree_plot(
-                self.node_list, self.text_dset, self.text_field_name
+                self.node_list, self.nid_map, self.text_dset, self.text_field_name
             )
             self.fig_tree.write_json(self.fig_tree_fid)
 
@@ -460,14 +461,12 @@ def fast_cluster(
     return node_list
 
 
-def make_tree_plot(node_list, text_dset, text_field_name):
+def make_tree_plot(node_list, nid_map, text_dset, text_field_name):
     """
     Makes a graphical representation of the tree encoded
     in node-list. The hover label for each node shows the number
     of descendants and the 5 examples that are closest to the centroid
     """
-    nid_map = dict([(node["nid"], nid) for nid, node in enumerate(node_list)])
-
     for nid, node in enumerate(node_list):
         # get list of
         node_examples = {}
