@@ -34,7 +34,7 @@ logs.propagate = False
 
 if not logs.handlers:
 
-    Path('./log_files').mkdir(exist_ok=True)
+    Path("./log_files").mkdir(exist_ok=True)
 
     # Logging info to log file
     file = logging.FileHandler("./log_files/zipf.log")
