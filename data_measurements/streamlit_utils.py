@@ -21,7 +21,6 @@ from st_aggrid import AgGrid, GridOptionsBuilder
 
 from .dataset_utils import HF_DESC_FIELD, HF_FEATURE_FIELD, HF_LABEL_FIELD
 
-
 def sidebar_header():
     st.sidebar.markdown(
         """
@@ -167,7 +166,11 @@ def expander_text_lengths(dstats, column_id):
         st.markdown(
             "### Here is the relative frequency of different text lengths in your dataset:"
         )
-        st.plotly_chart(dstats.fig_tok_length, use_container_width=True)
+        #TODO: figure out more elegant way to do this:
+        try:
+            st.image(dstats.fig_tok_length_png)
+        except:
+            st.pyplot(dstats.fig_tok_length, use_container_width=True)
         st.markdown(
             "The average length of text instances is **"
             + str(dstats.avg_length)
@@ -175,19 +178,11 @@ def expander_text_lengths(dstats, column_id):
             + str(dstats.std_length)
             + "**."
         )
-
-        start_id_show_lengths = st.slider(
-            f"Show the shortest sentences{column_id} starting at:",
-            0,
-            dstats.num_uniq_lengths,
-            value=0,
-            step=1,
-        )
-
         # This is quite a large file and is breaking our ability to navigate the app development.
         # Just passing if it's not already there for launch v0
         if dstats.length_df is not None:
-            st.dataframe(dstats.length_df[dstats.length_df["length"] == start_id_show_lengths].set_index("length"))
+            start_id_show_lengths= st.selectbox("Show examples of length:", sorted(dstats.length_df["length"].unique().tolist()))
+            st.table(dstats.length_df[dstats.length_df["length"] == start_id_show_lengths].set_index("length"))
 
 
 ### Third, use a sentence embedding model
@@ -285,17 +280,7 @@ def expander_text_duplicates(dstats, column_id):
         if dstats.dup_counts_df is None or dstats.dup_counts_df.empty:
             st.write("There are no duplicates in this dataset! 🥳")
         else:
-            gb = GridOptionsBuilder.from_dataframe(dstats.dup_counts_df)
-            gb.configure_column(
-                f"text{column_id}",
-                wrapText=True,
-                resizable=True,
-                autoHeight=True,
-                min_column_width=85,
-                use_container_width=True,
-            )
-            go = gb.build()
-            AgGrid(dstats.dup_counts_df, gridOptions=go)
+            st.dataframe(dstats.dup_counts_df.reset_index(drop=True))
 
 
 def expander_npmi_description(min_vocab):
