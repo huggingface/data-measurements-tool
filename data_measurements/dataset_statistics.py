@@ -522,9 +522,6 @@ class DatasetStatisticsCacheClass:
                     write_df(self.perplexities_df, self.perplexities_df_fid)
         else:
             if not self.live:
-                # This happens when self.perplexities_df is already defined;
-                # This happens when general_statistics were calculated first,
-                # since general statistics requires the number of duplicates
                 if save:
                     write_df(self.perplexities_df, self.perplexities_df_fid)
 

@@ -303,7 +303,7 @@ def expander_text_perplexities(dstats, column_id):
         )
         st.markdown("------")
         st.write(
-            "### Here is the list of the xamples in the dataset, sorted by GPT-2 perplexity:"
+            "### Here is the list of the examples in the dataset, sorted by GPT-2 perplexity:"
         )
         if dstats.perplexities_df is None or dstats.perplexities_df.empty:
             st.write("Perplexities have not been computed yet for this dataset.")
