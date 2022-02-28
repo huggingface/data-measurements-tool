@@ -145,8 +145,7 @@ _DEVICE = "cuda:0" if torch.cuda.is_available() else "cpu"
 _GPT2_MODEL_ID = "gpt2"
 _GPT2_MODEL = GPT2LMHeadModel.from_pretrained(_GPT2_MODEL_ID).to(_DEVICE)
 _GPT2_TOKENIZER = GPT2TokenizerFast.from_pretrained(_GPT2_MODEL_ID)
-_PERPLEXITY_BATCH_SIZE = 100
-
+_PERPLEXITY_BATCH_SIZE = 10
 
 class DatasetStatisticsCacheClass:
     def __init__(
