@@ -21,6 +21,12 @@ import streamlit as st
 
 from data_measurements import dataset_statistics, dataset_utils
 from data_measurements import streamlit_utils as st_utils
+from datasets import list_datasets
+import socket
+import json
+
+HOST = "127.0.0.1"  # The server's hostname or IP address
+PORT = 65432  # The port used by the server
 
 logs = logging.getLogger(__name__)
 logs.setLevel(logging.WARNING)
@@ -125,13 +131,7 @@ def load_or_prepare(ds_args, show_embeddings, use_cache=False):
     dstats.load_or_prepare_zipf()
     return dstats
 
-@st.cache(
-    hash_funcs={
-        dataset_statistics.DatasetStatisticsCacheClass: lambda dstats: dstats.cache_path
-    },
-    allow_output_mutation=True,
-)
-def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False):
+def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False, recompute_data_measures=False):
     """
     Loader specifically for the widgets used in the app.
     Args:
@@ -149,7 +149,8 @@ def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False):
     #try:
         dstats = dataset_statistics.DatasetStatisticsCacheClass(CACHE_DIR, **ds_args, use_cache=use_cache)
         # Don't recalculate; we're live
-        dstats.set_deployment(True)
+        if not recompute_data_measures:
+            dstats.set_deployment(True)
         # checks whether the cache_dir exists in deployment mode
         # creates cache_dir if not and if in development mode
         cache_dir_exists = dstats.check_cache_dir()
@@ -201,11 +202,11 @@ def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False):
             logs.warning("Missing a cache for zipf")
     return dstats, cache_dir_exists
 
-def show_column(dstats, ds_name_to_dict, show_embeddings, column_id):
+def show_column(dstats, ds_configs, show_embeddings, column_id):
     """
     Function for displaying the elements in the right column of the streamlit app.
     Args:
-        ds_name_to_dict (dict): the dataset name and options in dictionary form
+        ds_configs (dict): the dataset options in dictionary form
         show_embeddings (Bool): whether embeddings should we loaded and displayed for this dataset
         column_id (str): what column of the dataset the analysis is done on
     Returns:
@@ -213,10 +214,10 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id):
     """
     # Note that at this point we assume we can use cache; default value is True.
     # start showing stuff
-    title_str = f"### Showing{column_id}: {dstats.dset_name} - {dstats.dset_config} - {dstats.split_name} - {'-'.join(dstats.text_field)}"
+    title_str = f"### Showing{column_id}: {dstats.dset_name} - {dstats.dset_config_name} - {dstats.split_name} - {'-'.join(dstats.text_field)}"
     st.markdown(title_str)
     logs.info("showing header")
-    st_utils.expander_header(dstats, ds_name_to_dict, column_id)
+    st_utils.expander_header(dstats, ds_configs, column_id)
     logs.info("showing general stats")
     st_utils.expander_general_stats(dstats, column_id)
     st_utils.expander_label_distribution(dstats.fig_labels, column_id)
@@ -238,9 +239,21 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id):
         )
 
 
+def request_measurements():
+    # echo-client.py
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.connect((HOST, PORT))
+        data = json.dumps({"email": "tristant33@gmail.com", "dataset": "hate_speech18", "config": "default", "split": "train", "label_field": "label", "feature": "text"})
+        s.sendall(bytes(data,encoding="utf-8"))
+        data = s.recv(1024)
+
+    print(f"Received {data!r}")
+
+
 def main():
     """ Sidebar description and selection """
-    ds_name_to_dict = dataset_utils.get_dataset_info_dicts()
+    ds_names = list_datasets()
     st.title("Data Measurements Tool")
     # Get the sidebar details
     st_utils.sidebar_header()
@@ -254,36 +267,58 @@ def main():
 
     if compare_mode:
         logs.warning("Using Comparison Mode")
-        dataset_args_left = st_utils.sidebar_selection(ds_name_to_dict, " A")
-        dataset_args_right = st_utils.sidebar_selection(ds_name_to_dict, " B")
+        dataset_args_left = st_utils.sidebar_selection(ds_names, " A")
+        dataset_args_right = st_utils.sidebar_selection(ds_names, " B")
         left_col, _, right_col = st.columns([10, 1, 10])
         dstats_left, cache_exists_left = load_or_prepare_widgets(
             dataset_args_left, show_embeddings, use_cache=use_cache
         )
         with left_col:
             if cache_exists_left:
-                show_column(dstats_left, ds_name_to_dict, show_embeddings, " A")
+                show_column(dstats_left, dataset_args_left["dset_configs"], show_embeddings, " A")
             else:
                 st.markdown("### Missing pre-computed data measures!")
-                st.write(dataset_args_left)
+                compute_data_measures = st.button("Compute Them")
+                if compute_data_measures:
+                    request_measurements()
+                    '''
+                    dstats_left, cache_exists_left = load_or_prepare_widgets(
+                        dataset_args_left, show_embeddings, use_cache=use_cache, recompute_data_measures=True
+                    )
+                    '''
         dstats_right, cache_exists_right = load_or_prepare_widgets(
             dataset_args_right, show_embeddings, use_cache=use_cache
         )
         with right_col:
             if cache_exists_right:
-                show_column(dstats_right, ds_name_to_dict, show_embeddings, " B")
+                show_column(dstats_right, dataset_args_right["dset_configs"], show_embeddings, " B")
             else:
                 st.markdown("### Missing pre-computed data measures!")
-                st.write(dataset_args_right)
+                compute_data_measures = st.button("Compute Them")
+                if compute_data_measures:
+                    request_measurements()
+                    '''
+                    dstats_right, cache_exists_right = load_or_prepare_widgets(
+                        dataset_args_right, show_embeddings, use_cache=use_cache, recompute_data_measures=True
+                    )
+                    '''
     else:
         logs.warning("Using Single Dataset Mode")
-        dataset_args = st_utils.sidebar_selection(ds_name_to_dict, "")
+        dataset_args = st_utils.sidebar_selection(ds_names, "")
         dstats, cache_exists = load_or_prepare_widgets(dataset_args, show_embeddings, use_cache=use_cache)
         if cache_exists:
-            show_column(dstats, ds_name_to_dict, show_embeddings, "")
+            show_column(dstats, dataset_args["dset_configs"], show_embeddings, "")
         else:
             st.markdown("### Missing pre-computed data measures!")
-            st.write(dataset_args)
+            compute_data_measures = st.button("Compute Them")
+            if compute_data_measures:
+                request_measurements()
+                '''
+                dstats, cache_exists = load_or_prepare_widgets(
+                    dataset_args, show_embeddings, use_cache=use_cache, recompute_data_measures=True
+                )
+                '''
+
 
 
 if __name__ == "__main__":

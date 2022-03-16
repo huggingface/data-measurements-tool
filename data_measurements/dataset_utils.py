@@ -17,7 +17,7 @@ from dataclasses import asdict
 from os.path import exists
 
 import pandas as pd
-from datasets import Dataset, get_dataset_infos, load_dataset, load_from_disk
+from datasets import Dataset, get_dataset_infos, load_dataset, load_from_disk, list_datasets
 
 # treating inf values as NaN as well
 pd.set_option("use_inf_as_na", True)
@@ -45,18 +45,6 @@ TXT_LEN = "text lengths"
 DEDUP_TOT = "dedup_total"
 TOT_WORDS = "total words"
 TOT_OPEN_WORDS = "total open words"
-
-_DATASET_LIST = [
-    "c4",
-    "squad",
-    "squad_v2",
-    "hate_speech18",
-    "hate_speech_offensive",
-    "glue",
-    "super_glue",
-    "wikitext",
-    "imdb",
-]
 
 _STREAMABLE_DATASET_LIST = [
     "c4",
@@ -243,28 +231,17 @@ def dictionarize_info(dset_info):
     return res
 
 
-def get_dataset_info_dicts(dataset_id=None):
+def get_dataset_config_dict(dataset_id):
     """
-    Creates a dict from dataset configs.
+    Creates a dict from dataset config.
     Uses the datasets lib's get_dataset_infos
     :return: Dictionary mapping dataset names to their configurations
     """
-    if dataset_id != None:
-        ds_name_to_conf_dict = {
-            dataset_id: {
-                config_name: dictionarize_info(config_info)
-                for config_name, config_info in get_dataset_infos(dataset_id).items()
-            }
+    dataset_config_dict = {
+            config_name: dictionarize_info(config_info)
+            for config_name, config_info in get_dataset_infos(dataset_id).items()
         }
-    else:
-        ds_name_to_conf_dict = {
-            ds_id: {
-                config_name: dictionarize_info(config_info)
-                for config_name, config_info in get_dataset_infos(ds_id).items()
-            }
-            for ds_id in _DATASET_LIST
-        }
-    return ds_name_to_conf_dict
+    return dataset_config_dict
 
 
 # get all instances of a specific field in a dataset

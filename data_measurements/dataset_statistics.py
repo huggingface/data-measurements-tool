@@ -15,6 +15,7 @@
 import json
 import logging
 import statistics
+import os
 from os import mkdir
 from os.path import exists, isdir
 from os.path import join as pjoin
@@ -43,12 +44,19 @@ from .dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD,
 from .embeddings import Embeddings
 from .npmi import nPMI
 from .zipf import Zipf
+from huggingface_hub import Repository
 
 pd.options.display.float_format = "{:,.3f}".format
 
 logs = logging.getLogger(__name__)
 logs.setLevel(logging.WARNING)
 logs.propagate = False
+
+HF_TOKEN = os.environ.get("HF_TOKEN")
+repo = Repository(
+    local_dir="cache_dir", clone_from="https://huggingface.co/datasets/Tristan/data-measurements-cache", use_auth_token=HF_TOKEN
+)
+print("is none?", HF_TOKEN is None)
 
 if not logs.handlers:
 
@@ -144,7 +152,8 @@ class DatasetStatisticsCacheClass:
         self,
         cache_dir,
         dset_name,
-        dset_config,
+        dset_config_name,
+        dset_configs,
         split_name,
         text_field,
         label_field,
@@ -166,7 +175,7 @@ class DatasetStatisticsCacheClass:
         # name of the Hugging Face dataset
         self.dset_name = dset_name
         # name of the dataset config
-        self.dset_config = dset_config
+        self.dset_config_name = dset_config_name
         # name of the split to analyze
         self.split_name = split_name
         # TODO: Chould this be "feature" ?
@@ -243,7 +252,7 @@ class DatasetStatisticsCacheClass:
         #    label_field = "-".join(label_field)
         self.cache_path = pjoin(
             self.cache_dir,
-            f"{dset_name}_{dset_config}_{split_name}_{text_field}",  # {label_field},
+            f"{dset_name}_{dset_config_name}_{split_name}_{text_field}",  # {label_field},
         )
 
         # Cache files not needed for UI
@@ -319,7 +328,7 @@ class DatasetStatisticsCacheClass:
         if not self.dset:
             self.dset = load_truncated_dataset(
                 self.dset_name,
-                self.dset_config,
+                self.dset_config_name,
                 self.split_name,
                 cache_name=self.dset_fid,
                 use_cache=True,
@@ -782,6 +791,7 @@ class nPMIStatisticsCacheClass:
             logs.info(available_terms)
             with open(self.npmi_terms_fid, "w+") as f:
                 json.dump({"available terms": available_terms}, f)
+            repo.push_to_hub()
         self.available_terms = available_terms
         return available_terms
 
@@ -831,6 +841,7 @@ class nPMIStatisticsCacheClass:
                     write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files)
                 with open(joint_npmi_fid, "w+") as f:
                     joint_npmi_df.to_csv(f)
+                repo.push_to_hub()
             else:
                 joint_npmi_df = pd.DataFrame()
         logs.info("The joint npmi df is")
@@ -1186,6 +1197,7 @@ def write_df(df, df_fid):
 def write_json(json_dict, json_fid):
     with open(json_fid, "w", encoding="utf-8") as f:
         json.dump(json_dict, f)
+    repo.push_to_hub()
 
 
 def write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files):
@@ -1206,6 +1218,7 @@ def write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files):
         subgroup_pmi_df.to_csv(f)
     with open(subgroup_cooc_fid, "w+") as f:
         subgroup_cooc_df.to_csv(f)
+    repo.push_to_hub()
 
 
 def write_zipf_data(z, zipf_fid):
@@ -1219,3 +1232,4 @@ def write_zipf_data(z, zipf_fid):
     zipf_dict["uniq_ranks"] = [int(rank) for rank in z.uniq_ranks]
     with open(zipf_fid, "w+", encoding="utf-8") as f:
         json.dump(zipf_dict, f)
+    repo.push_to_hub()

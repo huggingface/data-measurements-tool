@@ -1,11 +1,16 @@
 import argparse
 import json
 import textwrap
+import os
 from os import mkdir
 from os.path import join as pjoin, isdir
 
 from data_measurements import dataset_statistics
 from data_measurements import dataset_utils
+
+import smtplib, ssl
+
+port = 465  # For SSL
 
 
 
@@ -170,11 +175,11 @@ def get_text_label_df(
 ):
     if not use_cache:
         print("Not using any cache; starting afresh")
-    ds_name_to_dict = dataset_utils.get_dataset_info_dicts(ds_name)
+    ds_configs = dataset_utils.get_dataset_config_dict(ds_name)
     if label_field:
         label_field, label_names = (
-            ds_name_to_dict[ds_name][config_name]["features"][label_field][0]
-            if len(ds_name_to_dict[ds_name][config_name]["features"][label_field]) > 0
+            ds_configs[config_name]["features"][label_field][0]
+            if len(ds_configs[config_name]["features"][label_field]) > 0
             else ((), [])
         )
     else:
@@ -182,7 +187,8 @@ def get_text_label_df(
         label_names = []
     dataset_args = {
         "dset_name": ds_name,
-        "dset_config": config_name,
+        "dset_config_name": config_name,
+        "dset_configs": ds_configs,
         "split_name": split_name,
         "text_field": text_field,
         "label_field": label_field,
@@ -268,22 +274,35 @@ def main():
         help="Whether to write out corresponding HTML files (Optional)",
     )
     parser.add_argument("--out_dir", default="cache_dir", help="Where to write out to.")
+    parser.add_argument("--email", default=None, help="Email to report whether the computation was sucessful")
 
     args = parser.parse_args()
     print("Proceeding with the following arguments:")
     print(args)
     # run_data_measurements.py -n hate_speech18 -c default -s train -f text -w npmi
-    get_text_label_df(
-        args.dataset,
-        args.config,
-        args.split,
-        args.feature,
-        args.label_field,
-        args.calculation,
-        args.out_dir,
-        do_html=args.do_html,
-        use_cache=args.cached,
-    )
+    context = ssl.create_default_context()
+    with smtplib.SMTP_SSL("smtp.gmail.com", port, context=context) as server:
+        server.login("data.measurements.tool@gmail.com", os.environ.get("DMT_EMAIL_PASSWORD"))
+        try:
+            get_text_label_df(
+                args.dataset,
+                args.config,
+                args.split,
+                args.feature,
+                args.label_field,
+                args.calculation,
+                args.out_dir,
+                do_html=args.do_html,
+                use_cache=args.cached,
+            )
+            if args.email is not None:
+                server.sendmail("data.measurements.tool@gmail.com", args.email, "Subject: success\ntest")
+            server.sendmail("data.measurements.tool@gmail.com", "data.measurements.tool@gmail.com", "Subject: success\ntest")
+        except:
+            if args.email is not None:
+                server.sendmail("data.measurements.tool@gmail.com", args.email, "Subject: fail\ntest")
+            server.sendmail("data.measurements.tool@gmail.com", "data.measurements.tool@gmail.com", "Subject: fail\ntest")
+
     print()
 
 
