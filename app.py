@@ -24,6 +24,7 @@ from data_measurements import streamlit_utils as st_utils
 from datasets import list_datasets
 import socket
 import json
+from email_validator import validate_email, EmailNotValidError
 
 HOST = "127.0.0.1"  # The server's hostname or IP address
 PORT = 65432  # The port used by the server
@@ -157,6 +158,7 @@ def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False, recompute
     #except:
     #    logs.warning("We're screwed")
     if cache_dir_exists:
+        dstats.load_or_prepare_dataset()
         try:
             # We need to have the text_dset loaded for further load_or_prepare
             dstats.load_or_prepare_dataset()
@@ -172,6 +174,7 @@ def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False, recompute
             dstats.load_or_prepare_general_stats()
         except:
             logs.warning("Missing a cache for general stats")
+        dstats.load_or_prepare_labels()
         try:
             # Labels widget
             dstats.load_or_prepare_labels()
@@ -239,17 +242,41 @@ def show_column(dstats, ds_configs, show_embeddings, column_id):
         )
 
 
-def request_measurements():
+def request_measurements(args):
     # echo-client.py
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((HOST, PORT))
-        data = json.dumps({"email": "tristant33@gmail.com", "dataset": "hate_speech18", "config": "default", "split": "train", "label_field": "label", "feature": "text"})
+        data = json.dumps(args)
         s.sendall(bytes(data,encoding="utf-8"))
         data = s.recv(1024)
 
     print(f"Received {data!r}")
 
+
+def display_or_compute_data_measures(cache_exists, dstats, show_embeddings, dataset_args, column_id=""):
+    if cache_exists:
+        show_column(dstats, dataset_args["dset_configs"], show_embeddings, column_id)
+    else:
+        st.markdown("### Missing pre-computed data measures!")
+        email = st.text_input("Enter your email. Our app will compute the measures and email you when done!")
+
+        try:
+            # Validate.
+            valid = validate_email(email)
+
+            # Update with the normalized form.
+            email = valid.email
+
+        except EmailNotValidError as e:
+            valid = False
+
+        if valid:
+            request_measurements(dict({"email": email}, **dataset_args))
+            st.text("Computing metrics! An email will be sent to you. This could take a while if the dataset is big.")
+        else:
+            if email != "":
+                st.text("Oh no, that email doesn't seem valid!")
 
 def main():
     """ Sidebar description and selection """
@@ -274,50 +301,18 @@ def main():
             dataset_args_left, show_embeddings, use_cache=use_cache
         )
         with left_col:
-            if cache_exists_left:
-                show_column(dstats_left, dataset_args_left["dset_configs"], show_embeddings, " A")
-            else:
-                st.markdown("### Missing pre-computed data measures!")
-                compute_data_measures = st.button("Compute Them")
-                if compute_data_measures:
-                    request_measurements()
-                    '''
-                    dstats_left, cache_exists_left = load_or_prepare_widgets(
-                        dataset_args_left, show_embeddings, use_cache=use_cache, recompute_data_measures=True
-                    )
-                    '''
+            display_or_compute_data_measures(cache_exists_left, dstats_left, show_embeddings, dataset_args_left, column_id=" A")
+
         dstats_right, cache_exists_right = load_or_prepare_widgets(
             dataset_args_right, show_embeddings, use_cache=use_cache
         )
         with right_col:
-            if cache_exists_right:
-                show_column(dstats_right, dataset_args_right["dset_configs"], show_embeddings, " B")
-            else:
-                st.markdown("### Missing pre-computed data measures!")
-                compute_data_measures = st.button("Compute Them")
-                if compute_data_measures:
-                    request_measurements()
-                    '''
-                    dstats_right, cache_exists_right = load_or_prepare_widgets(
-                        dataset_args_right, show_embeddings, use_cache=use_cache, recompute_data_measures=True
-                    )
-                    '''
+            display_or_compute_data_measures(cache_exists_right, dstats_right, show_embeddings, dataset_args_right, column_id=" B")
     else:
         logs.warning("Using Single Dataset Mode")
         dataset_args = st_utils.sidebar_selection(ds_names, "")
         dstats, cache_exists = load_or_prepare_widgets(dataset_args, show_embeddings, use_cache=use_cache)
-        if cache_exists:
-            show_column(dstats, dataset_args["dset_configs"], show_embeddings, "")
-        else:
-            st.markdown("### Missing pre-computed data measures!")
-            compute_data_measures = st.button("Compute Them")
-            if compute_data_measures:
-                request_measurements()
-                '''
-                dstats, cache_exists = load_or_prepare_widgets(
-                    dataset_args, show_embeddings, use_cache=use_cache, recompute_data_measures=True
-                )
-                '''
+        display_or_compute_data_measures(cache_exists, dstats, show_embeddings, dataset_args)
 
 
 

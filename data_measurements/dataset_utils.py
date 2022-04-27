@@ -94,11 +94,13 @@ def load_truncated_dataset(
     Returns:
         Dataset: the truncated dataset as a Dataset object
     """
+    print('ree')
     if cache_name is None:
         cache_name = f"{dataset_name}_{config_name}_{split_name}_{num_rows}"
     if exists(cache_name):
         dataset = load_from_disk(cache_name)
     else:
+        print('ree2')
         if use_streaming and dataset_name in _STREAMABLE_DATASET_LIST:
             iterable_dataset = load_dataset(
                 dataset_name,
@@ -115,12 +117,21 @@ def load_truncated_dataset(
                 "temp.jsonl", features=iterable_dataset.features, split=split_name
             )
         else:
+            print('ree3')
             full_dataset = load_dataset(
                 dataset_name,
                 name=config_name,
                 split=split_name,
             )
+            print('ree4')
+            range(num_rows)
+            print('ree5')
+            print(full_dataset)
+            print(full_dataset.select(range(num_rows)))
+            print('ree6')
             dataset = full_dataset.select(range(num_rows))
+            print('ree7')
+        print('ree8')
         dataset.save_to_disk(cache_name)
     return dataset
 

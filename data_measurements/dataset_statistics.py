@@ -17,8 +17,10 @@ import logging
 import statistics
 import os
 from os import mkdir
-from os.path import exists, isdir
+from os.path import isdir
 from os.path import join as pjoin
+import shutil
+import tempfile
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
@@ -44,7 +46,7 @@ from .dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD,
 from .embeddings import Embeddings
 from .npmi import nPMI
 from .zipf import Zipf
-from huggingface_hub import Repository
+from huggingface_hub import Repository, hf_hub_download
 
 pd.options.display.float_format = "{:,.3f}".format
 
@@ -52,11 +54,17 @@ logs = logging.getLogger(__name__)
 logs.setLevel(logging.WARNING)
 logs.propagate = False
 
-HF_TOKEN = os.environ.get("HF_TOKEN")
-repo = Repository(
-    local_dir="cache_dir", clone_from="https://huggingface.co/datasets/Tristan/data-measurements-cache", use_auth_token=HF_TOKEN
-)
+CACHE_REPO_DIR = "data-measurements-cache"
+REPO_ID = "datasets/Tristan/" + CACHE_REPO_DIR
+HF_TOKEN = "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"  # os.environ.get("HF_TOKEN")
+repo = Repository(local_dir="data-measurements-cache", clone_from="https://huggingface.co/" + REPO_ID, use_auth_token=HF_TOKEN)
 print("is none?", HF_TOKEN is None)
+
+def try_hf_hub_download(repo_id, filename):
+    try:
+        return hf_hub_download(repo_id, filename=filename)
+    except:
+        return None
 
 if not logs.handlers:
 
@@ -250,10 +258,14 @@ class DatasetStatisticsCacheClass:
         #    label_field = label_field
         # else:
         #    label_field = "-".join(label_field)
+        '''
         self.cache_path = pjoin(
             self.cache_dir,
             f"{dset_name}_{dset_config_name}_{split_name}_{text_field}",  # {label_field},
         )
+        '''
+
+        self.cache_path = f"{dset_name}_{dset_config_name}_{split_name}_{text_field}"
 
         # Cache files not needed for UI
         self.dset_fid = pjoin(self.cache_path, "base_dset")
@@ -314,6 +326,7 @@ class DatasetStatisticsCacheClass:
         If in deployment mode and cache directory does not already exist,
         return False.
         """
+        """
         if self.live:
             return isdir(self.cache_path)
         else:
@@ -321,7 +334,8 @@ class DatasetStatisticsCacheClass:
                 logs.warning("Creating cache directory %s." % self.cache_path)
                 mkdir(self.cache_path)
             return isdir(self.cache_path)
-
+        """
+        return try_hf_hub_download(REPO_ID, filename=self.cache_path + "/dset_peek.json") is not None
 
     def get_base_dataset(self):
         """Gets a pointer to the truncated base dataset object."""
@@ -346,11 +360,14 @@ class DatasetStatisticsCacheClass:
 
         """
         # General statistics
+        general_stats_json_fid_path = try_hf_hub_download(REPO_ID, self.general_stats_json_fid)
+        dup_counts_df_fid_path = try_hf_hub_download(REPO_ID, self.dup_counts_df_fid)
+        sorted_top_vocab_df_fid_path = try_hf_hub_download(REPO_ID, self.sorted_top_vocab_df_fid)
         if (
             self.use_cache
-            and exists(self.general_stats_json_fid)
-            and exists(self.dup_counts_df_fid)
-            and exists(self.sorted_top_vocab_df_fid)
+            and general_stats_json_fid_path is not None
+            and dup_counts_df_fid_path is not None
+            and sorted_top_vocab_df_fid_path is not None
         ):
             logs.info("Loading cached general stats")
             self.load_general_stats()
@@ -359,9 +376,9 @@ class DatasetStatisticsCacheClass:
                 logs.info("Preparing general stats")
                 self.prepare_general_stats()
                 if save:
-                    write_df(self.sorted_top_vocab_df, self.sorted_top_vocab_df_fid)
-                    write_df(self.dup_counts_df, self.dup_counts_df_fid)
-                    write_json(self.general_stats_dict, self.general_stats_json_fid)
+                    write_df(self.sorted_top_vocab_df, CACHE_REPO_DIR + self.sorted_top_vocab_df_fid)
+                    write_df(self.dup_counts_df, CACHE_REPO_DIR + self.dup_counts_df_fid)
+                    write_json(self.general_stats_dict, CACHE_REPO_DIR + self.general_stats_json_fid)
 
     def load_or_prepare_text_lengths(self, save=True):
         """
@@ -374,34 +391,38 @@ class DatasetStatisticsCacheClass:
 
         """
         # Text length figure
-        if self.use_cache and exists(self.fig_tok_length_fid):
-            self.fig_tok_length_png = mpimg.imread(self.fig_tok_length_fid)
+        fig_tok_length_fid_path = try_hf_hub_download(REPO_ID, self.fig_tok_length_fid)
+        if self.use_cache and fig_tok_length_fid_path is not None:
+            self.fig_tok_length_png = mpimg.imread(fig_tok_length_fid_path)
         else:
             if not self.live:
                 self.prepare_fig_text_lengths()
                 if save:
-                    self.fig_tok_length.savefig(self.fig_tok_length_fid)
+                    self.fig_tok_length.savefig(CACHE_REPO_DIR + self.fig_tok_length_fid)
         # Text length dataframe
-        if self.use_cache and exists(self.length_df_fid):
-            self.length_df = feather.read_feather(self.length_df_fid)
+        length_df_fid_path = try_hf_hub_download(REPO_ID, self.length_df_fid)
+        if self.use_cache and length_df_fid_path is not None:
+            self.length_df = feather.read_feather(length_df_fid_path)
         else:
             if not self.live:
                 self.prepare_length_df()
                 if save:
-                    write_df(self.length_df, self.length_df_fid)
+                    write_df(self.length_df, CACHE_REPO_DIR + self.length_df_fid)
 
         # Text length stats.
-        if self.use_cache and exists(self.length_stats_json_fid):
-            with open(self.length_stats_json_fid, "r") as f:
-                self.length_stats_dict = json.load(f)
-            self.avg_length = self.length_stats_dict["avg length"]
-            self.std_length = self.length_stats_dict["std length"]
-            self.num_uniq_lengths = self.length_stats_dict["num lengths"]
+        if self.use_cache:
+            length_stats_json_fid_path = try_hf_hub_download(REPO_ID, self.length_stats_json_fid)
+            if length_stats_json_fid_path is not None:
+                with open(length_stats_json_fid_path, "r") as f:
+                    self.length_stats_dict = json.load(f)
+                self.avg_length = self.length_stats_dict["avg length"]
+                self.std_length = self.length_stats_dict["std length"]
+                self.num_uniq_lengths = self.length_stats_dict["num lengths"]
         else:
             if not self.live:
                 self.prepare_text_length_stats()
                 if save:
-                    write_json(self.length_stats_dict, self.length_stats_json_fid)
+                    write_json(self.length_stats_dict, CACHE_REPO_DIR + self.length_stats_json_fid)
 
     def prepare_length_df(self):
         if not self.live:
@@ -458,7 +479,8 @@ class DatasetStatisticsCacheClass:
         :param
         :return:
         """
-        if self.use_cache and exists(self.vocab_counts_df_fid):
+        vocab_counts_df_fid_path = try_hf_hub_download(REPO_ID, self.vocab_counts_df_fid)
+        if self.use_cache and vocab_counts_df_fid_path is not None:
             logs.info("Reading vocab from cache")
             self.load_vocab()
             self.vocab_counts_filtered_df = filter_vocab(self.vocab_counts_df)
@@ -482,14 +504,15 @@ class DatasetStatisticsCacheClass:
         logs.info(self.vocab_counts_filtered_df)
 
     def load_vocab(self):
-        with open(self.vocab_counts_df_fid, "rb") as f:
+        with open(hf_hub_download(REPO_ID, filename=self.vocab_counts_df_fid), "rb") as f:
             self.vocab_counts_df = feather.read_feather(f)
         # Handling for changes in how the index is saved.
         self.vocab_counts_df = self._set_idx_col_names(self.vocab_counts_df)
 
     def load_or_prepare_text_duplicates(self, save=True):
-        if self.use_cache and exists(self.dup_counts_df_fid):
-            with open(self.dup_counts_df_fid, "rb") as f:
+        dup_counts_df_fid_path = hf_hub_download(REPO_ID, filename=self.dup_counts_df_fid)
+        if self.use_cache and dup_counts_df_fid_path is not None:
+            with open(dup_counts_df_fid_path, "rb") as f:
                 self.dup_counts_df = feather.read_feather(f)
         elif self.dup_counts_df is None:
             if not self.live:
@@ -506,9 +529,9 @@ class DatasetStatisticsCacheClass:
 
     def load_general_stats(self):
         self.general_stats_dict = json.load(
-            open(self.general_stats_json_fid, encoding="utf-8")
+            open(hf_hub_download(REPO_ID, filename=self.general_stats_json_fid), encoding="utf-8")
         )
-        with open(self.sorted_top_vocab_df_fid, "rb") as f:
+        with open(hf_hub_download(REPO_ID, filename=self.sorted_top_vocab_df_fid), "rb") as f:
             self.sorted_top_vocab_df = feather.read_feather(f)
         self.text_nan_count = self.general_stats_dict[TEXT_NAN_CNT]
         self.dedup_total = self.general_stats_dict[DEDUP_TOT]
@@ -571,8 +594,9 @@ class DatasetStatisticsCacheClass:
         self.load_or_prepare_dset_peek(save)
 
     def load_or_prepare_dset_peek(self, save=True):
-        if self.use_cache and exists(self.dset_peek_json_fid):
-            with open(self.dset_peek_json_fid, "r") as f:
+        dset_peek_json_fid_path = hf_hub_download(REPO_ID, filename=self.dset_peek_json_fid)
+        if self.use_cache and dset_peek_json_fid_path is not None:
+            with open(dset_peek_json_fid_path, "r") as f:
                 self.dset_peek = json.load(f)["dset peek"]
         else:
             if not self.live:
@@ -583,8 +607,9 @@ class DatasetStatisticsCacheClass:
                     write_json({"dset peek": self.dset_peek}, self.dset_peek_json_fid)
 
     def load_or_prepare_tokenized_df(self, save=True):
-        if self.use_cache and exists(self.tokenized_df_fid):
-            self.tokenized_df = feather.read_feather(self.tokenized_df_fid)
+        tokenized_df_fid_path = hf_hub_download(REPO_ID, filename=self.tokenized_df_fid)
+        if self.use_cache and tokenized_df_fid_path is not None:
+            self.tokenized_df = feather.read_feather(tokenized_df_fid_path)
         else:
             if not self.live:
                 # tokenize all text instances
@@ -595,9 +620,16 @@ class DatasetStatisticsCacheClass:
                     write_df(self.tokenized_df, self.tokenized_df_fid)
 
     def load_or_prepare_text_dset(self, save=True):
-        if self.use_cache and exists(self.text_dset_fid):
+        text_dset_info_fid_path = try_hf_hub_download(REPO_ID, filename=self.text_dset_fid + "/dataset_info.json")
+        text_dset_fid_path = try_hf_hub_download(REPO_ID, filename=self.text_dset_fid + "/dataset.arrow")
+        text_state_fid_path = try_hf_hub_download(REPO_ID, filename=self.text_dset_fid + "/state.json")
+        if self.use_cache and None not in (text_dset_fid_path, text_dset_info_fid_path, text_state_fid_path):
             # load extracted text
-            self.text_dset = load_from_disk(self.text_dset_fid)
+            tempdir = tempfile.mkdtemp(prefix="text_dset")
+            shutil.copy2(text_dset_info_fid_path, tempdir + "/dataset_info.json")
+            shutil.copy2(text_dset_fid_path, tempdir + "/dataset.arrow")
+            shutil.copy2(text_state_fid_path, tempdir + "/state.json")
+            self.text_dset = load_from_disk(tempdir)
             logs.warning("Loaded dataset from disk")
             logs.info(self.text_dset)
         # ...Or load it from the server and store it anew
@@ -607,7 +639,7 @@ class DatasetStatisticsCacheClass:
                 if save:
                     # save extracted text instances
                     logs.warning("Saving dataset to disk")
-                    self.text_dset.save_to_disk(self.text_dset_fid)
+                    self.text_dset.save_to_disk(CACHE_REPO_DIR + self.text_dset_fid)
 
     def prepare_text_dset(self):
         if not self.live:
@@ -666,24 +698,26 @@ class DatasetStatisticsCacheClass:
         """
         # extracted labels
         if len(self.label_field) > 0:
-            if self.use_cache and exists(self.fig_labels_json_fid):
-                self.fig_labels = read_plotly(self.fig_labels_json_fid)
-            elif self.use_cache and exists(self.label_dset_fid):
+            fig_labels_json_fid_path = hf_hub_download(REPO_ID, filename=self.fig_labels_json_fid)
+            label_dset_fid_path = hf_hub_download(REPO_ID, filename=self.label_dset_fid)
+            if self.use_cache and fig_labels_json_fid_path is not None:
+                self.fig_labels = read_plotly(fig_labels_json_fid_path)
+            elif self.use_cache and label_dset_fid_path is not None:
                 # load extracted labels
-                self.label_dset = load_from_disk(self.label_dset_fid)
+                self.label_dset = load_from_disk(label_dset_fid_path)
                 self.label_df = self.label_dset.to_pandas()
                 self.fig_labels = make_fig_labels(
                     self.label_df, self.label_names, OUR_LABEL_FIELD
                 )
                 if save:
-                    write_plotly(self.fig_labels, self.fig_labels_json_fid)
+                    write_plotly(self.fig_labels, CACHE_REPO_DIR + self.fig_labels_json_fid)
             else:
                 if not self.live:
                     self.prepare_labels()
                     if save:
                         # save extracted label instances
-                        self.label_dset.save_to_disk(self.label_dset_fid)
-                        write_plotly(self.fig_labels, self.fig_labels_json_fid)
+                        self.label_dset.save_to_disk(CACHE_REPO_DIR + self.label_dset_fid)
+                        write_plotly(self.fig_labels, CACHE_REPO_DIR + self.fig_labels_json_fid)
 
     def prepare_labels(self):
         if not self.live:
@@ -708,27 +742,29 @@ class DatasetStatisticsCacheClass:
         # TODO: Current UI only uses the fig, meaning the self.z here is irrelevant
         # when only reading from cache. Either the UI should use it, or it should
         # be removed when reading in cache
-        if self.use_cache and exists(self.zipf_fig_fid) and exists(self.zipf_fid):
-            with open(self.zipf_fid, "r") as f:
+        zipf_fig_fid_path = try_hf_hub_download(REPO_ID, self.zipf_fig_fid)
+        zipf_fid_path = try_hf_hub_download(REPO_ID, self.zipf_fid)
+        if self.use_cache and zipf_fig_fid_path is not None and zipf_fid_path is not None:
+            with open(zipf_fid_path, "r") as f:
                 zipf_dict = json.load(f)
             self.z = Zipf()
             self.z.load(zipf_dict)
-            self.zipf_fig = read_plotly(self.zipf_fig_fid)
-        elif self.use_cache and exists(self.zipf_fid):
+            self.zipf_fig = read_plotly(zipf_fig_fid_path)
+        elif self.use_cache and zipf_fid_path is not None:
             # TODO: Read zipf data so that the vocab is there.
-            with open(self.zipf_fid, "r") as f:
+            with open(zipf_fid_path, "r") as f:
                 zipf_dict = json.load(f)
             self.z = Zipf()
             self.z.load(zipf_dict)
             self.zipf_fig = make_zipf_fig(self.vocab_counts_df, self.z)
             if save:
-                write_plotly(self.zipf_fig, self.zipf_fig_fid)
+                write_plotly(self.zipf_fig, CACHE_REPO_DIR + self.zipf_fig_fid)
         else:
             self.z = Zipf(self.vocab_counts_df)
             self.zipf_fig = make_zipf_fig(self.vocab_counts_df, self.z)
             if save:
-                write_zipf_data(self.z, self.zipf_fid)
-                write_plotly(self.zipf_fig, self.zipf_fig_fid)
+                write_zipf_data(self.z, CACHE_REPO_DIR + self.zipf_fid)
+                write_plotly(self.zipf_fig, CACHE_REPO_DIR + self.zipf_fig_fid)
 
     def _set_idx_col_names(self, input_vocab_df):
         if input_vocab_df.index.name != VOCAB and VOCAB in input_vocab_df.columns:
@@ -744,7 +780,7 @@ class nPMIStatisticsCacheClass:
     def __init__(self, dataset_stats, use_cache=False):
         self.live = dataset_stats.live
         self.dstats = dataset_stats
-        self.pmi_cache_path = pjoin(self.dstats.cache_path, "pmi_files")
+        self.pmi_cache_path = pjoin(CACHE_REPO_DIR + "/" + self.dstats.cache_path, "pmi_files")
         if not isdir(self.pmi_cache_path):
             logs.warning("Creating pmi cache directory %s." % self.pmi_cache_path)
             # We need to preprocess everything.
@@ -770,12 +806,13 @@ class nPMIStatisticsCacheClass:
         """
         # TODO: Add the user's ability to select subgroups.
         # TODO: Make min_vocab_count here value selectable by the user.
+        npmi_terms_fid_path = try_hf_hub_download(REPO_ID, self.npmi_terms_fid)
         if (
             self.use_cache
-            and exists(self.npmi_terms_fid)
-            and json.load(open(self.npmi_terms_fid))["available terms"] != []
+            and npmi_terms_fid_path is not None
+            and json.load(open(npmi_terms_fid_path))["available terms"] != []
         ):
-            available_terms = json.load(open(self.npmi_terms_fid))["available terms"]
+            available_terms = json.load(open(npmi_terms_fid_path))["available terms"]
         else:
             true_false = [
                 term in self.dstats.vocab_counts_df.index for term in self.termlist
@@ -791,7 +828,6 @@ class nPMIStatisticsCacheClass:
             logs.info(available_terms)
             with open(self.npmi_terms_fid, "w+") as f:
                 json.dump({"available terms": available_terms}, f)
-            repo.push_to_hub()
         self.available_terms = available_terms
         return available_terms
 
@@ -816,10 +852,11 @@ class nPMIStatisticsCacheClass:
         subgroup_files = define_subgroup_files(subgroup_pair, self.pmi_cache_path)
         # Defines the filenames for the cache files from the selected subgroups.
         # Get as much precomputed data as we can.
-        if self.use_cache and exists(joint_npmi_fid):
+        joint_npmi_fid_path = try_hf_hub_download(REPO_ID, joint_npmi_fid)
+        if self.use_cache and joint_npmi_fid_path is not None:
             # When everything is already computed for the selected subgroups.
             logs.info("Loading cached joint npmi")
-            joint_npmi_df = self.load_joint_npmi_df(joint_npmi_fid)
+            joint_npmi_df = self.load_joint_npmi_df(joint_npmi_fid_path)
             npmi_display_cols = [
                 "npmi-bias",
                 subgroup1 + "-npmi",
@@ -839,9 +876,8 @@ class nPMIStatisticsCacheClass:
                 logs.info("Writing out.")
                 for subgroup in subgroup_pair:
                     write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files)
-                with open(joint_npmi_fid, "w+") as f:
+                with open(CACHE_REPO_DIR + joint_npmi_fid, "w+") as f:
                     joint_npmi_df.to_csv(f)
-                repo.push_to_hub()
             else:
                 joint_npmi_df = pd.DataFrame()
         logs.info("The joint npmi df is")
@@ -854,7 +890,7 @@ class nPMIStatisticsCacheClass:
         :param joint_npmi_fid:
         :return: paired results
         """
-        with open(joint_npmi_fid, "rb") as f:
+        with open(hf_hub_download(REPO_ID, filename=joint_npmi_fid), "rb") as f:
             joint_npmi_df = pd.read_csv(f)
         joint_npmi_df = self._set_idx_cols_from_cache(joint_npmi_df)
         return joint_npmi_df.dropna()
@@ -868,20 +904,25 @@ class nPMIStatisticsCacheClass:
         :param subgroup_pair:
         :return: Dataframe with nPMI for the words, nPMI bias between the words.
         """
+        print("harharhar")
         subgroup_dict = {}
         # When npmi is computed for some (but not all) of subgroup_list
         for subgroup in subgroup_pair:
             logs.info("Load or failing...")
             # When subgroup npmi has been computed in a prior session.
+            '''
             cached_results = self.load_or_fail_cached_npmi_scores(
                 subgroup, subgroup_files[subgroup]
             )
+            '''
+            cached_results = False
             # If the function did not return False and we did find it, use.
             if cached_results:
                 # FYI: subgroup_cooc_df, subgroup_pmi_df, subgroup_npmi_df = cached_results
                 # Holds the previous sessions' data for use in this session.
                 subgroup_dict[subgroup] = cached_results
         logs.info("Calculating for subgroup list")
+        print("harharhar")
         joint_npmi_df, subgroup_dict = self.do_npmi(subgroup_pair, subgroup_dict)
         return joint_npmi_df.dropna(), subgroup_dict
 
@@ -894,11 +935,13 @@ class nPMIStatisticsCacheClass:
         :return: Selected identity term's co-occurrence counts with
                  other words, pmi per word, and nPMI per word.
         """
+        print('har')
         logs.info("Initializing npmi class")
         npmi_obj = self.set_npmi_obj()
         # Canonical ordering used
         subgroup_pair = tuple(sorted(subgroup_pair))
         # Calculating nPMI statistics
+        print('har2')
         for subgroup in subgroup_pair:
             # If the subgroup data is already computed, grab it.
             # TODO: Should we set idx and column names similarly to how we set them for cached files?
@@ -930,19 +973,22 @@ class nPMIStatisticsCacheClass:
         """
         # TODO: Ordering of npmi, pmi, vocab triple should be consistent
         subgroup_npmi_fid, subgroup_pmi_fid, subgroup_cooc_fid = subgroup_fids
+        subgroup_npmi_fid_path = try_hf_hub_download(REPO_ID, subgroup_npmi_fid)
+        subgroup_pmi_fid_path = try_hf_hub_download(REPO_ID, subgroup_pmi_fid)
+        subgroup_cooc_fid_path = try_hf_hub_download(REPO_ID, subgroup_cooc_fid)
         if (
-            exists(subgroup_npmi_fid)
-            and exists(subgroup_pmi_fid)
-            and exists(subgroup_cooc_fid)
+            subgroup_npmi_fid_path is not None
+            and subgroup_pmi_fid_path is not None
+            and subgroup_cooc_fid_path is not None
         ):
             logs.info("Reading in pmi data....")
-            with open(subgroup_cooc_fid, "rb") as f:
+            with open(subgroup_cooc_fid_path, "rb") as f:
                 subgroup_cooc_df = pd.read_csv(f)
             logs.info("pmi")
-            with open(subgroup_pmi_fid, "rb") as f:
+            with open(subgroup_pmi_fid_path, "rb") as f:
                 subgroup_pmi_df = pd.read_csv(f)
             logs.info("npmi")
-            with open(subgroup_npmi_fid, "rb") as f:
+            with open(subgroup_npmi_fid_path, "rb") as f:
                 subgroup_npmi_df = pd.read_csv(f)
             subgroup_cooc_df = self._set_idx_cols_from_cache(
                 subgroup_cooc_df, subgroup, "count"
@@ -1197,7 +1243,6 @@ def write_df(df, df_fid):
 def write_json(json_dict, json_fid):
     with open(json_fid, "w", encoding="utf-8") as f:
         json.dump(json_dict, f)
-    repo.push_to_hub()
 
 
 def write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files):
@@ -1218,7 +1263,6 @@ def write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files):
         subgroup_pmi_df.to_csv(f)
     with open(subgroup_cooc_fid, "w+") as f:
         subgroup_cooc_df.to_csv(f)
-    repo.push_to_hub()
 
 
 def write_zipf_data(z, zipf_fid):
@@ -1232,4 +1276,3 @@ def write_zipf_data(z, zipf_fid):
     zipf_dict["uniq_ranks"] = [int(rank) for rank in z.uniq_ranks]
     with open(zipf_fid, "w+", encoding="utf-8") as f:
         json.dump(zipf_dict, f)
-    repo.push_to_hub()
