@@ -31,12 +31,9 @@ import plotly.graph_objects as go
 import pyarrow.feather as feather
 import seaborn as sns
 import torch
-from torch.nn import CrossEntropyLoss
-from tqdm import tqdm
-from datasets import load_from_disk
+from datasets import load_from_disk, load_metric
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
-from transformers import GPT2LMHeadModel, GPT2TokenizerFast
 
 from .dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD,
                             OUR_LABEL_FIELD, OUR_TEXT_FIELD, PERPLEXITY_FIELD, PROP,
@@ -141,11 +138,8 @@ _NUM_VOCAB_BATCHES = 2000
 _TOP_N = 100
 _CVEC = CountVectorizer(token_pattern="(?u)\\b\\w+\\b", lowercase=True)
 
-_DEVICE = "cuda:0" if torch.cuda.is_available() else "cpu"
-_GPT2_MODEL_ID = "gpt2"
-_GPT2_MODEL = GPT2LMHeadModel.from_pretrained(_GPT2_MODEL_ID).to(_DEVICE)
-_GPT2_TOKENIZER = GPT2TokenizerFast.from_pretrained(_GPT2_MODEL_ID)
-_PERPLEXITY_BATCH_SIZE = 10
+_PERPLEXITY = load_metric("perplexity")
+
 
 class DatasetStatisticsCacheClass:
     def __init__(
@@ -196,8 +190,6 @@ class DatasetStatisticsCacheClass:
         ## Data frames
         # Tokenized text
         self.tokenized_df = None
-        # GPT2 tokenized text
-        self.gpt2_tokenized_df = None
         # save sentence length histogram in the class so it doesn't ge re-computed
         self.length_df = None
         self.fig_tok_length = None
@@ -260,7 +252,6 @@ class DatasetStatisticsCacheClass:
         # Cache files not needed for UI
         self.dset_fid = pjoin(self.cache_path, "base_dset")
         self.tokenized_df_fid = pjoin(self.cache_path, "tokenized_df.feather")
-        self.gpt2_tokenized_df_fid = pjoin(self.cache_path, "gpt2_tokenized_df.feather")
         self.label_dset_fid = pjoin(self.cache_path, "label_dset")
 
         # Needed for UI -- embeddings
@@ -575,42 +566,13 @@ class DatasetStatisticsCacheClass:
 
     def prepare_text_perplexities(self):
         if not self.live:
-            perplexities = {PERPLEXITY_FIELD: [], OUR_TEXT_FIELD: []}
-            if self.gpt2_tokenized_df is None:
-                self.load_or_prepare_gpt2_tokenized_df()
-            rows = list(self.gpt2_tokenized_df.iterrows())
-            for i in tqdm(range(0, len(rows), _PERPLEXITY_BATCH_SIZE)):
-                row_batch = rows[i:i+_PERPLEXITY_BATCH_SIZE]
-                input_ids_batch = []
-
-                for index, row in row_batch:
-                    perplexities[OUR_TEXT_FIELD].append(row[OUR_TEXT_FIELD])
-                    # Add the begginging of sentence token to the input ids, so that we can get a
-                    # probability for the first word in the text from GPT2.
-                    input_ids_batch.append([_GPT2_TOKENIZER.bos_token_id] + row[TOKENIZED_FIELD])
-                max_length_of_input_ids = max(len(input_ids) for input_ids in input_ids_batch)
-                padded_input_ids_batch = []
-                attention_mask_batch = []
-                for input_ids in input_ids_batch:
-                    padding = (max_length_of_input_ids - len(input_ids))*[0]
-                    padded_input_ids_batch.append(input_ids + padding)
-                    attention_mask_batch.append(len(input_ids)*[1] + padding)
-                input_ids_batch = torch.tensor(padded_input_ids_batch).to(_DEVICE)
-                attention_mask_batch = torch.tensor(attention_mask_batch).to(_DEVICE)
-
-                with torch.no_grad():
-                    outputs = _GPT2_MODEL(input_ids_batch, attention_mask=attention_mask_batch)
-
-                logits = outputs[0]
-                # Shift so that tokens < n predict n
-                shift_logits = logits[..., :-1, :].contiguous()
-                shift_labels = input_ids_batch[..., 1:].contiguous()
-                shift_attention_mask_batch = attention_mask_batch[..., 1:].contiguous()
-                loss_fct = CrossEntropyLoss(reduction="none")
-                perplexity_batch = torch.exp((loss_fct(shift_logits.transpose(1,2), shift_labels)*shift_attention_mask_batch).sum(1) / shift_attention_mask_batch.sum(1)).tolist()
-                perplexities[PERPLEXITY_FIELD] += perplexity_batch
-
-            self.perplexities_df = pd.DataFrame(perplexities).sort_values(by=PERPLEXITY_FIELD, ascending=False)
+            if self.text_dset is None:
+                self.load_or_prepare_text_dset()
+            # Do not try to compute perplexities if this dataset it huge (like a big pretraining dataset). Too much compute.
+            if len(self.text_dset[OUR_TEXT_FIELD]) < 1000000:
+                results = _PERPLEXITY.compute(input_texts=self.text_dset[OUR_TEXT_FIELD], model_id='gpt2')
+                perplexities = {PERPLEXITY_FIELD: results["perplexities"], OUR_TEXT_FIELD: self.text_dset[OUR_TEXT_FIELD]}
+                self.perplexities_df = pd.DataFrame(perplexities).sort_values(by=PERPLEXITY_FIELD, ascending=False)
 
     def load_or_prepare_dataset(self, save=True):
         """
@@ -654,18 +616,6 @@ class DatasetStatisticsCacheClass:
                     logs.warning("Saving tokenized dataset to disk")
                     # save tokenized text
                     write_df(self.tokenized_df, self.tokenized_df_fid)
-
-    def load_or_prepare_gpt2_tokenized_df(self, save=True):
-        if self.use_cache and exists(self.gpt2_tokenized_df_fid):
-            self.gpt2_tokenized_df = feather.read_feather(self.gpt2_tokenized_df_fid)
-        else:
-            if not self.live:
-                # tokenize all text instances
-                self.gpt2_tokenized_df = self.do_gpt2_tokenization()
-                if save:
-                    logs.warning("Saving gpt2-tokenized dataset to disk")
-                    # save tokenized text
-                    write_df(self.gpt2_tokenized_df, self.gpt2_tokenized_df_fid)
 
     def load_or_prepare_text_dset(self, save=True):
         if self.use_cache and exists(self.text_dset_fid):
@@ -721,33 +671,6 @@ class DatasetStatisticsCacheClass:
         )
         tokenized_df = pd.DataFrame(tokenized_dset)
         return tokenized_df
-
-    def do_gpt2_tokenization(self):
-        """
-        Tokenizes the dataset with the gpt2 tokenizer
-        :return:
-        """
-        if self.text_dset is None:
-            self.load_or_prepare_text_dset()
-
-        def tokenize_batch(examples):
-            # TODO: lowercase should be an option
-            res = {
-                TOKENIZED_FIELD: [
-                    _GPT2_TOKENIZER(text)["input_ids"]
-                    for text in examples[OUR_TEXT_FIELD]
-                ]
-            }
-            res[LENGTH_FIELD] = [len(tok_text) for tok_text in res[TOKENIZED_FIELD]]
-            return res
-
-        gpt2_tokenized_dset = self.text_dset.map(
-            tokenize_batch,
-            batched=True,
-            # remove_columns=[OUR_TEXT_FIELD], keep around to print
-        )
-        gpt2_tokenized_df = pd.DataFrame(gpt2_tokenized_dset)
-        return gpt2_tokenized_df
 
     def set_label_field(self, label_field="label"):
         """

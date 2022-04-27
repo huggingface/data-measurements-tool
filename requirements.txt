@@ -7,7 +7,7 @@ tokenizers==0.10.3
 sentencepiece==0.1.96
 streamlit==0.88.0
 iso_639==0.4.5
-datasets==1.15.1
+git+https://github.com/huggingface/datasets@56b114ebfd5399252dc23f9df207f87c5397b50a
 powerlaw==1.5
 numpy==1.19.5
 pandas==1.3.0

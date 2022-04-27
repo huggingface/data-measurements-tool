@@ -306,7 +306,7 @@ def expander_text_perplexities(dstats, column_id):
             "### Here is the list of the examples in the dataset, sorted by GPT-2 perplexity:"
         )
         if dstats.perplexities_df is None or dstats.perplexities_df.empty:
-            st.write("Perplexities have not been computed yet for this dataset.")
+            st.write("Perplexities have not been computed yet for this dataset, or this dataset is too large (> 1,000,000 examples).")
         else:
             st.dataframe(dstats.perplexities_df.reset_index(drop=True))
 
