@@ -272,7 +272,6 @@ def display_or_compute_data_measures(cache_exists, dstats, show_embeddings, data
             valid = False
 
         if valid:
-            print(dataset_args)
             request_measurements(dict({"email": email}, **dataset_args))
             st.text("Computing metrics! An email will be sent to you. This could take a while if the dataset is big.")
         else:

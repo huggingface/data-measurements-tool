@@ -58,7 +58,6 @@ CACHE_REPO_DIR = "data-measurements-cache"
 REPO_ID = "datasets/Tristan/" + CACHE_REPO_DIR
 HF_TOKEN = os.environ.get("HF_TOKEN")
 repo = Repository(local_dir="data-measurements-cache", clone_from="https://huggingface.co/" + REPO_ID, use_auth_token=HF_TOKEN)
-print("is none?", HF_TOKEN is None)
 
 def try_hf_hub_download(repo_id, filename):
     try:
@@ -743,9 +742,7 @@ class DatasetStatisticsCacheClass:
             )
 
     def load_or_prepare_npmi(self):
-        print('yoooooooooo')
         self.npmi_stats = nPMIStatisticsCacheClass(self, use_cache=self.use_cache)
-        print('yo')
         self.npmi_stats.load_or_prepare_npmi_terms()
 
     def load_or_prepare_zipf(self, save=True):
@@ -788,15 +785,13 @@ class nPMIStatisticsCacheClass:
     by calling the nPMI class with the user's selections."""
 
     def __init__(self, dataset_stats, use_cache=False):
-        print('yaaaa')
         self.live = dataset_stats.live
         self.dstats = dataset_stats
         self.pmi_cache_path = pjoin(CACHE_REPO_DIR + "/" + self.dstats.cache_path, "pmi_files")
         if not isdir(self.pmi_cache_path):
             logs.warning("Creating pmi cache directory %s." % self.pmi_cache_path)
             # We need to preprocess everything.
-            mkdir(self.pmi_cache_path)
-        print('yeeee')
+            mkdirs(self.pmi_cache_path)
         self.joint_npmi_df_dict = {}
         # TODO: Users ideally can type in whatever words they want.
         self.termlist = _IDENTITY_TERMS
@@ -818,7 +813,6 @@ class nPMIStatisticsCacheClass:
         """
         # TODO: Add the user's ability to select subgroups.
         # TODO: Make min_vocab_count here value selectable by the user.
-        print('yoooo')
         npmi_terms_fid_path = try_hf_hub_download(REPO_ID, self.npmi_terms_fid)
         if (
             self.use_cache
@@ -860,7 +854,7 @@ class nPMIStatisticsCacheClass:
             logs.warning("Creating cache")
             # We need to preprocess everything.
             # This should eventually all go into a prepare_dataset CLI
-            mkdir(self.pmi_cache_path)
+            mkdirs(self.pmi_cache_path)
         joint_npmi_fid = pjoin(self.pmi_cache_path, subgroups_str + "_npmi.csv")
         subgroup_files = define_subgroup_files(subgroup_pair, self.pmi_cache_path)
         # Defines the filenames for the cache files from the selected subgroups.
@@ -917,7 +911,6 @@ class nPMIStatisticsCacheClass:
         :param subgroup_pair:
         :return: Dataframe with nPMI for the words, nPMI bias between the words.
         """
-        print("harharhar")
         subgroup_dict = {}
         # When npmi is computed for some (but not all) of subgroup_list
         for subgroup in subgroup_pair:
@@ -935,7 +928,6 @@ class nPMIStatisticsCacheClass:
                 # Holds the previous sessions' data for use in this session.
                 subgroup_dict[subgroup] = cached_results
         logs.info("Calculating for subgroup list")
-        print("harharhar")
         joint_npmi_df, subgroup_dict = self.do_npmi(subgroup_pair, subgroup_dict)
         return joint_npmi_df.dropna(), subgroup_dict
 
@@ -948,13 +940,11 @@ class nPMIStatisticsCacheClass:
         :return: Selected identity term's co-occurrence counts with
                  other words, pmi per word, and nPMI per word.
         """
-        print('har')
         logs.info("Initializing npmi class")
         npmi_obj = self.set_npmi_obj()
         # Canonical ordering used
         subgroup_pair = tuple(sorted(subgroup_pair))
         # Calculating nPMI statistics
-        print('har2')
         for subgroup in subgroup_pair:
             # If the subgroup data is already computed, grab it.
             # TODO: Should we set idx and column names similarly to how we set them for cached files?
