@@ -7,13 +7,8 @@ from os.path import join as pjoin, isdir
 
 from data_measurements import dataset_statistics
 from data_measurements import dataset_utils
-
 import smtplib, ssl
-
 port = 465  # For SSL
-
-
-
 def load_or_prepare_widgets(ds_args, show_embeddings=False, use_cache=False):
     """
     Loader specifically for the widgets used in the app.
@@ -32,12 +27,11 @@ def load_or_prepare_widgets(ds_args, show_embeddings=False, use_cache=False):
         # This should eventually all go into a prepare_dataset CLI
         mkdir(ds_args["cache_dir"])
 
+
     dstats = dataset_statistics.DatasetStatisticsCacheClass(**ds_args,
                                                             use_cache=use_cache)
     # Header widget
-    dstats.live=False
     dstats.load_or_prepare_dset_peek()
-    print('yay')
     # General stats widget
     dstats.load_or_prepare_general_stats()
     # Labels widget
@@ -54,6 +48,7 @@ def load_or_prepare_widgets(ds_args, show_embeddings=False, use_cache=False):
     # Text duplicates widget
     dstats.load_or_prepare_text_duplicates()
     # nPMI widget
+    print('yay1')
     dstats.load_or_prepare_npmi()
     npmi_stats = dstats.npmi_stats
     # Handling for all pairs; in the UI, people select.
@@ -287,7 +282,7 @@ def main():
     # run_data_measurements.py -n hate_speech18 -c default -s train -f text -w npmi
     context = ssl.create_default_context()
     with smtplib.SMTP_SSL("smtp.gmail.com", port, context=context) as server:
-        server.login("data.measurements.tool@gmail.com", "cooldata") #os.environ.get("DMT_EMAIL_PASSWORD"))
+        server.login("data.measurements.tool@gmail.com", os.environ.get("DMT_EMAIL_PASSWORD"))
         try:
             get_text_label_df(
                 args.dataset,

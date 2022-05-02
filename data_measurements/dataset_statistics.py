@@ -56,7 +56,7 @@ logs.propagate = False
 
 CACHE_REPO_DIR = "data-measurements-cache"
 REPO_ID = "datasets/Tristan/" + CACHE_REPO_DIR
-HF_TOKEN = "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"  # os.environ.get("HF_TOKEN")
+HF_TOKEN = os.environ.get("HF_TOKEN")
 repo = Repository(local_dir="data-measurements-cache", clone_from="https://huggingface.co/" + REPO_ID, use_auth_token=HF_TOKEN)
 print("is none?", HF_TOKEN is None)
 
@@ -510,7 +510,7 @@ class DatasetStatisticsCacheClass:
         self.vocab_counts_df = self._set_idx_col_names(self.vocab_counts_df)
 
     def load_or_prepare_text_duplicates(self, save=True):
-        dup_counts_df_fid_path = hf_hub_download(REPO_ID, filename=self.dup_counts_df_fid)
+        dup_counts_df_fid_path = try_hf_hub_download(REPO_ID, filename=self.dup_counts_df_fid)
         if self.use_cache and dup_counts_df_fid_path is not None:
             with open(dup_counts_df_fid_path, "rb") as f:
                 self.dup_counts_df = feather.read_feather(f)
@@ -594,7 +594,7 @@ class DatasetStatisticsCacheClass:
         self.load_or_prepare_dset_peek(save)
 
     def load_or_prepare_dset_peek(self, save=True):
-        dset_peek_json_fid_path = hf_hub_download(REPO_ID, filename=self.dset_peek_json_fid)
+        dset_peek_json_fid_path = try_hf_hub_download(REPO_ID, filename=self.dset_peek_json_fid)
         if self.use_cache and dset_peek_json_fid_path is not None:
             with open(dset_peek_json_fid_path, "r") as f:
                 self.dset_peek = json.load(f)["dset peek"]
@@ -607,7 +607,7 @@ class DatasetStatisticsCacheClass:
                     write_json({"dset peek": self.dset_peek}, self.dset_peek_json_fid)
 
     def load_or_prepare_tokenized_df(self, save=True):
-        tokenized_df_fid_path = hf_hub_download(REPO_ID, filename=self.tokenized_df_fid)
+        tokenized_df_fid_path = try_hf_hub_download(REPO_ID, filename=self.tokenized_df_fid)
         if self.use_cache and tokenized_df_fid_path is not None:
             self.tokenized_df = feather.read_feather(tokenized_df_fid_path)
         else:
@@ -698,13 +698,21 @@ class DatasetStatisticsCacheClass:
         """
         # extracted labels
         if len(self.label_field) > 0:
-            fig_labels_json_fid_path = hf_hub_download(REPO_ID, filename=self.fig_labels_json_fid)
-            label_dset_fid_path = hf_hub_download(REPO_ID, filename=self.label_dset_fid)
+            fig_labels_json_fid_path = try_hf_hub_download(REPO_ID, filename=self.fig_labels_json_fid)
+
+            label_dset_info_fid_path = try_hf_hub_download(REPO_ID, filename=self.label_dset_fid + "/dataset_info.json")
+            label_dset_fid_path = try_hf_hub_download(REPO_ID, filename=self.label_dset_fid + "/dataset.arrow")
+            label_state_fid_path = try_hf_hub_download(REPO_ID, filename=self.label_dset_fid + "/state.json")
+
             if self.use_cache and fig_labels_json_fid_path is not None:
                 self.fig_labels = read_plotly(fig_labels_json_fid_path)
             elif self.use_cache and label_dset_fid_path is not None:
                 # load extracted labels
-                self.label_dset = load_from_disk(label_dset_fid_path)
+                tempdir = tempfile.mkdtemp(prefix="labels_dset")
+                shutil.copy2(label_dset_info_fid_path, tempdir + "/dataset_info.json")
+                shutil.copy2(label_dset_fid_path, tempdir + "/dataset.arrow")
+                shutil.copy2(label_state_fid_path, tempdir + "/state.json")
+                self.label_dset = load_from_disk(tempdir)
                 self.label_df = self.label_dset.to_pandas()
                 self.fig_labels = make_fig_labels(
                     self.label_df, self.label_names, OUR_LABEL_FIELD
@@ -735,7 +743,9 @@ class DatasetStatisticsCacheClass:
             )
 
     def load_or_prepare_npmi(self):
+        print('yoooooooooo')
         self.npmi_stats = nPMIStatisticsCacheClass(self, use_cache=self.use_cache)
+        print('yo')
         self.npmi_stats.load_or_prepare_npmi_terms()
 
     def load_or_prepare_zipf(self, save=True):
@@ -778,6 +788,7 @@ class nPMIStatisticsCacheClass:
     by calling the nPMI class with the user's selections."""
 
     def __init__(self, dataset_stats, use_cache=False):
+        print('yaaaa')
         self.live = dataset_stats.live
         self.dstats = dataset_stats
         self.pmi_cache_path = pjoin(CACHE_REPO_DIR + "/" + self.dstats.cache_path, "pmi_files")
@@ -785,6 +796,7 @@ class nPMIStatisticsCacheClass:
             logs.warning("Creating pmi cache directory %s." % self.pmi_cache_path)
             # We need to preprocess everything.
             mkdir(self.pmi_cache_path)
+        print('yeeee')
         self.joint_npmi_df_dict = {}
         # TODO: Users ideally can type in whatever words they want.
         self.termlist = _IDENTITY_TERMS
@@ -806,6 +818,7 @@ class nPMIStatisticsCacheClass:
         """
         # TODO: Add the user's ability to select subgroups.
         # TODO: Make min_vocab_count here value selectable by the user.
+        print('yoooo')
         npmi_terms_fid_path = try_hf_hub_download(REPO_ID, self.npmi_terms_fid)
         if (
             self.use_cache
