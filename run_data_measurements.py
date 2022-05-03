@@ -1,13 +1,20 @@
 import argparse
 import json
 import textwrap
-from os import mkdir
+from os import mkdir, getenv
 from os.path import join as pjoin, isdir
+from pathlib import Path
+from dotenv import load_dotenv
 
 from data_measurements import dataset_statistics
 from data_measurements import dataset_utils
+from huggingface_hub import create_repo, Repository
+import shutil
 
+if Path(".env").is_file():
+    load_dotenv(".env")
 
+HF_TOKEN = getenv("HF_TOKEN")
 
 def load_or_prepare_widgets(ds_args, show_embeddings=False, use_cache=False):
     """
@@ -268,11 +275,32 @@ def main():
         help="Whether to write out corresponding HTML files (Optional)",
     )
     parser.add_argument("--out_dir", default="cache_dir", help="Where to write out to.")
+    parser.add_argument(
+        "--overwrite_previous",
+        default=False,
+        required=False,
+        action="store_true",
+        help="Whether to overwrite a previous cache for these same arguments (Optional)",
+    )
 
     args = parser.parse_args()
     print("Proceeding with the following arguments:")
     print(args)
     # run_data_measurements.py -n hate_speech18 -c default -s train -f text -w npmi
+    dataset_cache_dir = f"{args.dataset}_{args.config}_{args.split}_{args.feature}"
+    try:
+        create_repo(dataset_cache_dir, organization="datameasurements", repo_type="dataset", private=True, token=HF_TOKEN)
+    except Exception as e:
+        print(e)
+        print("Already created a repo for this cache, or there is an error on the hub that is preventing repo creation.")
+        if args.overwrite_previous:
+            print("Computing new cache regardless.")
+        else:
+            print("Returning without computing the dataset cache.")
+            return
+    cache_path = args.out_dir + "/" + dataset_cache_dir
+    repo = Repository(local_dir=cache_path, clone_from="datameasurements/" + dataset_cache_dir, repo_type="dataset")
+    repo.lfs_track(["*.feather"])
     get_text_label_df(
         args.dataset,
         args.config,
@@ -284,6 +312,10 @@ def main():
         do_html=args.do_html,
         use_cache=args.cached,
     )
+    repo.push_to_hub(commit_message="Added dataset cache.")
+
+    # Remove the dataset from local storage - we only want it stored on the hub.
+    shutil.rmtree(cache_path)
     print()
 
 
