@@ -299,7 +299,13 @@ def expander_text_perplexities(dstats, column_id):
             "Use this widget to identify text perplexities from GPT-2."
         )
         st.markdown(
-            "Outlier perplexities could highlight an issue with an example."
+            """
+            Outlier perplexities, especially very high values, could highlight an issue
+            with an example. Smaller variations should be interpreted with more care,
+            as they indicate how similar to the GPT-2 training corpus the examples are
+            rather than being reflective of general linguistic properties.
+            For more information on GPT-2, see its [model card](https://hf.co/gpt2).
+            """
         )
         st.markdown("------")
         st.write(
