@@ -15,9 +15,12 @@
 import json
 import logging
 import statistics
-from os import mkdir
+import shutil
+from os import mkdir, getenv
 from os.path import exists, isdir
 from os.path import join as pjoin
+from pathlib import Path
+from dotenv import load_dotenv
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
@@ -34,6 +37,7 @@ import torch
 from datasets import load_from_disk
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
+from huggingface_hub import Repository, list_datasets
 
 from .dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD,
                             OUR_LABEL_FIELD, OUR_TEXT_FIELD, PROP,
@@ -43,6 +47,11 @@ from .dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD,
 from .embeddings import Embeddings
 from .npmi import nPMI
 from .zipf import Zipf
+
+if Path(".env").is_file():
+    load_dotenv(".env")
+
+HF_TOKEN = getenv("HF_TOKEN")
 
 pd.options.display.float_format = "{:,.3f}".format
 
@@ -140,6 +149,7 @@ _CVEC = CountVectorizer(token_pattern="(?u)\\b\\w+\\b", lowercase=True)
 
 
 class DatasetStatisticsCacheClass:
+
     def __init__(
         self,
         cache_dir,
@@ -241,10 +251,21 @@ class DatasetStatisticsCacheClass:
         #    label_field = label_field
         # else:
         #    label_field = "-".join(label_field)
+        self.dataset_cache_dir = f"{dset_name}_{dset_config}_{split_name}_{text_field}"
         self.cache_path = pjoin(
             self.cache_dir,
-            f"{dset_name}_{dset_config}_{split_name}_{text_field}",  # {label_field},
+            self.dataset_cache_dir,  # {label_field},
         )
+
+        # Try to pull from the hub to see if the cache already exists.
+        try:
+            if not isdir(self.cache_path) and self.dataset_cache_dir in [dataset_info.id.split("/")[-1] for dataset_info in list_datasets(author="datameasurements", use_auth_token=HF_TOKEN)]:
+                repo = Repository(local_dir=self.cache_path, clone_from="datameasurements/" + self.dataset_cache_dir, repo_type="dataset", use_auth_token=HF_TOKEN)
+            else:
+                logs.warning("Cannot find cached repo.")
+        except Exception as e:
+            print(e)
+            logs.warning("Cannot find cached repo.")
 
         # Cache files not needed for UI
         self.dset_fid = pjoin(self.cache_path, "base_dset")
