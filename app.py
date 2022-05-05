@@ -269,10 +269,13 @@ def display_or_compute_data_measures(cache_exists, dstats, show_embeddings, data
             if email != "":
                 st.text("Oh no, that email doesn't seem valid!")
 
+@st.cache(ttl=3600)
+def get_dataset_info_dicts_wrapper():
+    return dataset_utils.get_dataset_info_dicts()
 
 def main():
     """ Sidebar description and selection """
-    ds_name_to_dict = dataset_utils.get_dataset_info_dicts()
+    ds_name_to_dict = get_dataset_info_dicts_wrapper()
     st.title("Data Measurements Tool")
     # Get the sidebar details
     st_utils.sidebar_header()

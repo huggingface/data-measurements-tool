@@ -15,7 +15,7 @@
 import json
 from dataclasses import asdict
 from os.path import exists
-import streamlit as st
+from tqdm import tqdm
 
 import pandas as pd
 from datasets import Dataset, get_dataset_infos, load_dataset, load_from_disk, list_datasets
@@ -46,8 +46,6 @@ TXT_LEN = "text lengths"
 DEDUP_TOT = "dedup_total"
 TOT_WORDS = "total words"
 TOT_OPEN_WORDS = "total open words"
-
-_DATASET_LIST = datasets.list_datasets()
 
 _STREAMABLE_DATASET_LIST = [
     "c4",
@@ -237,7 +235,6 @@ def dictionarize_info(dset_info):
     return res
 
 
-@st.cache
 def get_dataset_info_dicts(dataset_id=None):
     """
     Creates a dict from dataset configs.
@@ -252,13 +249,17 @@ def get_dataset_info_dicts(dataset_id=None):
             }
         }
     else:
-        ds_name_to_conf_dict = {
-            ds_id: {
-                config_name: dictionarize_info(config_info)
-                for config_name, config_info in get_dataset_infos(ds_id).items()
-            }
-            for ds_id in _DATASET_LIST
-        }
+        ds_name_to_conf_dict = {}
+        print("Loading Dataset Info Dicts...")
+        for ds_id in tqdm(list_datasets()):
+            try:
+                value = {
+                    config_name: dictionarize_info(config_info)
+                    for config_name, config_info in get_dataset_infos(ds_id).items()
+                }
+                ds_name_to_conf_dict[ds_id] = value
+            except Exception as e:
+                continue
     return ds_name_to_conf_dict
 
 
