@@ -18,7 +18,7 @@ from os.path import exists
 import streamlit as st
 
 import pandas as pd
-from datasets import Dataset, get_dataset_infos, load_dataset, load_from_disk
+from datasets import Dataset, get_dataset_infos, load_dataset, load_from_disk, list_datasets
 
 # treating inf values as NaN as well
 pd.set_option("use_inf_as_na", True)
@@ -47,17 +47,7 @@ DEDUP_TOT = "dedup_total"
 TOT_WORDS = "total words"
 TOT_OPEN_WORDS = "total open words"
 
-_DATASET_LIST = [
-    "c4",
-    "squad",
-    "squad_v2",
-    "hate_speech18",
-    "hate_speech_offensive",
-    "glue",
-    "super_glue",
-    "wikitext",
-    "imdb",
-]
+_DATASET_LIST = datasets.list_datasets()
 
 _STREAMABLE_DATASET_LIST = [
     "c4",

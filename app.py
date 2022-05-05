@@ -16,11 +16,13 @@ import logging
 from os import mkdir
 from os.path import exists, isdir
 from pathlib import Path
+import subprocess
 
 import streamlit as st
 
 from data_measurements import dataset_statistics, dataset_utils
 from data_measurements import streamlit_utils as st_utils
+from email_validator import validate_email, EmailNotValidError
 
 logs = logging.getLogger(__name__)
 logs.setLevel(logging.WARNING)
@@ -238,6 +240,36 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id):
         )
 
 
+def request_measurements(dataset_args):
+    command = "python3 run_data_measurements.py --dataset=" + dataset_args.dset_name + " --config=" + dataset_args.dset_config_name + " --split=" + dataset_args.split_name + " --feature=" + dataset_args.text_field[0] + " --email=" + dataset_args.email + " --label_field=" + dataset_args.label_field[0]
+    subprocess.run(command, shell=True, check=True)
+
+
+def display_or_compute_data_measures(cache_exists, dstats, show_embeddings, dataset_args, column_id=""):
+    if cache_exists:
+        show_column(dstats, dataset_args["dset_configs"], show_embeddings, column_id)
+    else:
+        st.markdown("### Missing pre-computed data measures!")
+        email = st.text_input("Enter your email. Our app will compute the measures and email you when done!")
+
+        try:
+            # Validate.
+            valid = validate_email(email)
+
+            # Update with the normalized form.
+            email = valid.email
+
+        except EmailNotValidError as e:
+            valid = False
+
+        if valid:
+            request_measurements(dict({"email": email}, **dataset_args))
+            st.text("Computing metrics! An email will be sent to you. This could take a while if the dataset is big.")
+        else:
+            if email != "":
+                st.text("Oh no, that email doesn't seem valid!")
+
+
 def main():
     """ Sidebar description and selection """
     ds_name_to_dict = dataset_utils.get_dataset_info_dicts()
@@ -261,29 +293,17 @@ def main():
             dataset_args_left, show_embeddings, use_cache=use_cache
         )
         with left_col:
-            if cache_exists_left:
-                show_column(dstats_left, ds_name_to_dict, show_embeddings, " A")
-            else:
-                st.markdown("### Missing pre-computed data measures!")
-                st.write(dataset_args_left)
+            display_or_compute_data_measures(cache_exists_left, dstats_left, show_embeddings, dataset_args_left, column_id=" A")
         dstats_right, cache_exists_right = load_or_prepare_widgets(
             dataset_args_right, show_embeddings, use_cache=use_cache
         )
         with right_col:
-            if cache_exists_right:
-                show_column(dstats_right, ds_name_to_dict, show_embeddings, " B")
-            else:
-                st.markdown("### Missing pre-computed data measures!")
-                st.write(dataset_args_right)
+            display_or_compute_data_measures(cache_exists_right, dstats_right, show_embeddings, dataset_args_right, column_id=" B")
     else:
         logs.warning("Using Single Dataset Mode")
         dataset_args = st_utils.sidebar_selection(ds_name_to_dict, "")
         dstats, cache_exists = load_or_prepare_widgets(dataset_args, show_embeddings, use_cache=use_cache)
-        if cache_exists:
-            show_column(dstats, ds_name_to_dict, show_embeddings, "")
-        else:
-            st.markdown("### Missing pre-computed data measures!")
-            st.write(dataset_args)
+        display_or_compute_data_measures(cache_exists, dstats, show_embeddings, dataset_args)
 
 
 if __name__ == "__main__":
