@@ -299,7 +299,7 @@ def main():
             print("Returning without computing the dataset cache.")
             return
     cache_path = args.out_dir + "/" + dataset_cache_dir
-    repo = Repository(local_dir=cache_path, clone_from="datameasurements/" + dataset_cache_dir, repo_type="dataset")
+    repo = Repository(local_dir=cache_path, clone_from="datameasurements/" + dataset_cache_dir, repo_type="dataset", use_auth_token=HF_TOKEN)
     repo.lfs_track(["*.feather"])
     get_text_label_df(
         args.dataset,

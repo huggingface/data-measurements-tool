@@ -133,7 +133,10 @@ def load_truncated_dataset(
                 name=config_name,
                 split=split_name,
             )
-            dataset = full_dataset.select(range(num_rows))
+            if len(full_dataset) >= num_rows:
+                dataset = full_dataset.select(range(num_rows))
+            else:
+                dataset = full_dataset
         dataset.save_to_disk(cache_name)
     return dataset
 
