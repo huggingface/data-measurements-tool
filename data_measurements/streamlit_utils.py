@@ -44,7 +44,6 @@ def sidebar_selection(ds_name_to_dict, column_id):
         ds_name = st.selectbox(
             f"Choose dataset to explore{column_id}:",
             ds_names,
-            index=ds_names.index("hate_speech18"),
         )
         # choose a config to analyze
         ds_configs = ds_name_to_dict[ds_name]
