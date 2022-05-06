@@ -313,6 +313,11 @@ class DatasetStatisticsCacheClass:
 
         self.live = False
 
+        self.complete = False
+        computation_results_file = pjoin(self.cache_path, "computation_result.json")
+        if exists(computation_results_file):
+            self.complete = json.loads(open(computation_results_file, "r").read())["complete"]
+
     def set_deployment(self, live=True):
         """
         Function that we can hit when we deploy, so that cache files are not

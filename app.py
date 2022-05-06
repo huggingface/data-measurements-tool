@@ -17,6 +17,8 @@ from os import mkdir
 from os.path import exists, isdir
 from pathlib import Path
 import subprocess
+import pickle
+import threading
 
 import streamlit as st
 
@@ -78,12 +80,6 @@ _MIN_VOCAB_COUNT = 10
 _SHOW_TOP_N_WORDS = 10
 
 
-@st.cache(
-    hash_funcs={
-        dataset_statistics.DatasetStatisticsCacheClass: lambda dstats: dstats.cache_path
-    },
-    allow_output_mutation=True,
-)
 def load_or_prepare(ds_args, show_embeddings, use_cache=False):
     """
     Takes the dataset arguments from the GUI and uses them to load a dataset from the Hub or, if
@@ -127,12 +123,7 @@ def load_or_prepare(ds_args, show_embeddings, use_cache=False):
     dstats.load_or_prepare_zipf()
     return dstats
 
-@st.cache(
-    hash_funcs={
-        dataset_statistics.DatasetStatisticsCacheClass: lambda dstats: dstats.cache_path
-    },
-    allow_output_mutation=True,
-)
+
 def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False):
     """
     Loader specifically for the widgets used in the app.
@@ -241,16 +232,21 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id):
 
 
 def request_measurements(dataset_args):
-    command = "python3 run_data_measurements.py --dataset=" + dataset_args.dset_name + " --config=" + dataset_args.dset_config_name + " --split=" + dataset_args.split_name + " --feature=" + dataset_args.text_field[0] + " --email=" + dataset_args.email + " --label_field=" + dataset_args.label_field[0]
-    subprocess.run(command, shell=True, check=True)
+    command = "python3 run_data_measurements.py --dataset=" + dataset_args["dset_name"] + " --config=" + dataset_args["dset_config"] + " --split=" + dataset_args["split_name"] + " --feature=" + dataset_args["text_field"][0] + " --email=" + dataset_args["email"]
+    if len(dataset_args["label_field"]) > 0:
+        command += " --label_field=" + dataset_args["label_field"][0]
+    subprocess.run(command, shell=True)
 
-
-def display_or_compute_data_measures(cache_exists, dstats, show_embeddings, dataset_args, column_id=""):
+def display_or_compute_data_measures(cache_exists, dstats, show_embeddings, dataset_args, ds_name_to_dict, column_id=""):
     if cache_exists:
-        show_column(dstats, dataset_args["dset_configs"], show_embeddings, column_id)
+        if dstats.complete:
+            show_column(dstats, ds_name_to_dict, show_embeddings, column_id)
+        else:
+            st.markdown("### Check back later for data measurement results!")
     else:
         st.markdown("### Missing pre-computed data measures!")
-        email = st.text_input("Enter your email. Our app will compute the measures and email you when done!")
+        email = st.text_input("Enter your email. Our app will compute the measurements and email you when done!")
+        compute = st.button("Compute Measurements")
 
         try:
             # Validate.
@@ -263,15 +259,36 @@ def display_or_compute_data_measures(cache_exists, dstats, show_embeddings, data
             valid = False
 
         if valid:
-            request_measurements(dict({"email": email}, **dataset_args))
-            st.text("Computing metrics! An email will be sent to you. This could take a while if the dataset is big.")
+            if compute:
+                t = threading.Thread(target=request_measurements, args=[dict({"email": email}, **dataset_args)])
+                t.start()
+                st.text("Computing metrics! An email will be sent to you. This could take a while if the dataset is big.")
         else:
-            if email != "":
+            if email != "" or compute:
                 st.text("Oh no, that email doesn't seem valid!")
 
 @st.cache(ttl=3600)
 def get_dataset_info_dicts_wrapper():
-    return dataset_utils.get_dataset_info_dicts()
+    def store_dataset_info_dicts():
+        ds_name_to_dict = dataset_utils.get_dataset_info_dicts()
+        with open('ds_name_to_dict_cache.pkl', 'wb') as f:
+            pickle.dump(ds_name_to_dict, f)
+
+    if exists("ds_name_to_dict_cache.pkl"):
+        # If we have saved the results previously, call an asynchronous process
+        # to fetch the results and update the saved file. Don't make users wait
+        # while we fetch the new results. Instead, display the old results for
+        # now. The new results should be loaded when this method
+        # is called again.
+        ds_name_to_dict = pickle.load(open("ds_name_to_dict_cache.pkl", "rb"))
+        t = threading.Thread(name='get_ds_name_to_dict procs', target=store_dataset_info_dicts)
+        t.start()
+    else:
+        # We have to make the users wait during the first startup of this app.
+        store_dataset_info_dicts()
+        ds_name_to_dict = pickle.load(open("ds_name_to_dict_cache.pkl", "rb"))
+
+    return ds_name_to_dict
 
 def main():
     """ Sidebar description and selection """
@@ -296,17 +313,17 @@ def main():
             dataset_args_left, show_embeddings, use_cache=use_cache
         )
         with left_col:
-            display_or_compute_data_measures(cache_exists_left, dstats_left, show_embeddings, dataset_args_left, column_id=" A")
+            display_or_compute_data_measures(cache_exists_left, dstats_left, show_embeddings, dataset_args_left, ds_name_to_dict, column_id=" A")
         dstats_right, cache_exists_right = load_or_prepare_widgets(
             dataset_args_right, show_embeddings, use_cache=use_cache
         )
         with right_col:
-            display_or_compute_data_measures(cache_exists_right, dstats_right, show_embeddings, dataset_args_right, column_id=" B")
+            display_or_compute_data_measures(cache_exists_right, dstats_right, show_embeddings, dataset_args_right, ds_name_to_dict, column_id=" B")
     else:
         logs.warning("Using Single Dataset Mode")
         dataset_args = st_utils.sidebar_selection(ds_name_to_dict, "")
         dstats, cache_exists = load_or_prepare_widgets(dataset_args, show_embeddings, use_cache=use_cache)
-        display_or_compute_data_measures(cache_exists, dstats, show_embeddings, dataset_args)
+        display_or_compute_data_measures(cache_exists, dstats, show_embeddings, dataset_args, ds_name_to_dict)
 
 
 if __name__ == "__main__":

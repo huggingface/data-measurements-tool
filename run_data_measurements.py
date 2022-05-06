@@ -9,7 +9,6 @@ from dotenv import load_dotenv
 from data_measurements import dataset_statistics
 from data_measurements import dataset_utils
 from huggingface_hub import create_repo, Repository
-import shutil
 import smtplib, ssl
 port = 465  # For SSL
 
@@ -313,7 +312,7 @@ def main():
                 server.sendmail("data.measurements.tool@gmail.com", args.email, "Subject: Data Measurments not Computed\n\n" + already_computed_message + " " + not_computing_message)
             return
     try:
-        cache_path = args.out_dir + "/" + dataset_cache_dir
+        cache_path = pjoin(args.out_dir, dataset_cache_dir)
         repo = Repository(local_dir=cache_path, clone_from="datameasurements/" + dataset_cache_dir, repo_type="dataset", use_auth_token=HF_TOKEN)
         repo.lfs_track(["*.feather"])
         get_text_label_df(
@@ -327,10 +326,8 @@ def main():
             do_html=args.do_html,
             use_cache=args.cached,
         )
+        open(pjoin(cache_path, "computation_result.json"), "w+").write(json.dumps({"complete": True}))
         repo.push_to_hub(commit_message="Added dataset cache.")
-
-        # Remove the dataset from local storage - we only want it stored on the hub.
-        shutil.rmtree(cache_path)
 
         print()
         if args.email is not None:
