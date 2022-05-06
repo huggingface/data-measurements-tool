@@ -123,7 +123,6 @@ def load_or_prepare(ds_args, show_embeddings, use_cache=False):
     dstats.load_or_prepare_zipf()
     return dstats
 
-
 def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False):
     """
     Loader specifically for the widgets used in the app.
@@ -230,7 +229,6 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id):
             column_id,
         )
 
-
 def request_measurements(dataset_args):
     command = "python3 run_data_measurements.py --dataset=" + dataset_args["dset_name"] + " --config=" + dataset_args["dset_config"] + " --split=" + dataset_args["split_name"] + " --feature=" + dataset_args["text_field"][0] + " --email=" + dataset_args["email"]
     if len(dataset_args["label_field"]) > 0:
@@ -267,7 +265,7 @@ def display_or_compute_data_measures(cache_exists, dstats, show_embeddings, data
             if email != "" or compute:
                 st.text("Oh no, that email doesn't seem valid!")
 
-@st.cache(ttl=3600)
+@st.cache(ttl=36000)
 def get_dataset_info_dicts_wrapper():
     def store_dataset_info_dicts():
         ds_name_to_dict = dataset_utils.get_dataset_info_dicts()
