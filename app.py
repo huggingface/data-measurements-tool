@@ -279,8 +279,8 @@ def get_dataset_info_dicts_wrapper():
         # now. The new results should be loaded when this method
         # is called again.
         ds_name_to_dict = pickle.load(open("ds_name_to_dict_cache.pkl", "rb"))
-        t = threading.Thread(name='get_ds_name_to_dict procs', target=store_dataset_info_dicts)
-        t.start()
+        #t = threading.Thread(name='get_ds_name_to_dict procs', target=store_dataset_info_dicts)
+        #t.start()
     else:
         # We have to make the users wait during the first startup of this app.
         store_dataset_info_dicts()
