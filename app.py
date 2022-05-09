@@ -14,6 +14,7 @@
 
 import logging
 from os import mkdir, getenv
+import requests
 from os.path import exists, isdir
 from pathlib import Path
 from dotenv import load_dotenv
