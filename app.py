@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import logging
-from os import mkdir
+from os import mkdir, getenv
 from os.path import exists, isdir
 from pathlib import Path
 from dotenv import load_dotenv
