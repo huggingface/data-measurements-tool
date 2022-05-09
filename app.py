@@ -16,6 +16,7 @@ import logging
 from os import mkdir
 from os.path import exists, isdir
 from pathlib import Path
+from dotenv import load_dotenv
 import threading
 import pickle
 
