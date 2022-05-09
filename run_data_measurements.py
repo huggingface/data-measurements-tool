@@ -311,13 +311,9 @@ def main():
                 server.sendmail("data.measurements.tool@gmail.com", args.email, "Subject: Data Measurments not Computed\n\n" + already_computed_message + " " + not_computing_message)
             return
     try:
-        print("check1")
         cache_path = pjoin(args.out_dir, dataset_cache_dir)
-        print("check2")
         repo = Repository(local_dir=cache_path, clone_from="datameasurements/" + dataset_cache_dir, repo_type="dataset", use_auth_token=HF_TOKEN)
-        print("check3")
         repo.lfs_track(["*.feather"])
-        print("check4")
         get_text_label_df(
             args.dataset,
             args.config,
@@ -329,11 +325,8 @@ def main():
             do_html=args.do_html,
             use_cache=args.cached,
         )
-        print("check5")
         open(pjoin(cache_path, "computation_result.json"), "w+").write(json.dumps({"complete": True}))
-        print("check6")
         repo.push_to_hub(commit_message="Added dataset cache.")
-        print("check7")
 
         print()
         if args.email is not None:

@@ -16,15 +16,20 @@ import logging
 from os import mkdir
 from os.path import exists, isdir
 from pathlib import Path
-import subprocess
-import pickle
 import threading
+import pickle
 
 import streamlit as st
 
 from data_measurements import dataset_statistics, dataset_utils
 from data_measurements import streamlit_utils as st_utils
 from email_validator import validate_email, EmailNotValidError
+
+if Path(".env").is_file():
+    load_dotenv(".env")
+
+SERVER_URL = getenv("SERVER_URL")
+
 
 logs = logging.getLogger(__name__)
 logs.setLevel(logging.WARNING)
@@ -229,12 +234,6 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id):
             column_id,
         )
 
-def request_measurements(dataset_args):
-    command = "python3 run_data_measurements.py --dataset=" + dataset_args["dset_name"] + " --config=" + dataset_args["dset_config"] + " --split=" + dataset_args["split_name"] + " --feature=" + dataset_args["text_field"][0] + " --email=" + dataset_args["email"]
-    if len(dataset_args["label_field"]) > 0:
-        command += " --label_field=" + dataset_args["label_field"][0]
-    subprocess.run(command, shell=True)
-
 def display_or_compute_data_measures(cache_exists, dstats, show_embeddings, dataset_args, ds_name_to_dict, column_id=""):
     if cache_exists:
         if dstats.complete:
@@ -258,9 +257,11 @@ def display_or_compute_data_measures(cache_exists, dstats, show_embeddings, data
 
         if valid:
             if compute:
-                t = threading.Thread(target=request_measurements, args=[dict({"email": email}, **dataset_args)])
-                t.start()
-                st.text("Computing metrics! An email will be sent to you. This could take a while if the dataset is big.")
+                result = requests.post(SERVER_URL, data = dict({"email": email}, **dataset_args))
+                if result.text == "success":
+                    st.text("Computing metrics! An email will be sent to you. This could take a while if the dataset is big.")
+                else:
+                    st.text("Oh no, a problem happened while requesting the data measurements.")
         else:
             if email != "" or compute:
                 st.text("Oh no, that email doesn't seem valid!")
