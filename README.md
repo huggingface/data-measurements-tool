@@ -11,7 +11,7 @@ pinned: false
 
 # Data Measurements Tool
 
-🚧 Under Construction 🚧
+🚧 Doing Construction 🚧
 
 [![Generic badge](https://img.shields.io/badge/🤗-Open%20In%20Spaces-blue.svg)](https://huggingface.co/spaces/huggingface/data-measurements-tool)
 

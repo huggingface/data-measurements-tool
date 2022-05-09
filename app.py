@@ -16,11 +16,20 @@ import logging
 from os import mkdir
 from os.path import exists, isdir
 from pathlib import Path
+import threading
+import pickle
 
 import streamlit as st
 
 from data_measurements import dataset_statistics, dataset_utils
 from data_measurements import streamlit_utils as st_utils
+from email_validator import validate_email, EmailNotValidError
+
+if Path(".env").is_file():
+    load_dotenv(".env")
+
+SERVER_URL = getenv("SERVER_URL")
+
 
 logs = logging.getLogger(__name__)
 logs.setLevel(logging.WARNING)
@@ -76,12 +85,6 @@ _MIN_VOCAB_COUNT = 10
 _SHOW_TOP_N_WORDS = 10
 
 
-@st.cache(
-    hash_funcs={
-        dataset_statistics.DatasetStatisticsCacheClass: lambda dstats: dstats.cache_path
-    },
-    allow_output_mutation=True,
-)
 def load_or_prepare(ds_args, show_embeddings, use_cache=False):
     """
     Takes the dataset arguments from the GUI and uses them to load a dataset from the Hub or, if
@@ -125,12 +128,6 @@ def load_or_prepare(ds_args, show_embeddings, use_cache=False):
     dstats.load_or_prepare_zipf()
     return dstats
 
-@st.cache(
-    hash_funcs={
-        dataset_statistics.DatasetStatisticsCacheClass: lambda dstats: dstats.cache_path
-    },
-    allow_output_mutation=True,
-)
 def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False):
     """
     Loader specifically for the widgets used in the app.
@@ -237,10 +234,64 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id):
             column_id,
         )
 
+def display_or_compute_data_measures(cache_exists, dstats, show_embeddings, dataset_args, ds_name_to_dict, column_id=""):
+    if cache_exists:
+        if dstats.complete:
+            show_column(dstats, ds_name_to_dict, show_embeddings, column_id)
+        else:
+            st.markdown("### Check back later for data measurement results!")
+    else:
+        st.markdown("### Missing pre-computed data measures!")
+        email = st.text_input("Enter your email. Our app will compute the measurements and email you when done!")
+        compute = st.button("Compute Measurements")
+
+        try:
+            # Validate.
+            valid = validate_email(email)
+
+            # Update with the normalized form.
+            email = valid.email
+
+        except EmailNotValidError as e:
+            valid = False
+
+        if valid:
+            if compute:
+                result = requests.post(SERVER_URL, data = dict({"email": email}, **dataset_args))
+                if result.text == "success":
+                    st.text("Computing metrics! An email will be sent to you. This could take a while if the dataset is big.")
+                else:
+                    st.text("Oh no, a problem happened while requesting the data measurements.")
+        else:
+            if email != "" or compute:
+                st.text("Oh no, that email doesn't seem valid!")
+
+@st.cache(ttl=36000)
+def get_dataset_info_dicts_wrapper():
+    def store_dataset_info_dicts():
+        ds_name_to_dict = dataset_utils.get_dataset_info_dicts()
+        with open('ds_name_to_dict_cache.pkl', 'wb') as f:
+            pickle.dump(ds_name_to_dict, f)
+
+    if exists("ds_name_to_dict_cache.pkl"):
+        # If we have saved the results previously, call an asynchronous process
+        # to fetch the results and update the saved file. Don't make users wait
+        # while we fetch the new results. Instead, display the old results for
+        # now. The new results should be loaded when this method
+        # is called again.
+        ds_name_to_dict = pickle.load(open("ds_name_to_dict_cache.pkl", "rb"))
+        t = threading.Thread(name='get_ds_name_to_dict procs', target=store_dataset_info_dicts)
+        t.start()
+    else:
+        # We have to make the users wait during the first startup of this app.
+        store_dataset_info_dicts()
+        ds_name_to_dict = pickle.load(open("ds_name_to_dict_cache.pkl", "rb"))
+
+    return ds_name_to_dict
 
 def main():
     """ Sidebar description and selection """
-    ds_name_to_dict = dataset_utils.get_dataset_info_dicts()
+    ds_name_to_dict = get_dataset_info_dicts_wrapper()
     st.title("Data Measurements Tool")
     # Get the sidebar details
     st_utils.sidebar_header()
@@ -261,29 +312,17 @@ def main():
             dataset_args_left, show_embeddings, use_cache=use_cache
         )
         with left_col:
-            if cache_exists_left:
-                show_column(dstats_left, ds_name_to_dict, show_embeddings, " A")
-            else:
-                st.markdown("### Missing pre-computed data measures!")
-                st.write(dataset_args_left)
+            display_or_compute_data_measures(cache_exists_left, dstats_left, show_embeddings, dataset_args_left, ds_name_to_dict, column_id=" A")
         dstats_right, cache_exists_right = load_or_prepare_widgets(
             dataset_args_right, show_embeddings, use_cache=use_cache
         )
         with right_col:
-            if cache_exists_right:
-                show_column(dstats_right, ds_name_to_dict, show_embeddings, " B")
-            else:
-                st.markdown("### Missing pre-computed data measures!")
-                st.write(dataset_args_right)
+            display_or_compute_data_measures(cache_exists_right, dstats_right, show_embeddings, dataset_args_right, ds_name_to_dict, column_id=" B")
     else:
         logs.warning("Using Single Dataset Mode")
         dataset_args = st_utils.sidebar_selection(ds_name_to_dict, "")
         dstats, cache_exists = load_or_prepare_widgets(dataset_args, show_embeddings, use_cache=use_cache)
-        if cache_exists:
-            show_column(dstats, ds_name_to_dict, show_embeddings, "")
-        else:
-            st.markdown("### Missing pre-computed data measures!")
-            st.write(dataset_args)
+        display_or_compute_data_measures(cache_exists, dstats, show_embeddings, dataset_args, ds_name_to_dict)
 
 
 if __name__ == "__main__":

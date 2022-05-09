@@ -15,10 +15,10 @@
 import json
 from dataclasses import asdict
 from os.path import exists
-import streamlit as st
+from tqdm import tqdm
 
 import pandas as pd
-from datasets import Dataset, get_dataset_infos, load_dataset, load_from_disk
+from datasets import Dataset, get_dataset_infos, load_dataset, load_from_disk, list_datasets
 
 # treating inf values as NaN as well
 pd.set_option("use_inf_as_na", True)
@@ -46,18 +46,6 @@ TXT_LEN = "text lengths"
 DEDUP_TOT = "dedup_total"
 TOT_WORDS = "total words"
 TOT_OPEN_WORDS = "total open words"
-
-_DATASET_LIST = [
-    "c4",
-    "squad",
-    "squad_v2",
-    "hate_speech18",
-    "hate_speech_offensive",
-    "glue",
-    "super_glue",
-    "wikitext",
-    "imdb",
-]
 
 _STREAMABLE_DATASET_LIST = [
     "c4",
@@ -133,7 +121,10 @@ def load_truncated_dataset(
                 name=config_name,
                 split=split_name,
             )
-            dataset = full_dataset.select(range(num_rows))
+            if len(full_dataset) >= num_rows:
+                dataset = full_dataset.select(range(num_rows))
+            else:
+                dataset = full_dataset
         dataset.save_to_disk(cache_name)
     return dataset
 
@@ -244,7 +235,6 @@ def dictionarize_info(dset_info):
     return res
 
 
-@st.cache
 def get_dataset_info_dicts(dataset_id=None):
     """
     Creates a dict from dataset configs.
@@ -259,13 +249,17 @@ def get_dataset_info_dicts(dataset_id=None):
             }
         }
     else:
-        ds_name_to_conf_dict = {
-            ds_id: {
-                config_name: dictionarize_info(config_info)
-                for config_name, config_info in get_dataset_infos(ds_id).items()
-            }
-            for ds_id in _DATASET_LIST
-        }
+        ds_name_to_conf_dict = {}
+        print("Loading Dataset Info Dicts...")
+        for ds_id in tqdm(list_datasets()):
+            try:
+                value = {
+                    config_name: dictionarize_info(config_info)
+                    for config_name, config_info in get_dataset_infos(ds_id).items()
+                }
+                ds_name_to_conf_dict[ds_id] = value
+            except Exception as e:
+                continue
     return ds_name_to_conf_dict
 
 
