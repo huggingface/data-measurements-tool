@@ -230,7 +230,7 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id):
         )
 
 def request_measurements(dataset_args):
-    command = "python3 run_data_measurements.py --dataset=" + dataset_args["dset_name"] + " --config=" + dataset_args["dset_config"] + " --split=" + dataset_args["split_name"] + " --feature=" + dataset_args["text_field"][0]  # + " --email=" + dataset_args["email"]
+    command = "python3 run_data_measurements.py --dataset=" + dataset_args["dset_name"] + " --config=" + dataset_args["dset_config"] + " --split=" + dataset_args["split_name"] + " --feature=" + dataset_args["text_field"][0] + " --email=" + dataset_args["email"]
     if len(dataset_args["label_field"]) > 0:
         command += " --label_field=" + dataset_args["label_field"][0]
     subprocess.run(command, shell=True)
