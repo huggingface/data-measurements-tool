@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from data_measurements import dataset_statistics
 from data_measurements import dataset_utils
 from huggingface_hub import create_repo, Repository
-import smtplib, ssl
+import smtplib
 
 if Path(".env").is_file():
     load_dotenv(".env")
@@ -290,8 +290,8 @@ def main():
     print(args)
     # run_data_measurements.py -n hate_speech18 -c default -s train -f text -w npmi
     if args.email is not None:
-        context = ssl.create_default_context()
-        server = smtplib.SMTP_SSL("smtp.gmail.com", port=465, context=context)
+        server = smtplib.SMTP("smtp.gmail.com", port=587)
+        server.starttls()
         server.login("data.measurements.tool@gmail.com", EMAIL_PASSWORD)
 
     dataset_cache_dir = f"{args.dataset}_{args.config}_{args.split}_{args.feature}"
