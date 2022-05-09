@@ -230,7 +230,7 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id):
         )
 
 def request_measurements(dataset_args):
-    command = "python3 run_data_measurements.py --dataset=" + dataset_args["dset_name"] + " --config=" + dataset_args["dset_config"] + " --split=" + dataset_args["split_name"] + " --feature=" + dataset_args["text_field"][0]  # + " --email=" + dataset_args["email"]
+    command = "python3 run_data_measurements.py --dataset=" + dataset_args["dset_name"] + " --config=" + dataset_args["dset_config"] + " --split=" + dataset_args["split_name"] + " --feature=" + dataset_args["text_field"][0] + " --email=" + dataset_args["email"]
     if len(dataset_args["label_field"]) > 0:
         command += " --label_field=" + dataset_args["label_field"][0]
     subprocess.run(command, shell=True)
@@ -279,8 +279,8 @@ def get_dataset_info_dicts_wrapper():
         # now. The new results should be loaded when this method
         # is called again.
         ds_name_to_dict = pickle.load(open("ds_name_to_dict_cache.pkl", "rb"))
-        #t = threading.Thread(name='get_ds_name_to_dict procs', target=store_dataset_info_dicts)
-        #t.start()
+        t = threading.Thread(name='get_ds_name_to_dict procs', target=store_dataset_info_dicts)
+        t.start()
     else:
         # We have to make the users wait during the first startup of this app.
         store_dataset_info_dicts()
