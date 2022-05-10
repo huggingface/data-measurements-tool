@@ -61,7 +61,6 @@ class nPMI:
         vocab_counts_df,
         tokenized_df,
         tokenized_col_name="tokenized_text",
-        num_batches=_NUM_BATCHES,
     ):
         logs.info("Initiating npmi class.")
         logs.info("vocab is")
@@ -88,7 +87,7 @@ class nPMI:
             )
             # Returns series: batch size x num_words
             mlb_series = mlb.fit_transform(
-                self.tokenized_df[self.tokenized_col_name][batches[i] : batches[i + 1]]
+                self.tokenized_df[self.tokenized_col_name][batches[i]:batches[i + 1]]
             )
             i += 1
             self.mlb_list.append(mlb_series)
@@ -141,12 +140,16 @@ class nPMI:
         logs.info(coo_df)
         return pd.DataFrame(coo_df)
 
-    def calc_paired_metrics(self, subgroup_pair, subgroup_npmi_dict):
+    @staticmethod
+    def calc_paired_metrics(subgroup_pair, subgroup_npmi_dict):
         """
         Calculates nPMI metrics between paired subgroups.
         Special handling for a subgroup paired with itself.
-        :param subgroup_npmi_dict:
+        :param subgroup_npmi_dict: vocab, pmi, and npmi for each subgroup.
         :return:
+
+        Args:
+            subgroup_pair:
         """
         paired_results_dict = {"npmi": {}, "pmi": {}, "count": {}}
         # Canonical ordering. This is done previously, but just in case...
