@@ -22,8 +22,6 @@ import streamlit as st
 from scipy.stats import ks_2samp
 from scipy.stats import zipf as zipf_lib
 
-from .dataset_utils import CNT, PROP
-
 # treating inf values as NaN as well
 
 pd.set_option("use_inf_as_na", True)
@@ -53,7 +51,7 @@ if not logs.handlers:
 
 
 class Zipf:
-    def __init__(self, vocab_counts_df=pd.DataFrame()):
+    def __init__(self, vocab_counts_df=pd.DataFrame(), CNT="count", PROP="prop"):
         self.vocab_counts_df = vocab_counts_df
         self.alpha = None
         self.xmin = None
@@ -71,7 +69,7 @@ class Zipf:
         self.predicted_zipf_counts = None
         if not self.vocab_counts_df.empty:
             logs.info("Fitting based on input vocab counts.")
-            self.calc_fit(vocab_counts_df)
+            self.calc_fit(vocab_counts_df, CNT, PROP)
             logs.info("Getting predicted counts.")
             self.predicted_zipf_counts = self.calc_zipf_counts(vocab_counts_df)
 
@@ -84,7 +82,7 @@ class Zipf:
         self.set_unique_ranks(zipf_dict["uniq_ranks"])
         self.set_unique_counts(zipf_dict["uniq_counts"])
 
-    def calc_fit(self, vocab_counts_df):
+    def calc_fit(self, vocab_counts_df, CNT, PROP):
         """
         Uses the powerlaw package to fit the observed frequencies to a zipfian distribution.
         We use the KS-distance to fit, as that seems more appropriate that MLE.
