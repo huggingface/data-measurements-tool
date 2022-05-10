@@ -6,9 +6,8 @@ from os.path import join as pjoin, isdir
 from pathlib import Path
 from dotenv import load_dotenv
 
-from data_measurements import dataset_statistics
-from data_measurements import dataset_utils
-from huggingface_hub import create_repo, Repository
+from data_measurements import dataset_statistics, dataset_utils
+from huggingface_hub import create_repo, Repository, hf_api
 import shutil
 import smtplib, ssl
 port = 465  # For SSL
@@ -286,6 +285,7 @@ def main():
         help="Whether to overwrite a previous cache for these same arguments (Optional)",
     )
     parser.add_argument("--email", default=None, help="Email to report whether the computation was successful")
+    parser.add_argument("--keep_local", default=True, required=False, action="store_true", help="Whether to save the data locally.")
 
     args = parser.parse_args()
     print("Proceeding with the following arguments:")
@@ -300,18 +300,23 @@ def main():
     dataset_arguments_message=f"dataset: {args.dataset}, config: {args.config}, split: {args.split}, feature: {args.feature}, label field: {args.label_field}"
     try:
         create_repo(dataset_cache_dir, organization="datameasurements", repo_type="dataset", private=True, token=HF_TOKEN)
-    except Exception as e:
-        print(e)
-        already_computed_message = f"Already created a repo for the dataset with arguments: {dataset_arguments_message}. Or there is an error on the hub that is preventing repo creation."
-        print(already_computed_message)
-        if args.overwrite_previous:
-            print("Computing new cache regardless.")
+    except hf_api.HTTPError as err:
+        if err.args[0] == "409 Client Error: Conflict for url: https://huggingface.co/api/repos/create - You already created this dataset repo":
+            error_message = f"Already created a repo for the dataset with arguments: {dataset_arguments_message}."
         else:
-            not_computing_message = "Not computing the dataset cache."
-            print(not_computing_message)
-            if args.email is not None:
-                server.sendmail("data.measurements.tool@gmail.com", args.email, "Subject: Data Measurments not Computed\n\n" + already_computed_message + " " + not_computing_message)
-            return
+            error_message = " - ".join(err.args)
+        print(error_message)
+        if args.overwrite_previous:
+            print("Overwriting precious cache.")
+    # May never hit this.
+    except Exception as err:
+        error_message = f"There is an error on the hub that is preventing repo creation. Details: " + " - ".join(err.args)
+        not_computing_message = "Not computing the dataset cache."
+        print(error_message)
+        print(not_computing_message)
+        if args.email is not None:
+            server.sendmail("data.measurements.tool@gmail.com", args.email, "Subject: Data Measurments not Computed\n\n" + error_message + "\n" + not_computing_message)
+        return
     try:
         cache_path = args.out_dir + "/" + dataset_cache_dir
         repo = Repository(local_dir=cache_path, clone_from="datameasurements/" + dataset_cache_dir, repo_type="dataset", use_auth_token=HF_TOKEN)
@@ -329,18 +334,26 @@ def main():
         )
         repo.push_to_hub(commit_message="Added dataset cache.")
 
-        # Remove the dataset from local storage - we only want it stored on the hub.
-        shutil.rmtree(cache_path)
-
-        print()
+        computed_message = f"Data measurements have been computed for dataset with these arguments: {dataset_arguments_message}."
+        computed_message += "\nYou can return to the data measurements tool to view them at https://huggingface.co/spaces/datameasurements/data-measurements-tool"
         if args.email is not None:
-            computed_message = f"Data measurements have been computed for dataset with these arguments: {dataset_arguments_message}. You can return to the data measurements tool to view them at https://huggingface.co/spaces/datameasurements/data-measurements-tool"
             server.sendmail("data.measurements.tool@gmail.com", args.email, "Subject: Data Measurements Computed!\n\n" + computed_message)
+        print()
+        print(computed_message)
+        # Remove the dataset from local storage - we only want it stored on the hub.
+        if not args.keep_local:
+            shutil.rmtree(cache_path)
+        else:
+            print("Measurements made available locally at %s" % cache_path)
     except Exception as e:
         print(e)
+        error_message = f"An error occurred in computing data measurements for dataset with arguments: {dataset_arguments_message}."
+        error_message += "\nFeel free to make an issue here: https://github.com/huggingface/data-measurements-tool/issues"
         if args.email is not None:
-            error_message = f"An error occurred in computing data measurements for dataset with arguments: {dataset_arguments_message}. Feel free to make an issue here: https://github.com/huggingface/data-measurements-tool/issues"
             server.sendmail("data.measurements.tool@gmail.com", args.email, "Subject: Data Measurements not Computed\n\n" + error_message)
+        print()
+        print("Data measurements not computed. ☹️")
+        print(error_message)
 
 
 if __name__ == "__main__":
