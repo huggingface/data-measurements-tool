@@ -246,8 +246,7 @@ def display_or_compute_data_measures(cache_exists, dstats, show_embeddings, data
     else:
         email_input = st.empty()
         compute_button = st.empty()
-        st.markdown("### Missing pre-computed data measures!")
-        email = email_input.text_input("Enter your email. Our app will compute the measurements and email you when done!")
+        email = email_input.text_input("We are missing pre-computed data measures for this configuration. Enter your email. Our app will compute the measurements and email you when done!")
         compute = compute_button.button("Compute Measurements")
 
         try:
