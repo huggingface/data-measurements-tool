@@ -16,9 +16,17 @@ import json
 from dataclasses import asdict
 from os.path import exists
 from tqdm import tqdm
+from pathlib import Path
+from dotenv import load_dotenv
+from os import getenv
 
 import pandas as pd
 from datasets import Dataset, get_dataset_infos, load_dataset, load_from_disk
+
+if Path(".env").is_file():
+    load_dotenv(".env")
+
+HF_TOKEN = getenv("HF_TOKEN")
 
 # treating inf values as NaN as well
 pd.set_option("use_inf_as_na", True)
@@ -106,6 +114,7 @@ def load_truncated_dataset(
                 name=config_name,
                 split=split_name,
                 streaming=True,
+                use_auth_token=HF_TOKEN
             ).take(num_rows)
             rows = list(iterable_dataset)
             f = open("temp.jsonl", "w", encoding="utf-8")
@@ -120,6 +129,7 @@ def load_truncated_dataset(
                 dataset_name,
                 name=config_name,
                 split=split_name,
+                use_auth_token=HF_TOKEN
             )
             if len(full_dataset) >= num_rows:
                 dataset = full_dataset.select(range(num_rows))
@@ -243,7 +253,7 @@ def get_dataset_info_dicts(dataset_id):
     """
     ds_configs = {
             config_name: dictionarize_info(config_info)
-            for config_name, config_info in get_dataset_infos(dataset_id).items()
+            for config_name, config_info in get_dataset_infos(dataset_id, use_auth_token=HF_TOKEN).items()
         }
     return ds_configs
 
