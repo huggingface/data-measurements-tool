@@ -65,8 +65,8 @@ def sidebar_selection(ds_names, column_id):
             f"Which text feature from the{column_id} dataset would you like to analyze?",
             [("text",)]
             if ds_name == "c4"
-            else [tp for tp in text_features if len(tp) == 0 and tp[0] != "id"],
-        ) # The len(tp) == 0 is necessary because run_data_measurements.py not currently support nested text fields.
+            else [tp for tp in text_features if len(tp) == 1 and tp[0] != "id"],
+        ) # The len(tp) == 1 is necessary because run_data_measurements.py not currently support nested text fields.
         # Choose a split and dataset size
         avail_splits = list(ds_config["splits"].keys())
         # 12.Nov note: Removing "test" because those should not be examined
