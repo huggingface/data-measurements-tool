@@ -21,7 +21,7 @@ import powerlaw
 import streamlit as st
 from scipy.stats import ks_2samp
 from scipy.stats import zipf as zipf_lib
-from dataset_utils import CNT, PROP
+from .dataset_utils import CNT, PROP
 
 # treating inf values as NaN as well
 
