@@ -21,8 +21,8 @@ class handler(BaseHTTPRequestHandler):
         print('recieved message:', dataset_args)
 
         command = "python3 run_data_measurements.py --dataset=" + dataset_args["dset_name"][0] + " --config=" + dataset_args["dset_config"][0] + " --split=" + dataset_args["split_name"][0] + " --feature=" + dataset_args["text_field"][0] + " --email=" + dataset_args["email"][0]
-        if "label_field" in dataset_args and len(dataset_args["label_field"]) == 1:
-            command += " --label_field=" + dataset_args["label_field"][0]
+        if "label_field" in dataset_args:
+            command += " --label_field=label"
         print('running command:', command)
         subprocess.Popen(command, shell=True)
 
