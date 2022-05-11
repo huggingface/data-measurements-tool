@@ -1,7 +1,7 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 from urllib.parse import parse_qs
-import subprocess
+import os
 
 class handler(BaseHTTPRequestHandler):
 
@@ -20,11 +20,11 @@ class handler(BaseHTTPRequestHandler):
 
         print('recieved message:', dataset_args)
 
-        command = "python3 run_data_measurements.py --dataset=" + dataset_args["dset_name"][0] + " --config=" + dataset_args["dset_config"][0] + " --split=" + dataset_args["split_name"][0] + " --feature=" + dataset_args["text_field"][0] + " --email=" + dataset_args["email"][0]
+        command = "&& python3 run_data_measurements.py --dataset=" + dataset_args["dset_name"][0] + " --config=" + dataset_args["dset_config"][0] + " --split=" + dataset_args["split_name"][0] + " --feature=" + dataset_args["text_field"][0] + " --email=" + dataset_args["email"][0]
         if "label_field" in dataset_args:
             command += " --label_field=label"
         print('running command:', command)
-        subprocess.Popen(command, shell=True)
+        os.system(command)
 
 with HTTPServer(('', 80), handler) as server:
     server.serve_forever()
