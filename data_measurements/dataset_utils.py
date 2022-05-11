@@ -18,7 +18,7 @@ from os.path import exists
 from tqdm import tqdm
 
 import pandas as pd
-from datasets import Dataset, get_dataset_infos, load_dataset, load_from_disk, list_datasets
+from datasets import Dataset, get_dataset_infos, load_dataset, load_from_disk
 
 # treating inf values as NaN as well
 pd.set_option("use_inf_as_na", True)
@@ -235,32 +235,17 @@ def dictionarize_info(dset_info):
     return res
 
 
-def get_dataset_info_dicts(dataset_id=None):
+def get_dataset_info_dicts(dataset_id):
     """
     Creates a dict from dataset configs.
     Uses the datasets lib's get_dataset_infos
     :return: Dictionary mapping dataset names to their configurations
     """
-    if dataset_id != None:
-        ds_name_to_conf_dict = {
-            dataset_id: {
-                config_name: dictionarize_info(config_info)
-                for config_name, config_info in get_dataset_infos(dataset_id).items()
-            }
+    ds_configs = {
+            config_name: dictionarize_info(config_info)
+            for config_name, config_info in get_dataset_infos(dataset_id).items()
         }
-    else:
-        ds_name_to_conf_dict = {}
-        print("Loading Dataset Info Dicts...")
-        for ds_id in tqdm(list_datasets()):
-            try:
-                value = {
-                    config_name: dictionarize_info(config_info)
-                    for config_name, config_info in get_dataset_infos(ds_id).items()
-                }
-                ds_name_to_conf_dict[ds_id] = value
-            except Exception as e:
-                continue
-    return ds_name_to_conf_dict
+    return ds_configs
 
 
 # get all instances of a specific field in a dataset

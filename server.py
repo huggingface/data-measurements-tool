@@ -25,5 +25,5 @@ class handler(BaseHTTPRequestHandler):
             command += " --label_field=" + dataset_args["label_field"][0]
         subprocess.Popen(command, shell=True)
 
-with HTTPServer(('', 8000), handler) as server:
+with HTTPServer(('', 80), handler) as server:
     server.serve_forever()

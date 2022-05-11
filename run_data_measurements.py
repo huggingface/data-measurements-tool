@@ -178,11 +178,11 @@ def get_text_label_df(
 ):
     if not use_cache:
         print("Not using any cache; starting afresh")
-    ds_name_to_dict = dataset_utils.get_dataset_info_dicts(ds_name)
+    ds_configs = dataset_utils.get_dataset_info_dicts(ds_name)
     if label_field:
         label_field, label_names = (
-            ds_name_to_dict[ds_name][config_name]["features"][label_field][0]
-            if len(ds_name_to_dict[ds_name][config_name]["features"][label_field]) > 0
+            ds_configs[config_name]["features"][label_field][0]
+            if len(ds_configs[config_name]["features"][label_field]) > 0
             else ((), [])
         )
     else:

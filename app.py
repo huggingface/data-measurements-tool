@@ -26,6 +26,7 @@ import streamlit as st
 from data_measurements import dataset_statistics, dataset_utils
 from data_measurements import streamlit_utils as st_utils
 from email_validator import validate_email, EmailNotValidError
+from datasets import list_datasets
 
 if Path(".env").is_file():
     load_dotenv(".env")
@@ -200,11 +201,11 @@ def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False):
             logs.warning("Missing a cache for zipf")
     return dstats, cache_dir_exists
 
-def show_column(dstats, ds_name_to_dict, show_embeddings, column_id):
+def show_column(dstats, ds_configs, show_embeddings, column_id):
     """
     Function for displaying the elements in the right column of the streamlit app.
     Args:
-        ds_name_to_dict (dict): the dataset name and options in dictionary form
+        ds_configs (dict): the dataset options in dictionary form
         show_embeddings (Bool): whether embeddings should we loaded and displayed for this dataset
         column_id (str): what column of the dataset the analysis is done on
     Returns:
@@ -215,7 +216,7 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id):
     title_str = f"### Showing{column_id}: {dstats.dset_name} - {dstats.dset_config} - {dstats.split_name} - {'-'.join(dstats.text_field)}"
     st.markdown(title_str)
     logs.info("showing header")
-    st_utils.expander_header(dstats, ds_name_to_dict, column_id)
+    st_utils.expander_header(dstats, ds_configs, column_id)
     logs.info("showing general stats")
     st_utils.expander_general_stats(dstats, column_id)
     st_utils.expander_label_distribution(dstats.fig_labels, column_id)
@@ -236,16 +237,18 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id):
             column_id,
         )
 
-def display_or_compute_data_measures(cache_exists, dstats, show_embeddings, dataset_args, ds_name_to_dict, column_id=""):
+def display_or_compute_data_measures(cache_exists, dstats, show_embeddings, dataset_args, ds_configs, column_id=""):
     if cache_exists:
         if dstats.complete:
-            show_column(dstats, ds_name_to_dict, show_embeddings, column_id)
+            show_column(dstats, ds_configs, show_embeddings, column_id)
         else:
             st.markdown("### Check back later for data measurement results!")
     else:
+        email_input = st.empty()
+        compute_button = st.empty()
         st.markdown("### Missing pre-computed data measures!")
-        email = st.text_input("Enter your email. Our app will compute the measurements and email you when done!")
-        compute = st.button("Compute Measurements")
+        email = email_input.text_input("Enter your email. Our app will compute the measurements and email you when done!")
+        compute = compute_button.button("Compute Measurements")
 
         try:
             # Validate.
@@ -260,6 +263,8 @@ def display_or_compute_data_measures(cache_exists, dstats, show_embeddings, data
         if valid:
             if compute:
                 result = requests.post(SERVER_URL, data = dict({"email": email}, **dataset_args))
+                email_input.empty()
+                compute_button.empty()
                 if result.text == "success":
                     st.text("Computing metrics! An email will be sent to you. This could take a while if the dataset is big.")
                 else:
@@ -268,32 +273,13 @@ def display_or_compute_data_measures(cache_exists, dstats, show_embeddings, data
             if email != "" or compute:
                 st.text("Oh no, that email doesn't seem valid!")
 
-@st.cache(ttl=36000)
-def get_dataset_info_dicts_wrapper():
-    def store_dataset_info_dicts():
-        ds_name_to_dict = dataset_utils.get_dataset_info_dicts()
-        with open('ds_name_to_dict_cache.pkl', 'wb') as f:
-            pickle.dump(ds_name_to_dict, f)
-
-    if exists("ds_name_to_dict_cache.pkl"):
-        # If we have saved the results previously, call an asynchronous process
-        # to fetch the results and update the saved file. Don't make users wait
-        # while we fetch the new results. Instead, display the old results for
-        # now. The new results should be loaded when this method
-        # is called again.
-        ds_name_to_dict = pickle.load(open("ds_name_to_dict_cache.pkl", "rb"))
-        t = threading.Thread(name='get_ds_name_to_dict procs', target=store_dataset_info_dicts)
-        t.start()
-    else:
-        # We have to make the users wait during the first startup of this app.
-        store_dataset_info_dicts()
-        ds_name_to_dict = pickle.load(open("ds_name_to_dict_cache.pkl", "rb"))
-
-    return ds_name_to_dict
+@st.cache(ttl=3600)
+def list_datasets_wrapper():
+    return list_datasets()
 
 def main():
     """ Sidebar description and selection """
-    ds_name_to_dict = get_dataset_info_dicts_wrapper()
+    ds_names = list_datasets_wrapper()
     st.title("Data Measurements Tool")
     # Get the sidebar details
     st_utils.sidebar_header()
@@ -307,24 +293,24 @@ def main():
 
     if compare_mode:
         logs.warning("Using Comparison Mode")
-        dataset_args_left = st_utils.sidebar_selection(ds_name_to_dict, " A")
-        dataset_args_right = st_utils.sidebar_selection(ds_name_to_dict, " B")
+        dataset_args_left, ds_configs_left = st_utils.sidebar_selection(ds_names, " A")
+        dataset_args_right, ds_configs_right = st_utils.sidebar_selection(ds_names, " B")
         left_col, _, right_col = st.columns([10, 1, 10])
         dstats_left, cache_exists_left = load_or_prepare_widgets(
             dataset_args_left, show_embeddings, use_cache=use_cache
         )
         with left_col:
-            display_or_compute_data_measures(cache_exists_left, dstats_left, show_embeddings, dataset_args_left, ds_name_to_dict, column_id=" A")
+            display_or_compute_data_measures(cache_exists_left, dstats_left, show_embeddings, dataset_args_left, ds_configs_left, column_id=" A")
         dstats_right, cache_exists_right = load_or_prepare_widgets(
             dataset_args_right, show_embeddings, use_cache=use_cache
         )
         with right_col:
-            display_or_compute_data_measures(cache_exists_right, dstats_right, show_embeddings, dataset_args_right, ds_name_to_dict, column_id=" B")
+            display_or_compute_data_measures(cache_exists_right, dstats_right, show_embeddings, dataset_args_right, ds_configs_right, column_id=" B")
     else:
         logs.warning("Using Single Dataset Mode")
-        dataset_args = st_utils.sidebar_selection(ds_name_to_dict, "")
+        dataset_args, ds_configs = st_utils.sidebar_selection(ds_names, "")
         dstats, cache_exists = load_or_prepare_widgets(dataset_args, show_embeddings, use_cache=use_cache)
-        display_or_compute_data_measures(cache_exists, dstats, show_embeddings, dataset_args, ds_name_to_dict)
+        display_or_compute_data_measures(cache_exists, dstats, show_embeddings, dataset_args, ds_configs)
 
 
 if __name__ == "__main__":
