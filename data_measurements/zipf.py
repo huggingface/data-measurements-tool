@@ -21,6 +21,7 @@ import powerlaw
 import streamlit as st
 from scipy.stats import ks_2samp
 from scipy.stats import zipf as zipf_lib
+from dataset_utils import CNT, PROP
 
 # treating inf values as NaN as well
 
@@ -51,7 +52,7 @@ if not logs.handlers:
 
 
 class Zipf:
-    def __init__(self, vocab_counts_df=pd.DataFrame(), CNT="count", PROP="prop"):
+    def __init__(self, vocab_counts_df=pd.DataFrame()):
         self.vocab_counts_df = vocab_counts_df
         self.alpha = None
         self.xmin = None
