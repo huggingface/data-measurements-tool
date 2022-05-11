@@ -265,7 +265,7 @@ def display_or_compute_data_measures(cache_exists, dstats, show_embeddings, data
                 email_input.empty()
                 compute_button.empty()
                 if result.text == "success":
-                    st.text("Computing metrics! An email will be sent to you. This could take a while if the dataset is big.")
+                    st.text("Computing metrics! An email will be sent to you.\nThis could take a while if the dataset is big.")
                 else:
                     st.text("Oh no, a problem happened while requesting the data measurements.")
         else:
