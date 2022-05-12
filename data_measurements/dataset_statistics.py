@@ -568,11 +568,9 @@ class DatasetStatisticsCacheClass:
         if not self.live:
             if self.text_dset is None:
                 self.load_or_prepare_text_dset()
-            # Do not try to compute perplexities if this dataset is huge (like a big pretraining dataset). Too much compute.
-            if len(self.text_dset[OUR_TEXT_FIELD]) < 1000000:
-                results = _PERPLEXITY.compute(input_texts=self.text_dset[OUR_TEXT_FIELD], model_id='gpt2')
-                perplexities = {PERPLEXITY_FIELD: results["perplexities"], OUR_TEXT_FIELD: self.text_dset[OUR_TEXT_FIELD]}
-                self.perplexities_df = pd.DataFrame(perplexities).sort_values(by=PERPLEXITY_FIELD, ascending=False)
+            results = _PERPLEXITY.compute(input_texts=self.text_dset[OUR_TEXT_FIELD], model_id='gpt2')
+            perplexities = {PERPLEXITY_FIELD: results["perplexities"], OUR_TEXT_FIELD: self.text_dset[OUR_TEXT_FIELD]}
+            self.perplexities_df = pd.DataFrame(perplexities).sort_values(by=PERPLEXITY_FIELD, ascending=False)
 
     def load_or_prepare_dataset(self, save=True):
         """
