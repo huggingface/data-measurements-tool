@@ -308,7 +308,7 @@ def main():
             not_computing_message = "Not computing the dataset cache."
             print(not_computing_message)
             if args.email is not None:
-                server.sendmail("data.measurements.tool@gmail.com", args.email, "Subject: Data Measurments not Computed\n\n" + already_computed_message + " " + not_computing_message)
+                server.sendmail("data.measurements.tool@gmail.com", args.email, "Subject: Data Measurements not Computed\n\n" + already_computed_message + " " + not_computing_message)
             return
     try:
         cache_path = pjoin(args.out_dir, dataset_cache_dir)
@@ -326,8 +326,9 @@ def main():
             use_cache=args.cached,
         )
         open(pjoin(cache_path, "computation_result.json"), "w+").write(json.dumps({"complete": True}))
-        repo.git_pull()
-        repo.push_to_hub(commit_message="Added dataset cache.")
+        repo.git_add(auto_lfs_track=True)
+        repo.git_commit(commit_message="Added dataset cache.")
+        os.system(f"git push --force origin {repo.current_branch}")
 
         print()
         if args.email is not None:
