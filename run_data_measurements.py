@@ -326,6 +326,7 @@ def main():
             use_cache=args.cached,
         )
         open(pjoin(cache_path, "computation_result.json"), "w+").write(json.dumps({"complete": True}))
+        repo.git_pull()
         repo.push_to_hub(commit_message="Added dataset cache.")
 
         print()
