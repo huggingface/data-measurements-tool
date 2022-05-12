@@ -242,7 +242,7 @@ def display_or_compute_data_measures(cache_exists, dstats, show_embeddings, data
         if dstats.complete:
             show_column(dstats, ds_configs, show_embeddings, column_id)
         else:
-            st.markdown("### Check back later for data measurement results!")
+            st.markdown("Check back later for data measurement results!")
     else:
         email_input = st.empty()
         compute_button = st.empty()

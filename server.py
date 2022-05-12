@@ -1,7 +1,7 @@
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 from urllib.parse import parse_qs
-import os
+import subprocess
 
 class handler(BaseHTTPRequestHandler):
 
@@ -25,7 +25,7 @@ class handler(BaseHTTPRequestHandler):
             command += " --label_field=label"
         command += " &"
         print('running command:', command)
-        os.system(command)
+        subprocess.Popen(command, shell=True, start_new_session=True)
 
-with HTTPServer(('', 80), handler) as server:
+with ThreadingHTTPServer(('', 80), handler) as server:
     server.serve_forever()
