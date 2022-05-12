@@ -291,6 +291,32 @@ def expander_text_duplicates(dstats, column_id):
             st.dataframe(dstats.dup_counts_df.reset_index(drop=True))
 
 
+### Then, show perplexities
+def expander_text_perplexities(dstats, column_id):
+    # TODO: Saving/loading figure
+    with st.expander(f"Text Perplexities{column_id}", expanded=False):
+        st.caption(
+            "Use this widget to identify text perplexities from GPT-2."
+        )
+        st.markdown(
+            """
+            Outlier perplexities, especially very high values, could highlight an issue
+            with an example. Smaller variations should be interpreted with more care,
+            as they indicate how similar to the GPT-2 training corpus the examples are
+            rather than being reflective of general linguistic properties.
+            For more information on GPT-2, see its [model card](https://hf.co/gpt2).
+            """
+        )
+        st.markdown("------")
+        st.write(
+            "### Here is the list of the examples in the dataset, sorted by GPT-2 perplexity:"
+        )
+        if dstats.perplexities_df is None or dstats.perplexities_df.empty:
+            st.write("Perplexities have not been computed yet for this dataset, or this dataset is too large (> 1,000,000 examples).")
+        else:
+            st.dataframe(dstats.perplexities_df.reset_index(drop=True))
+
+
 def expander_npmi_description(min_vocab):
     _NPMI_CAPTION = (
         "Use this widget to identify problematic biases and stereotypes in your data."
@@ -466,9 +492,9 @@ def npmi_show(paired_results):
         st.write("### Here is your dataset's nPMI results:")
         st.dataframe(out_df)
 
-
 ### Dumping unused functions here for now
 ### Second, show the distribution of text perplexities
+'''
 def expander_text_perplexities(text_label_df, sorted_sents_loss, fig_loss):
     with st.expander("Show text perplexities A", expanded=False):
         st.markdown("### Text perplexities A")
@@ -482,3 +508,4 @@ def expander_text_perplexities(text_label_df, sorted_sents_loss, fig_loss):
         )
         for lss, sent in sorted_sents_loss[start_id_show_loss : start_id_show_loss + 5]:
             st.text(f"{lss:.3f} {sent}")
+'''

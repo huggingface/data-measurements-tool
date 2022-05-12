@@ -109,6 +109,8 @@ def load_or_prepare(ds_args, show_embeddings, use_cache=False):
     dstats.load_or_prepare_text_lengths()
     logs.warning("Loading duplicates")
     dstats.load_or_prepare_text_duplicates()
+    logs.warning("Loading perplexities")
+    dstats.load_or_prepare_text_perplexities()
     logs.warning("Loading vocabulary")
     dstats.load_or_prepare_vocab()
     logs.warning("Loading general statistics...")
@@ -192,6 +194,10 @@ def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False):
         except:
             logs.warning("Missing a cache for text duplicates")
         try:
+            dstats.load_or_prepare_text_perplexities()
+        except:
+            logs.warning("Missing a cache for text perplexities")
+        try:
             dstats.load_or_prepare_npmi()
         except:
             logs.warning("Missing a cache for npmi")
@@ -222,6 +228,7 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id):
     st_utils.expander_label_distribution(dstats.fig_labels, column_id)
     st_utils.expander_text_lengths(dstats, column_id)
     st_utils.expander_text_duplicates(dstats, column_id)
+    st_utils.expander_text_perplexities(dstats, column_id)
     # Uses an interaction; handled a bit differently than other widgets.
     logs.info("showing npmi widget")
     st_utils.npmi_widget(dstats.npmi_stats, _MIN_VOCAB_COUNT, column_id)

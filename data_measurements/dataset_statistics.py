@@ -34,13 +34,13 @@ import plotly.graph_objects as go
 import pyarrow.feather as feather
 import seaborn as sns
 import torch
-from datasets import load_from_disk
+from datasets import load_from_disk, load_metric
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 from huggingface_hub import Repository, list_datasets
 
 from .dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD,
-                            OUR_LABEL_FIELD, OUR_TEXT_FIELD, PROP,
+                            OUR_LABEL_FIELD, OUR_TEXT_FIELD, PERPLEXITY_FIELD, PROP,
                             TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
                             TOT_WORDS, TXT_LEN, VOCAB, WORD, extract_field,
                             load_truncated_dataset)
@@ -147,6 +147,8 @@ _NUM_VOCAB_BATCHES = 2000
 _TOP_N = 100
 _CVEC = CountVectorizer(token_pattern="(?u)\\b\\w+\\b", lowercase=True)
 
+_PERPLEXITY = load_metric("perplexity")
+
 
 class DatasetStatisticsCacheClass:
 
@@ -219,6 +221,7 @@ class DatasetStatisticsCacheClass:
         self.dedup_total = 0
         # Duplicated text items along with their number of occurences ("count")
         self.dup_counts_df = None
+        self.perplexities_df = None
         self.avg_length = None
         self.std_length = None
         self.general_stats_dict = None
@@ -289,6 +292,8 @@ class DatasetStatisticsCacheClass:
         self.vocab_counts_df_fid = pjoin(self.cache_path, "vocab_counts.feather")
         # Needed for UI
         self.dup_counts_df_fid = pjoin(self.cache_path, "dup_counts_df.feather")
+        # Needed for UI
+        self.perplexities_df_fid = pjoin(self.cache_path, "perplexities_df.feather")
         # Needed for UI
         self.fig_tok_length_fid = pjoin(self.cache_path, "fig_tok_length.png")
 
@@ -362,6 +367,7 @@ class DatasetStatisticsCacheClass:
             self.use_cache
             and exists(self.general_stats_json_fid)
             and exists(self.dup_counts_df_fid)
+            and exists(self.perplexities_df_fid)
             and exists(self.sorted_top_vocab_df_fid)
         ):
             logs.info("Loading cached general stats")
@@ -373,6 +379,7 @@ class DatasetStatisticsCacheClass:
                 if save:
                     write_df(self.sorted_top_vocab_df, self.sorted_top_vocab_df_fid)
                     write_df(self.dup_counts_df, self.dup_counts_df_fid)
+                    write_df(self.perplexities_df, self.perplexities_df_fid)
                     write_json(self.general_stats_dict, self.general_stats_json_fid)
 
     def load_or_prepare_text_lengths(self, save=True):
@@ -516,6 +523,20 @@ class DatasetStatisticsCacheClass:
                 if save:
                     write_df(self.dup_counts_df, self.dup_counts_df_fid)
 
+    def load_or_prepare_text_perplexities(self, save=True):
+        if self.use_cache and exists(self.perplexities_df_fid):
+            with open(self.perplexities_df_fid, "rb") as f:
+                self.perplexities_df = feather.read_feather(f)
+        elif self.perplexities_df is None:
+            if not self.live:
+                self.prepare_text_perplexities()
+                if save:
+                    write_df(self.perplexities_df, self.perplexities_df_fid)
+        else:
+            if not self.live:
+                if save:
+                    write_df(self.perplexities_df, self.perplexities_df_fid)
+
     def load_general_stats(self):
         self.general_stats_dict = json.load(
             open(self.general_stats_json_fid, encoding="utf-8")
@@ -542,6 +563,7 @@ class DatasetStatisticsCacheClass:
             self.total_open_words = len(self.vocab_counts_filtered_df)
             self.text_nan_count = int(self.tokenized_df.isnull().sum().sum())
             self.prepare_text_duplicates()
+            self.prepare_text_perplexities()
             self.dedup_total = sum(self.dup_counts_df[CNT])
             self.general_stats_dict = {
                 TOT_WORDS: self.total_words,
@@ -562,6 +584,14 @@ class DatasetStatisticsCacheClass:
                 columns=[CNT],
             )
             self.dup_counts_df[OUR_TEXT_FIELD] = self.dup_counts_df.index.copy()
+
+    def prepare_text_perplexities(self):
+        if not self.live:
+            if self.text_dset is None:
+                self.load_or_prepare_text_dset()
+            results = _PERPLEXITY.compute(input_texts=self.text_dset[OUR_TEXT_FIELD], model_id='gpt2')
+            perplexities = {PERPLEXITY_FIELD: results["perplexities"], OUR_TEXT_FIELD: self.text_dset[OUR_TEXT_FIELD]}
+            self.perplexities_df = pd.DataFrame(perplexities).sort_values(by=PERPLEXITY_FIELD, ascending=False)
 
     def load_or_prepare_dataset(self, save=True):
         """
