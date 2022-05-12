@@ -5,6 +5,7 @@ from os import mkdir, getenv
 from os.path import join as pjoin, isdir
 from pathlib import Path
 from dotenv import load_dotenv
+import subprocess
 
 from data_measurements import dataset_statistics
 from data_measurements import dataset_utils
@@ -328,7 +329,7 @@ def main():
         open(pjoin(cache_path, "computation_result.json"), "w+").write(json.dumps({"complete": True}))
         repo.git_add(auto_lfs_track=True)
         repo.git_commit(commit_message="Added dataset cache.")
-        os.system(f"git push --force origin {repo.current_branch}")
+        subprocess.run(f"git push --force origin {repo.current_branch}", cwd=repo.local_dir, shell=True)
 
         print()
         if args.email is not None:
