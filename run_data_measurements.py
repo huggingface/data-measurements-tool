@@ -327,11 +327,7 @@ def main():
             use_cache=args.cached,
         )
         open(pjoin(cache_path, "computation_result.json"), "w+").write(json.dumps({"complete": True}))
-        repo.git_add(auto_lfs_track=True)
-        repo.git_commit(commit_message="Added dataset cache.")
-        subprocess.run(f"git push --force origin {repo.current_branch}", cwd=repo.local_dir, shell=True)
-
-        print()
+        repo.push_to_hub(commit_message="Added dataset cache.")
         if args.email is not None:
             computed_message = f"Data measurements have been computed for dataset with these arguments: {dataset_arguments_message}. You can return to the data measurements tool to view them at https://huggingface.co/spaces/datameasurements/data-measurements-tool"
             server.sendmail("data.measurements.tool@gmail.com", args.email, "Subject: Data Measurements Computed!\n\n" + computed_message)
