@@ -19,7 +19,7 @@ import seaborn as sns
 import streamlit as st
 from st_aggrid import AgGrid, GridOptionsBuilder
 
-from .dataset_utils import HF_DESC_FIELD, HF_FEATURE_FIELD, HF_LABEL_FIELD
+from .dataset_utils import HF_DESC_FIELD, HF_FEATURE_FIELD, HF_LABEL_FIELD, get_dataset_info_dicts
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
 def sidebar_header():
@@ -37,17 +37,16 @@ def sidebar_header():
     )
 
 
-def sidebar_selection(ds_name_to_dict, column_id):
-    ds_names = list(ds_name_to_dict.keys())
+def sidebar_selection(ds_names, column_id):
+
     with st.sidebar.expander(f"Choose dataset and field {column_id}", expanded=True):
         # choose a dataset to analyze
         ds_name = st.selectbox(
             f"Choose dataset to explore{column_id}:",
             ds_names,
-            index=ds_names.index("hate_speech18"),
         )
         # choose a config to analyze
-        ds_configs = ds_name_to_dict[ds_name]
+        ds_configs = get_dataset_info_dicts(ds_name)
         if ds_name == "c4":
             config_names = ['en','en.noblocklist','realnewslike']
         else:
@@ -66,8 +65,8 @@ def sidebar_selection(ds_name_to_dict, column_id):
             f"Which text feature from the{column_id} dataset would you like to analyze?",
             [("text",)]
             if ds_name == "c4"
-            else [tp for tp in text_features if tp[0] != "id"],
-        )
+            else [tp for tp in text_features if len(tp) == 1 and tp[0] != "id"],
+        ) # The len(tp) == 1 is necessary because run_data_measurements.py not currently support nested text fields.
         # Choose a split and dataset size
         avail_splits = list(ds_config["splits"].keys())
         # 12.Nov note: Removing "test" because those should not be examined
@@ -80,9 +79,9 @@ def sidebar_selection(ds_name_to_dict, column_id):
             index=0,
         )
         label_field, label_names = (
-            ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][HF_LABEL_FIELD][0]
+            ds_configs[config_name][HF_FEATURE_FIELD][HF_LABEL_FIELD][0]
             if len(
-                ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][HF_LABEL_FIELD]
+                ds_configs[config_name][HF_FEATURE_FIELD][HF_LABEL_FIELD]
             )
             > 0
             else ((), [])
@@ -94,13 +93,13 @@ def sidebar_selection(ds_name_to_dict, column_id):
             "text_field": text_field,
             "label_field": label_field,
             "label_names": label_names,
-        }
+        }, ds_configs
 
 
-def expander_header(dstats, ds_name_to_dict, column_id):
+def expander_header(dstats, ds_configs, column_id):
     with st.expander(f"Dataset Description{column_id}"):
         st.markdown(
-            ds_name_to_dict[dstats.dset_name][dstats.dset_config][HF_DESC_FIELD]
+            ds_configs[dstats.dset_config][HF_DESC_FIELD]
         )
         st.dataframe(dstats.dset_peek)
 

@@ -15,10 +15,18 @@
 import json
 from dataclasses import asdict
 from os.path import exists
-import streamlit as st
+from tqdm import tqdm
+from pathlib import Path
+from dotenv import load_dotenv
+from os import getenv
 
 import pandas as pd
 from datasets import Dataset, get_dataset_infos, load_dataset, load_from_disk
+
+if Path(".env").is_file():
+    load_dotenv(".env")
+
+HF_TOKEN = getenv("HF_TOKEN")
 
 # treating inf values as NaN as well
 pd.set_option("use_inf_as_na", True)
@@ -47,18 +55,6 @@ TXT_LEN = "text lengths"
 DEDUP_TOT = "dedup_total"
 TOT_WORDS = "total words"
 TOT_OPEN_WORDS = "total open words"
-
-_DATASET_LIST = [
-    "c4",
-    "squad",
-    "squad_v2",
-    "hate_speech18",
-    "hate_speech_offensive",
-    "glue",
-    "super_glue",
-    "wikitext",
-    "imdb",
-]
 
 _STREAMABLE_DATASET_LIST = [
     "c4",
@@ -119,6 +115,7 @@ def load_truncated_dataset(
                 name=config_name,
                 split=split_name,
                 streaming=True,
+                use_auth_token=HF_TOKEN
             ).take(num_rows)
             rows = list(iterable_dataset)
             f = open("temp.jsonl", "w", encoding="utf-8")
@@ -133,6 +130,7 @@ def load_truncated_dataset(
                 dataset_name,
                 name=config_name,
                 split=split_name,
+                use_auth_token=HF_TOKEN
             )
             if len(full_dataset) >= num_rows:
                 dataset = full_dataset.select(range(num_rows))
@@ -248,29 +246,17 @@ def dictionarize_info(dset_info):
     return res
 
 
-@st.cache
-def get_dataset_info_dicts(dataset_id=None):
+def get_dataset_info_dicts(dataset_id):
     """
     Creates a dict from dataset configs.
     Uses the datasets lib's get_dataset_infos
     :return: Dictionary mapping dataset names to their configurations
     """
-    if dataset_id != None:
-        ds_name_to_conf_dict = {
-            dataset_id: {
-                config_name: dictionarize_info(config_info)
-                for config_name, config_info in get_dataset_infos(dataset_id).items()
-            }
+    ds_configs = {
+            config_name: dictionarize_info(config_info)
+            for config_name, config_info in get_dataset_infos(dataset_id, use_auth_token=HF_TOKEN).items()
         }
-    else:
-        ds_name_to_conf_dict = {
-            ds_id: {
-                config_name: dictionarize_info(config_info)
-                for config_name, config_info in get_dataset_infos(ds_id).items()
-            }
-            for ds_id in _DATASET_LIST
-        }
-    return ds_name_to_conf_dict
+    return ds_configs
 
 
 # get all instances of a specific field in a dataset

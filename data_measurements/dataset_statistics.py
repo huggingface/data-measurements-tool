@@ -262,8 +262,9 @@ class DatasetStatisticsCacheClass:
 
         # Try to pull from the hub to see if the cache already exists.
         try:
-            if not isdir(self.cache_path) and self.dataset_cache_dir in [dataset_info.id.split("/")[-1] for dataset_info in list_datasets(author="datameasurements", use_auth_token=HF_TOKEN)]:
+            if self.dataset_cache_dir in [dataset_info.id.split("/")[-1] for dataset_info in list_datasets(author="datameasurements", use_auth_token=HF_TOKEN)]:
                 repo = Repository(local_dir=self.cache_path, clone_from="datameasurements/" + self.dataset_cache_dir, repo_type="dataset", use_auth_token=HF_TOKEN)
+                repo.git_pull()
             else:
                 logs.warning("Cannot find cached repo.")
         except Exception as e:
@@ -317,6 +318,11 @@ class DatasetStatisticsCacheClass:
         self.fig_tree_json_fid = pjoin(self.cache_path, "fig_tree.json")
 
         self.live = False
+
+        self.complete = False
+        computation_results_file = pjoin(self.cache_path, "computation_result.json")
+        if exists(computation_results_file):
+            self.complete = json.loads(open(computation_results_file, "r").read())["complete"]
 
     def set_deployment(self, live=True):
         """

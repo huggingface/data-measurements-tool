@@ -25,3 +25,4 @@ scikit-learn~=0.24.2
 scipy~=1.7.3
 tqdm~=4.62.3
 pyarrow~=6.0.1
+email-validator==1.1.3
