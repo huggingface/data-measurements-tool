@@ -16,8 +16,9 @@ import json
 import logging
 import statistics
 import shutil
-from os import mkdir, getenv
-from os.path import exists, isdir
+import os
+from os import mkdir, getenv, stat, walk, listdir
+from os.path import exists, isdir, islink, getsize
 from os.path import join as pjoin
 from pathlib import Path
 from dotenv import load_dotenv
@@ -263,7 +264,31 @@ class DatasetStatisticsCacheClass:
         # Try to pull from the hub to see if the cache already exists.
         try:
             if not isdir(self.cache_path) and self.dataset_cache_dir in [dataset_info.id.split("/")[-1] for dataset_info in list_datasets(author="datameasurements", use_auth_token=HF_TOKEN)]:
+                def get_size(start_path):
+                    total_size = 0
+                    for dirpath, dirnames, filenames in walk(start_path):
+                        for f in filenames:
+                            fp = pjoin(dirpath, f)
+                            # skip if it is symbolic link
+                            if not islink(fp):
+                                total_size += getsize(fp)
+
+                    return total_size
+                dataset_sizes_and_modified_times = []
+                for dataset_cache_dir in listdir(self.cache_dir):
+                    dataset_cache_path = pjoin(self.cache_dir, dataset_cache_dir)
+                    dataset_sizes_and_modified_times.append({"path": dataset_cache_path, "size": get_size(dataset_cache_path), "modified_time": stat(dataset_cache_path).st_mtime})
                 repo = Repository(local_dir=self.cache_path, clone_from="datameasurements/" + self.dataset_cache_dir, repo_type="dataset", use_auth_token=HF_TOKEN)
+
+                max_bytes = 8000000000  # 8 gigabytes.
+                dataset_sizes_and_modified_times.sort(key=lambda obj: obj["modified_time"])
+                dataset_sizes_and_modified_times.reverse()
+                print("byte sum", sum([obj["size"] for obj in dataset_sizes_and_modified_times]))
+                while sum([obj["size"] for obj in dataset_sizes_and_modified_times]) > max_bytes:
+                    # Keep removing the oldest dataset measurements from the cache until we are under the alloted gigabytes.
+                    # These dataset measurements will be reloaded from the hub when someone selects them again.
+                    obj = dataset_sizes_and_modified_times.pop()
+                    shutil.rmtree(obj["path"])
             else:
                 logs.warning("Cannot find cached repo.")
         except Exception as e:

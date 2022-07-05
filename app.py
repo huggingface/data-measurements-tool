@@ -75,13 +75,6 @@ LENGTH_FIELD = dataset_utils.LENGTH_FIELD
 _MIN_VOCAB_COUNT = 10
 _SHOW_TOP_N_WORDS = 10
 
-
-@st.cache(
-    hash_funcs={
-        dataset_statistics.DatasetStatisticsCacheClass: lambda dstats: dstats.cache_path
-    },
-    allow_output_mutation=True,
-)
 def load_or_prepare(ds_args, show_embeddings, use_cache=False):
     """
     Takes the dataset arguments from the GUI and uses them to load a dataset from the Hub or, if
@@ -127,12 +120,6 @@ def load_or_prepare(ds_args, show_embeddings, use_cache=False):
     dstats.load_or_prepare_zipf()
     return dstats
 
-@st.cache(
-    hash_funcs={
-        dataset_statistics.DatasetStatisticsCacheClass: lambda dstats: dstats.cache_path
-    },
-    allow_output_mutation=True,
-)
 def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False):
     """
     Loader specifically for the widgets used in the app.

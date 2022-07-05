@@ -19,6 +19,16 @@ import streamlit as st
 
 import pandas as pd
 from datasets import Dataset, get_dataset_infos, load_dataset, load_from_disk
+from huggingface_hub import list_datasets
+from tqdm import tqdm
+from pathlib import Path
+from dotenv import load_dotenv
+from os import getenv
+
+if Path(".env").is_file():
+    load_dotenv(".env")
+
+HF_TOKEN = getenv("HF_TOKEN")
 
 # treating inf values as NaN as well
 pd.set_option("use_inf_as_na", True)
@@ -48,17 +58,14 @@ DEDUP_TOT = "dedup_total"
 TOT_WORDS = "total words"
 TOT_OPEN_WORDS = "total open words"
 
-_DATASET_LIST = [
-    "c4",
-    "squad",
-    "squad_v2",
-    "hate_speech18",
-    "hate_speech_offensive",
-    "glue",
-    "super_glue",
-    "wikitext",
-    "imdb",
-]
+_CACHE_DATASET_LIST = [dset_info.id for dset_info in list_datasets(author="datameasurements", use_auth_token=HF_TOKEN)]
+def cache_name_startswith(name):
+    for cache_name in _CACHE_DATASET_LIST:
+        if name != "" and cache_name.startswith("datameasurements/" + name + "_"):
+            return True
+    return False
+
+_DATASET_LIST = [dset_info.id for dset_info in filter(lambda dset_info: cache_name_startswith(dset_info.id), list_datasets())]
 
 _STREAMABLE_DATASET_LIST = [
     "c4",
