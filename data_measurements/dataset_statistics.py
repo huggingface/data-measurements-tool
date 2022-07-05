@@ -16,7 +16,6 @@ import json
 import logging
 import statistics
 import shutil
-import os
 from os import mkdir, getenv, stat, walk, listdir
 from os.path import exists, isdir, islink, getsize
 from os.path import join as pjoin
