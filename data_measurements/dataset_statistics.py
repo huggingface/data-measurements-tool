@@ -15,7 +15,6 @@
 import json
 import logging
 import statistics
-import shutil
 from os import mkdir, getenv
 from os.path import exists, isdir
 from os.path import join as pjoin
@@ -29,11 +28,9 @@ import numpy as np
 import pandas as pd
 import plotly
 import plotly.express as px
-import plotly.figure_factory as ff
 import plotly.graph_objects as go
 import pyarrow.feather as feather
 import seaborn as sns
-import torch
 from datasets import load_from_disk, load_metric
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
@@ -42,11 +39,13 @@ from huggingface_hub import Repository, list_datasets
 from .dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD,
                             OUR_LABEL_FIELD, OUR_TEXT_FIELD, PERPLEXITY_FIELD, PROP,
                             TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
-                            TOT_WORDS, TXT_LEN, VOCAB, WORD, extract_field,
+                            TOT_WORDS, VOCAB, WORD, extract_field,
                             load_truncated_dataset)
 from .embeddings import Embeddings
-from .npmi import nPMI
+# TODO(meg): Incorporate this from evaluate library.
+# import evaluate
 from .zipf import Zipf
+from .npmi import nPMI
 
 if Path(".env").is_file():
     load_dotenv(".env")
@@ -259,6 +258,9 @@ class DatasetStatisticsCacheClass:
             self.cache_dir,
             self.dataset_cache_dir,  # {label_field},
         )
+        # Things that get defined later.
+        self.fig_tok_length_png = None
+        self.length_stats_dict = None
 
         # Try to pull from the hub to see if the cache already exists.
         try:
@@ -336,6 +338,8 @@ class DatasetStatisticsCacheClass:
         else:
             if not isdir(self.cache_path):
                 logs.warning("Creating cache directory %s." % self.cache_path)
+                if not isdir(self.cache_dir):
+                    mkdir(self.cache_dir)
                 mkdir(self.cache_path)
             return isdir(self.cache_path)
 
@@ -504,7 +508,7 @@ class DatasetStatisticsCacheClass:
         with open(self.vocab_counts_df_fid, "rb") as f:
             self.vocab_counts_df = feather.read_feather(f)
         # Handling for changes in how the index is saved.
-        self.vocab_counts_df = self._set_idx_col_names(self.vocab_counts_df)
+        self.vocab_counts_df = _set_idx_col_names(self.vocab_counts_df)
 
     def load_or_prepare_text_duplicates(self, save=True):
         if self.use_cache and exists(self.dup_counts_df_fid):
@@ -772,11 +776,38 @@ class DatasetStatisticsCacheClass:
                 write_zipf_data(self.z, self.zipf_fid)
                 write_plotly(self.zipf_fig, self.zipf_fig_fid)
 
-    def _set_idx_col_names(self, input_vocab_df):
-        if input_vocab_df.index.name != VOCAB and VOCAB in input_vocab_df.columns:
-            input_vocab_df = input_vocab_df.set_index([VOCAB])
-            input_vocab_df[VOCAB] = input_vocab_df.index
-        return input_vocab_df
+def _set_idx_col_names(input_vocab_df):
+    if input_vocab_df.index.name != VOCAB and VOCAB in input_vocab_df.columns:
+        input_vocab_df = input_vocab_df.set_index([VOCAB])
+        input_vocab_df[VOCAB] = input_vocab_df.index
+    return input_vocab_df
+
+def _set_idx_cols_from_cache(csv_df, subgroup=None, calc_str=None):
+    """
+    Helps make sure all of the read-in files can be accessed within code
+    via standardized indices and column names.
+    :param csv_df:
+    :param subgroup:
+    :param calc_str:
+    :return:
+    """
+    # The csv saves with this column instead of the index, so that's weird.
+    if "Unnamed: 0" in csv_df.columns:
+        csv_df = csv_df.set_index("Unnamed: 0")
+        csv_df.index.name = WORD
+    elif WORD in csv_df.columns:
+        csv_df = csv_df.set_index(WORD)
+        csv_df.index.name = WORD
+    elif VOCAB in csv_df.columns:
+        csv_df = csv_df.set_index(VOCAB)
+        csv_df.index.name = WORD
+    if subgroup and calc_str:
+        csv_df.columns = [subgroup + "-" + calc_str]
+    elif subgroup:
+        csv_df.columns = [subgroup]
+    elif calc_str:
+        csv_df.columns = [calc_str]
+    return csv_df
 
 
 class nPMIStatisticsCacheClass:
@@ -888,7 +919,8 @@ class nPMIStatisticsCacheClass:
         logs.info(joint_npmi_df)
         return joint_npmi_df
 
-    def load_joint_npmi_df(self, joint_npmi_fid):
+    @staticmethod
+    def load_joint_npmi_df(joint_npmi_fid):
         """
         Reads in a saved dataframe with all of the paired results.
         :param joint_npmi_fid:
@@ -896,7 +928,7 @@ class nPMIStatisticsCacheClass:
         """
         with open(joint_npmi_fid, "rb") as f:
             joint_npmi_df = pd.read_csv(f)
-        joint_npmi_df = self._set_idx_cols_from_cache(joint_npmi_df)
+        joint_npmi_df = _set_idx_cols_from_cache(joint_npmi_df)
         return joint_npmi_df.dropna()
 
     def prepare_joint_npmi_df(self, subgroup_pair, subgroup_files):
@@ -959,10 +991,13 @@ class nPMIStatisticsCacheClass:
         Initializes the nPMI class with the given words and tokenized sentences.
         :return:
         """
+        # TODO(meg): Incorporate this from evaluate library.
+        # npmi_obj = evaluate.load('npmi', module_type='measurement').compute(subgroup, vocab_counts_df = self.dstats.vocab_counts_df, tokenized_counts_df=self.dstats.tokenized_df)
         npmi_obj = nPMI(self.dstats.vocab_counts_df, self.dstats.tokenized_df)
         return npmi_obj
 
-    def load_or_fail_cached_npmi_scores(self, subgroup, subgroup_fids):
+    @staticmethod
+    def load_or_fail_cached_npmi_scores(subgroup, subgroup_fids):
         """
         Reads cached scores from the specified subgroup files
         :param subgroup: string of the selected identity term
@@ -984,44 +1019,17 @@ class nPMIStatisticsCacheClass:
             logs.info("npmi")
             with open(subgroup_npmi_fid, "rb") as f:
                 subgroup_npmi_df = pd.read_csv(f)
-            subgroup_cooc_df = self._set_idx_cols_from_cache(
+            subgroup_cooc_df = _set_idx_cols_from_cache(
                 subgroup_cooc_df, subgroup, "count"
             )
-            subgroup_pmi_df = self._set_idx_cols_from_cache(
+            subgroup_pmi_df = _set_idx_cols_from_cache(
                 subgroup_pmi_df, subgroup, "pmi"
             )
-            subgroup_npmi_df = self._set_idx_cols_from_cache(
+            subgroup_npmi_df = _set_idx_cols_from_cache(
                 subgroup_npmi_df, subgroup, "npmi"
             )
             return subgroup_cooc_df, subgroup_pmi_df, subgroup_npmi_df
         return False
-
-    def _set_idx_cols_from_cache(self, csv_df, subgroup=None, calc_str=None):
-        """
-        Helps make sure all of the read-in files can be accessed within code
-        via standardized indices and column names.
-        :param csv_df:
-        :param subgroup:
-        :param calc_str:
-        :return:
-        """
-        # The csv saves with this column instead of the index, so that's weird.
-        if "Unnamed: 0" in csv_df.columns:
-            csv_df = csv_df.set_index("Unnamed: 0")
-            csv_df.index.name = WORD
-        elif WORD in csv_df.columns:
-            csv_df = csv_df.set_index(WORD)
-            csv_df.index.name = WORD
-        elif VOCAB in csv_df.columns:
-            csv_df = csv_df.set_index(VOCAB)
-            csv_df.index.name = WORD
-        if subgroup and calc_str:
-            csv_df.columns = [subgroup + "-" + calc_str]
-        elif subgroup:
-            csv_df.columns = [subgroup]
-        elif calc_str:
-            csv_df.columns = [calc_str]
-        return csv_df
 
     def get_available_terms(self):
         return self.load_or_prepare_npmi_terms()
@@ -1260,13 +1268,10 @@ def write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files):
 
 
 def write_zipf_data(z, zipf_fid):
-    zipf_dict = {}
-    zipf_dict["xmin"] = int(z.xmin)
-    zipf_dict["xmax"] = int(z.xmax)
-    zipf_dict["alpha"] = float(z.alpha)
-    zipf_dict["ks_distance"] = float(z.distance)
-    zipf_dict["p-value"] = float(z.ks_test.pvalue)
-    zipf_dict["uniq_counts"] = [int(count) for count in z.uniq_counts]
-    zipf_dict["uniq_ranks"] = [int(rank) for rank in z.uniq_ranks]
+    zipf_dict = {"xmin": int(z.xmin), "xmax": int(z.xmax),
+                 "alpha": float(z.alpha), "ks_distance": float(z.distance),
+                 "p-value": float(z.ks_test.pvalue),
+                 "uniq_counts": [int(count) for count in z.uniq_counts],
+                 "uniq_ranks": [int(rank) for rank in z.uniq_ranks]}
     with open(zipf_fid, "w+", encoding="utf-8") as f:
         json.dump(zipf_dict, f)
