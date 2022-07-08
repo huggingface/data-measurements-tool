@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import json
+import os
 from dataclasses import asdict
-from os.path import exists
+from os import mkdir
+from os.path import exists, isdir
 import streamlit as st
 
 import pandas as pd
@@ -299,3 +301,7 @@ def extract_field(examples, field_path, new_field_name=None):
         for field in (item if isinstance(item, list) else [item])
     ]
     return {new_field_name: field_list}
+
+def make_cache_path(cache_path):
+    os.makedirs(cache_path, exist_ok=True)
+    return True
