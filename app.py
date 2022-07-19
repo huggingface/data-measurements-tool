@@ -253,8 +253,7 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--live", required=False, default='True', help="Flag to specify that this is not running live.", choices=('True','False')
-    )
+        "--live", default=False, required=False, action="store_true", help="Flag to specify that this is not running live.")
     arguments = parser.parse_args()
     live = arguments.live
     """ Sidebar description and selection """
