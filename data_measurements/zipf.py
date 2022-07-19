@@ -57,6 +57,7 @@ class Zipf:
         self.xmin = None
         self.xmax = None
         self.fit = None
+        self.p = None
         self.ranked_words = {}
         self.uniq_counts = []
         self.uniq_ranks = []
