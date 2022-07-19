@@ -700,7 +700,7 @@ class DatasetStatisticsCacheClass:
             res = {
                 TOKENIZED_FIELD: [
                     tuple(sent_tokenizer(text.lower()))
-                    for text in examples[OUR_TEXT_FIELD]
+                    for text in examples:
                 ]
             }
             res[LENGTH_FIELD] = [len(tok_text) for tok_text in res[TOKENIZED_FIELD]]
@@ -709,6 +709,7 @@ class DatasetStatisticsCacheClass:
         self.tokenized_dset = self.text_dset.map(
             tokenize_batch,
             batched=True,
+            input_columns=[OUR_TEXT_FIELD]
             # remove_columns=[OUR_TEXT_FIELD], keep around to print
         )
         # TODO: Just have this be a self; remove the return
@@ -1019,6 +1020,8 @@ class nPMIStatisticsCacheClass:
         # TODO(meg): Incorporate this from evaluate library.
         #results = _PERPLEXITY.compute(
         #    input_texts=self.dstats.tokenized_df, model_id='gpt2')
+        print(self.tokenized_dset[TOKENIZED_FIELD])
+        print(self.text_dset[OUR_TEXT_FIELD])
         test_data = self.tokenized_dset[TOKENIZED_FIELD][:10]
         _NPMI = evaluate.load(module_type='measurement',
                      path='../evaluate/measurements/npmi', data={'data':test_data})
