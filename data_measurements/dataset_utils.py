@@ -18,7 +18,8 @@ from os.path import exists
 import streamlit as st
 
 import pandas as pd
-from datasets import Dataset, get_dataset_infos, load_dataset, load_from_disk
+from datasets import Dataset, get_dataset_infos, load_dataset, load_from_disk, \
+    NamedSplit
 
 # treating inf values as NaN as well
 pd.set_option("use_inf_as_na", True)
@@ -126,7 +127,7 @@ def load_truncated_dataset(
                 _ = f.write(json.dumps(row) + "\n")
             f.close()
             dataset = Dataset.from_json(
-                "temp.jsonl", features=iterable_dataset.features, split=split_name
+                "temp.jsonl", features=iterable_dataset.features, split=NamedSplit(split_name)
             )
         else:
             full_dataset = load_dataset(
@@ -255,7 +256,7 @@ def get_dataset_info_dicts(dataset_id=None):
     Uses the datasets lib's get_dataset_infos
     :return: Dictionary mapping dataset names to their configurations
     """
-    if dataset_id != None:
+    if dataset_id is not None:
         ds_name_to_conf_dict = {
             dataset_id: {
                 config_name: dictionarize_info(config_info)
