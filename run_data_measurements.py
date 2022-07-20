@@ -285,7 +285,17 @@ def main():
         action="store_true",
         help="Whether to overwrite a previous cache for these same arguments (Optional)",
     )
-    parser.add_argument("--email", default=None, help="Email to report whether the computation was successful")
+    parser.add_argument(
+        "--email",
+        default=None,
+        help="An email that recieves a message about whether the computation was successful. If email is not None, then you must have EMAIL_PASSWORD for the sender email (data.measurements.tool@gmail.com) in a file named .env at the root of this repo.")
+    parser.add_argument(
+        "--push_cache_to_hub",
+        default=False,
+        required=False,
+        action="store_true",
+        help="Whether to push the cache to the datameasurements organization on the hub. If you are using this option, you must have HF_TOKEN in a file named .env at the root of this repo.",
+    )
 
     args = parser.parse_args()
     print("Proceeding with the following arguments:")
@@ -298,24 +308,27 @@ def main():
 
     dataset_cache_dir = f"{args.dataset}_{args.config}_{args.split}_{args.feature}"
     dataset_arguments_message=f"dataset: {args.dataset}, config: {args.config}, split: {args.split}, feature: {args.feature}, label field: {args.label_field}"
-    try:
-        create_repo(dataset_cache_dir, organization="datameasurements", repo_type="dataset", private=True, token=HF_TOKEN)
-    except Exception as e:
-        print(e)
-        already_computed_message = f"Already created a repo for the dataset with arguments: {dataset_arguments_message}. Or there is an error on the hub that is preventing repo creation."
-        print(already_computed_message)
-        if args.overwrite_previous:
-            print("Computing new cache regardless.")
-        else:
-            not_computing_message = "Not computing the dataset cache."
-            print(not_computing_message)
-            if args.email is not None:
-                server.sendmail("data.measurements.tool@gmail.com", args.email, "Subject: Data Measurments not Computed\n\n" + already_computed_message + " " + not_computing_message)
-            return
+    if args.push_cache_to_hub:
+        try:
+            create_repo(dataset_cache_dir, organization="datameasurements", repo_type="dataset", private=True, token=HF_TOKEN)
+        except Exception as e:
+            print(e)
+            already_computed_message = f"Already created a repo for the dataset with arguments: {dataset_arguments_message}. Or there is an error on the hub that is preventing repo creation."
+            print(already_computed_message)
+            if args.overwrite_previous:
+                print("Computing new cache regardless.")
+            else:
+                not_computing_message = "Not computing the dataset cache."
+                print(not_computing_message)
+                if args.email is not None:
+                    server.sendmail("data.measurements.tool@gmail.com", args.email, "Subject: Data Measurments not Computed\n\n" + already_computed_message + " " + not_computing_message)
+                return
     try:
         cache_path = args.out_dir + "/" + dataset_cache_dir
-        repo = Repository(local_dir=cache_path, clone_from="datameasurements/" + dataset_cache_dir, repo_type="dataset", use_auth_token=HF_TOKEN)
-        repo.lfs_track(["*.feather"])
+        if args.push_cache_to_hub:
+            repo = Repository(local_dir=cache_path, clone_from="datameasurements/" + dataset_cache_dir, repo_type="dataset", use_auth_token=HF_TOKEN)
+            repo.lfs_track(["*.feather"])
+
         get_text_label_df(
             args.dataset,
             args.config,
@@ -327,10 +340,9 @@ def main():
             do_html=args.do_html,
             use_cache=args.cached,
         )
-        repo.push_to_hub(commit_message="Added dataset cache.")
 
-        # Remove the dataset from local storage - we only want it stored on the hub.
-        shutil.rmtree(cache_path)
+        if args.push_cache_to_hub:
+            repo.push_to_hub(commit_message="Added dataset cache.")
 
         print()
         if args.email is not None:
