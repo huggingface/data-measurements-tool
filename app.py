@@ -11,16 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import argparse
 import logging
 from os import mkdir
-from os.path import exists, isdir
+from os.path import isdir
 from pathlib import Path
 
 import streamlit as st
 
 from data_measurements import dataset_statistics, dataset_utils
 from data_measurements import streamlit_utils as st_utils
+
+"""
+Examples:
+# When not in deployment mode
+streamlit run app.py -- --live=False
+
+# When deployed.
+streamlit run app.py
+"""
 
 logs = logging.getLogger(__name__)
 logs.setLevel(logging.WARNING)
@@ -133,7 +142,7 @@ def load_or_prepare(ds_args, show_embeddings, use_cache=False):
     },
     allow_output_mutation=True,
 )
-def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False):
+def load_or_prepare_widgets(ds_args, show_embeddings, live=True, use_cache=False):
     """
     Loader specifically for the widgets used in the app.
     Args:
@@ -147,16 +156,12 @@ def load_or_prepare_widgets(ds_args, show_embeddings, use_cache=False):
 
     if use_cache:
         logs.warning("Using cache")
-    if True:
-    #try:
-        dstats = dataset_statistics.DatasetStatisticsCacheClass(CACHE_DIR, **ds_args, use_cache=use_cache)
-        # Don't recalculate; we're live
-        dstats.set_deployment(True)
-        # checks whether the cache_dir exists in deployment mode
-        # creates cache_dir if not and if in development mode
-        cache_dir_exists = dstats.check_cache_dir()
-    #except:
-    #    logs.warning("We're screwed")
+    dstats = dataset_statistics.DatasetStatisticsCacheClass(CACHE_DIR, **ds_args, use_cache=use_cache)
+    # Don't recalculate when we're live
+    dstats.set_deployment(live)
+    # checks whether the cache_dir exists in deployment mode
+    # creates cache_dir if not and if in development mode
+    cache_dir_exists = dstats.check_cache_dir()
     if cache_dir_exists:
         try:
             # We need to have the text_dset loaded for further load_or_prepare
@@ -246,6 +251,11 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--live", default=False, required=False, action="store_true", help="Flag to specify that this is not running live.")
+    arguments = parser.parse_args()
+    live = arguments.live
     """ Sidebar description and selection """
     ds_name_to_dict = dataset_utils.get_dataset_info_dicts()
     st.title("Data Measurements Tool")
@@ -285,7 +295,7 @@ def main():
     else:
         logs.warning("Using Single Dataset Mode")
         dataset_args = st_utils.sidebar_selection(ds_name_to_dict, "")
-        dstats, cache_exists = load_or_prepare_widgets(dataset_args, show_embeddings, use_cache=use_cache)
+        dstats, cache_exists = load_or_prepare_widgets(dataset_args, show_embeddings, live=live, use_cache=use_cache)
         if cache_exists:
             show_column(dstats, ds_name_to_dict, show_embeddings, "")
         else:

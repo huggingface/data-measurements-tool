@@ -57,6 +57,7 @@ class Zipf:
         self.xmin = None
         self.xmax = None
         self.fit = None
+        self.p = None
         self.ranked_words = {}
         self.uniq_counts = []
         self.uniq_ranks = []
@@ -180,7 +181,7 @@ class Zipf:
         :return: array of count values following the fitted pmf.
         """
         # TODO: Limit from above xmin to below xmax, not just above xmin.
-        counts = vocab_counts_df[CNT]
+        counts = vocab_counts_df["count"]
         self.uniq_counts = list(pd.unique(counts))
         self.uniq_ranks = list(np.arange(1, len(self.uniq_counts) + 1))
         logs.info(self.uniq_counts)
