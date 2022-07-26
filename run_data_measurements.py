@@ -340,6 +340,8 @@ def main():
                server.sendmail("data.measurements.tool@gmail.com", args.email, "Subject: Data Measurments not Computed\n\n" + error_message + "\n" + not_computing_message)
             return
     # Run the measurements.
+    else:
+        print("Keeping everything local.")
     try:
         if args.push_cache_to_hub:
             repo = Repository(local_dir=cache_path, clone_from="datameasurements/" + dataset_cache_dir, repo_type="dataset", use_auth_token=HF_TOKEN)
