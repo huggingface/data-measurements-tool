@@ -342,6 +342,18 @@ def main():
     # Run the measurements.
     try:
         if args.push_cache_to_hub:
+            # TODO: This breaks if the cache path exists and it isn't a git repository (such as when someone has dev'ed locally and is moving to the online repo)
+            # A solution would be something like this, although probably the .git directory
+            # would also need to be checked to see if it's the *right* git repo.
+            """
+            n = 1
+            new_cache_path = cache_path
+            while os.path.exists(new_cache_path) and not os.path.exists(new_cache_path + "/.git"):
+               print("Trying to clone from repo to %s, but it exists already and is not a git repo." % new_cache_path)
+               new_cache_path = cache_path + "." + str(n) 
+               print("Trying to clone to %s instead" % new_cache_path)
+               n += 1
+            """
             repo = Repository(local_dir=cache_path, clone_from="datameasurements/" + dataset_cache_dir, repo_type="dataset", use_auth_token=HF_TOKEN)
             repo.lfs_track(["*.feather"])
         get_text_label_df(
