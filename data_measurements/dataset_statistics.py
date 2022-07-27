@@ -264,6 +264,10 @@ class DatasetStatisticsCacheClass:
         self.length_stats_dict = None
 
         # Try to pull from the hub to see if the cache already exists.
+        # TODO: Fix this so that it doesn't assume that someone is using a Repo.
+        # This also needs to be optimized: We're already creating the repository and cloning in run_data_measurements.py
+        # And should probably have something similar in app.py. Perhaps all of these should be calling from one place?
+        """
         try:
             if not isdir(self.cache_path) and self.dataset_cache_dir in [dataset_info.id.split("/")[-1] for dataset_info in list_datasets(author="datameasurements", use_auth_token=HF_TOKEN)]:
                 repo = Repository(local_dir=self.cache_path, clone_from="datameasurements/" + self.dataset_cache_dir, repo_type="dataset", use_auth_token=HF_TOKEN)
@@ -272,7 +276,7 @@ class DatasetStatisticsCacheClass:
         except Exception as e:
             print(e)
             logs.warning("Cannot find cached repo.")
-
+        """
         # Cache files not needed for UI
         self.dset_fid = pjoin(self.cache_path, "base_dset")
         self.tokenized_df_fid = pjoin(self.cache_path, "tokenized_df.feather")
@@ -700,7 +704,7 @@ class DatasetStatisticsCacheClass:
             res = {
                 TOKENIZED_FIELD: [
                     tuple(sent_tokenizer(text.lower()))
-                    for text in examples:
+                    for text in examples
                 ]
             }
             res[LENGTH_FIELD] = [len(tok_text) for tok_text in res[TOKENIZED_FIELD]]
@@ -833,6 +837,7 @@ def _set_idx_cols_from_cache(csv_df, subgroup=None, calc_str=None):
     return csv_df
 
 
+# TODO: Should this just inherit the Dataset Stats class?
 class nPMIStatisticsCacheClass:
     """ "Class to interface between the app and the nPMI class
     by calling the nPMI class with the user's selections."""
@@ -840,6 +845,7 @@ class nPMIStatisticsCacheClass:
     def __init__(self, dataset_stats, use_cache=False):
         self.live = dataset_stats.live
         self.dstats = dataset_stats
+        self.text_dset = dataset_stats.text_dset
         self.tokenized_dset = dataset_stats.tokenized_dset
         self.tokenized_df = dataset_stats.tokenized_df
         self.pmi_cache_path = pjoin(self.dstats.cache_path, "pmi_files")
@@ -1020,15 +1026,29 @@ class nPMIStatisticsCacheClass:
         # TODO(meg): Incorporate this from evaluate library.
         #results = _PERPLEXITY.compute(
         #    input_texts=self.dstats.tokenized_df, model_id='gpt2')
-        print(self.tokenized_dset[TOKENIZED_FIELD])
-        print(self.text_dset[OUR_TEXT_FIELD])
-        test_data = self.tokenized_dset[TOKENIZED_FIELD][:10]
-        _NPMI = evaluate.load(module_type='measurement',
-                     path='../evaluate/measurements/npmi', data={'data':test_data})
-        #_NPMI.cache_file_name = self.dstats.cache_path + "/npmi.cache"
-        _NPMI.add_batch(data={'data':test_data})
         #print(self.tokenized_dset[TOKENIZED_FIELD])
-        npmi_dict = _NPMI.compute(data={'data':test_data}, subgroup=subgroup, vocab_counts_df=self.dstats.vocab_counts_df)
+        #print(self.text_dset[OUR_TEXT_FIELD])
+        test_data = self.tokenized_dset[TOKENIZED_FIELD][:10]
+
+        predictions = ["hello there general kenobi", "foo bar foobar"]
+        references = [
+            ["hello there general kenobi", "hello there!"],
+            ["foo bar foobar"]
+            ]
+        print('wtf')
+        bleu = evaluate.load("bleu")
+        print('hi')
+        results = bleu.compute(predictions={
+            'predictions':predictions}, references={'references':references})
+        print("hi?")
+        print(results)
+        print(results["bleu"])
+        _NPMI = evaluate.load(module_type='measurement',
+                     path='../evaluate/measurements/npmi')
+        #_NPMI.cache_file_name = self.dstats.cache_path + "/npmi.cache"
+        #_NPMI.add_batch(references=test_data)
+        #print(self.tokenized_dset[TOKENIZED_FIELD])
+        npmi_dict = _NPMI.compute(references=test_data, subgroup=subgroup, vocab_counts_df=self.dstats.vocab_counts_df)
         #npmi_obj = nPMI(self.dstats.vocab_counts_df, self.dstats.tokenized_df)
         return npmi_dict
 
