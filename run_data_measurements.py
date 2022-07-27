@@ -230,6 +230,7 @@ def main():
         "-f",
         "--feature",
         required=True,
+        nargs="+",
         type=str,
         default="text",
         help="Text column to prepare",
@@ -330,10 +331,10 @@ def main():
                 print(not_computing_message)
                 if args.email is not None:
                     server.sendmail("data.measurements.tool@gmail.com", args.email, "Subject: Data Measurments not Computed\n\n" + already_computed_message + " " + not_computing_message)
-                return 
+                return
         # Some other error that we do not anticipate.
         except Exception as err:
-            error_message = f"There is an error on the hub that is preventing repo creation. Details: " + " - ".join(err.args)        
+            error_message = f"There is an error on the hub that is preventing repo creation. Details: " + " - ".join(err.args)
             print(error_message)
             print(not_computing_message)
             if args.email is not None:
@@ -350,7 +351,7 @@ def main():
             new_cache_path = cache_path
             while os.path.exists(new_cache_path) and not os.path.exists(new_cache_path + "/.git"):
                print("Trying to clone from repo to %s, but it exists already and is not a git repo." % new_cache_path)
-               new_cache_path = cache_path + "." + str(n) 
+               new_cache_path = cache_path + "." + str(n)
                print("Trying to clone to %s instead" % new_cache_path)
                n += 1
             """
@@ -391,12 +392,12 @@ def main():
         print("Deleting measurements data locally at %s" % cache_path)
         shutil.rmtree(cache_path)
     else:
-        print("Measurements made available locally at %s" % cache_path)   
+        print("Measurements made available locally at %s" % cache_path)
 
 if __name__ == "__main__":
     main()
-    
-    
+
+
     # Deleted this because of merge conflict -- saving here in case it should not have been deleted.
     # try:
     #    create_repo(dataset_cache_dir, organization="datameasurements", repo_type="dataset", private=True, token=HF_TOKEN)
