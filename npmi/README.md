@@ -1,6 +1,12 @@
-# Measurement information
+---
+title: Npmi
+emoji: 📉
+colorFrom: blue
+colorTo: gray
+sdk: gradio
+sdk_version: 3.1.1
+app_file: app.py
+pinned: false
+---
 
-## Measurement description
-
-The normalized Pointwise Mutual Information (nPMI) measurement quantifies the
-strength of association between two items. 
+Check out the configuration reference at https://huggingface.co/docs/hub/spaces-config-reference

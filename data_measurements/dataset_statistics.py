@@ -1038,13 +1038,13 @@ class nPMIStatisticsCacheClass:
         print('wtf')
         bleu = evaluate.load("bleu")
         print('hi')
+        print(evaluate)
         results = bleu.compute(predictions={
             'predictions':predictions}, references={'references':references})
         print("hi?")
         print(results)
         print(results["bleu"])
-        _NPMI = evaluate.load(module_type='measurement',
-                     path='../evaluate/measurements/npmi')
+        _NPMI = evaluate.load(module_type='measurement')
         #_NPMI.cache_file_name = self.dstats.cache_path + "/npmi.cache"
         #_NPMI.add_batch(references=test_data)
         #print(self.tokenized_dset[TOKENIZED_FIELD])
