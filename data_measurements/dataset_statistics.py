@@ -733,7 +733,6 @@ class DatasetStatisticsCacheClass:
             batched=True,
             # remove_columns=[OUR_TEXT_FIELD], keep around to print
         )
-        tokenized_df = pd.DataFrame(self.tokenized_dset)
         return tokenized_df
 
     def set_label_field(self, label_field="label"):
