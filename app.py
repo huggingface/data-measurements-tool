@@ -22,15 +22,6 @@ import streamlit as st
 from data_measurements import dataset_statistics, dataset_utils
 from data_measurements import streamlit_utils as st_utils
 
-"""
-Examples:
-# When not in deployment mode
-streamlit run app.py -- --live=False
-
-# When deployed.
-streamlit run app.py
-"""
-
 logs = logging.getLogger(__name__)
 logs.setLevel(logging.WARNING)
 logs.propagate = False
