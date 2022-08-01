@@ -12,8 +12,8 @@ import shutil
 import smtplib, ssl
 port = 465  # For SSL
 
-if Path(".env").is_file():
-    load_dotenv(".env")
+#if Path(".env").is_file():
+#    load_dotenv(".env")
 
 HF_TOKEN = getenv("HF_TOKEN")
 EMAIL_PASSWORD = getenv("EMAIL_PASSWORD")
@@ -80,7 +80,7 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
         print("Done!")
         print("Basic text statistics now available at %s." % dstats.general_stats_json_fid)
         print(
-            "Text duplicates now available at %s." % dstats.dup_counts_df_fid
+            "Text duplicates now available at %s." % dstats.dup_counts_json_fid
         )
 
     if do_all or dataset_args["calculation"] == "lengths":
