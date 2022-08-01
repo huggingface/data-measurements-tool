@@ -19,7 +19,7 @@ from os import mkdir, getenv
 from os.path import exists, isdir
 from os.path import join as pjoin
 from pathlib import Path
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
@@ -35,7 +35,8 @@ from datasets import load_from_disk, load_metric
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 from huggingface_hub import Repository, list_datasets
-
+import sys
+import evaluate
 from .dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD,
                             OUR_LABEL_FIELD, OUR_TEXT_FIELD, PERPLEXITY_FIELD, PROP,
                             TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
@@ -47,8 +48,8 @@ from .embeddings import Embeddings
 from .zipf import Zipf
 from .npmi import nPMI
 
-if Path(".env").is_file():
-    load_dotenv(".env")
+#if Path(".env").is_file():
+#    load_dotenv(".env")
 
 HF_TOKEN = getenv("HF_TOKEN")
 
@@ -1035,7 +1036,18 @@ class nPMIStatisticsCacheClass:
         :return:
         """
         # TODO(meg): Incorporate this from evaluate library.
-        # npmi_obj = evaluate.load('npmi', module_type='measurement').compute(subgroup, vocab_counts_df = self.dstats.vocab_counts_df, tokenized_counts_df=self.dstats.tokenized_df)
+        #squad_metric = evaluate.load("squad")
+        #predictions = [
+        #    {'prediction_text': '1976', 'id': '56e10a3be3433e1400422b22'}]
+        #references = [{'answers': {'answer_start': [97], 'text': ['1976']},
+        #               'id': '56e10a3be3433e1400422b22'}]
+        #results = squad_metric.compute(predictions=predictions,
+        #                               references=references)
+        #print(results)
+        debug = evaluate.load("npmi_debug")
+        # THIS IS CACHED IN /Users/margaretmitchell/.cache/huggingface/modules/evaluate_modules/metrics/npmi_debug
+        results = debug.compute(references=self.dstats.tokenized_dset[TOKENIZED_FIELD], vocabulary=self.dstats.vocab_counts_df)
+        #npmi_obj = evaluate.load('npmi', module_type='measurement').compute(subgroup, vocab_counts_df = self.dstats.vocab_counts_df, tokenized_counts_df=self.dstats.tokenized_df)
         npmi_obj = nPMI(self.dstats.vocab_counts_df, self.dstats.tokenized_df)
         return npmi_obj
 
