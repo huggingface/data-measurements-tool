@@ -4,7 +4,7 @@ import textwrap
 from os import getenv
 from os.path import join as pjoin
 from pathlib import Path
-#from dotenv import load_dotenv
+from dotenv import load_dotenv
 
 from data_measurements import dataset_statistics, dataset_utils
 from huggingface_hub import create_repo, Repository, hf_api
@@ -12,8 +12,8 @@ import shutil
 import smtplib, ssl
 port = 465  # For SSL
 
-#if Path(".env").is_file():
-#    load_dotenv(".env")
+if Path(".env").is_file():
+    load_dotenv(".env")
 
 HF_TOKEN = getenv("HF_TOKEN")
 EMAIL_PASSWORD = getenv("EMAIL_PASSWORD")
