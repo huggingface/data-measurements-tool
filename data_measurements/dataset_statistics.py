@@ -19,7 +19,7 @@ from os import mkdir, getenv
 from os.path import exists, isdir
 from os.path import join as pjoin
 from pathlib import Path
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
@@ -35,7 +35,8 @@ from datasets import load_from_disk, load_metric
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 from huggingface_hub import Repository, list_datasets
-
+import sys
+import evaluate
 from .dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD,
                             OUR_LABEL_FIELD, OUR_TEXT_FIELD, PERPLEXITY_FIELD, PROP,
                             TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
@@ -47,8 +48,8 @@ from .embeddings import Embeddings
 from .zipf import Zipf
 from .npmi import nPMI
 
-if Path(".env").is_file():
-    load_dotenv(".env")
+#if Path(".env").is_file():
+#    load_dotenv(".env")
 
 HF_TOKEN = getenv("HF_TOKEN")
 
@@ -190,7 +191,13 @@ class DatasetStatisticsCacheClass:
         ## Hugging Face dataset objects
         self.dset = None  # original dataset
         # HF dataset with all of the self.text_field instances in self.dset
+        # Heads-up@Sasha: This is what you want for the input of most of the
+        # evaluate measurements, I think: It's simply in the HuggingFace Dataset format.
         self.text_dset = None
+        # Tokenized version of the dataset
+        # Heads-up@Sasha: If you want to work with an additional tokenized column
+        # in HuggingFace Dataset format, it is stored in this variable.
+        self.tokenized_dset = None
         self.dset_peek = None
         # HF dataset with text embeddings in the same order as self.text_dset
         self.embeddings_dset = None
@@ -217,8 +224,12 @@ class DatasetStatisticsCacheClass:
         # Number of NaN values (NOT empty strings)
         self.text_nan_count = 0
         # Number of text items that appear more than once in the dataset
+        # TODO(Sasha): Get this from your evaluate call
         self.dedup_total = 0
         # Duplicated text items along with their number of occurences ("count")
+        # TODO(Sasha): Get this from your evaluate call
+        self.dup_counts = None
+        # TODO(Sasha/Meg): Deprecate
         self.dup_counts_df = None
         self.perplexities_df = None
         self.avg_length = None
@@ -286,15 +297,19 @@ class DatasetStatisticsCacheClass:
         # Needed for UI
         self.fig_labels_json_fid = pjoin(self.cache_path, "fig_labels.json")
 
-        ## Length cache files
         # Needed for UI
+        # Heads-up@Sasha: Would be cool to sync this with evaluate,
+        # but it seems that evaluate only returns the average length;
+        # we use a lot more than that, including each sentence with a corresponding length!
         self.length_df_fid = pjoin(self.cache_path, "length_df.feather")
-        # Needed for UI
         self.length_stats_json_fid = pjoin(self.cache_path, "length_stats.json")
         self.vocab_counts_df_fid = pjoin(self.cache_path, "vocab_counts.feather")
-        # Needed for UI
+        # Heads-up@Sasha: We can remove this variable once we switch to json,
+        # using the self.dup_counts_json_fid variable instead.
         self.dup_counts_df_fid = pjoin(self.cache_path, "dup_counts_df.feather")
-        # Needed for UI
+        # Heads-up@Sasha: Made a json filename so you can just put evaluate
+        # output in there.
+        self.dup_counts_json_fid = pjoin(self.cache_path, "dup_counts.json")
         self.perplexities_df_fid = pjoin(self.cache_path, "perplexities_df.feather")
         # Needed for UI
         self.fig_tok_length_fid = pjoin(self.cache_path, "fig_tok_length.png")
@@ -302,20 +317,15 @@ class DatasetStatisticsCacheClass:
         ## General text stats
         # Needed for UI
         self.general_stats_json_fid = pjoin(self.cache_path, "general_stats_dict.json")
-        # Needed for UI
         self.sorted_top_vocab_df_fid = pjoin(
             self.cache_path, "sorted_top_vocab.feather"
         )
         ## Zipf cache files
-        # Needed for UI
         self.zipf_fid = pjoin(self.cache_path, "zipf_basic_stats.json")
-        # Needed for UI
         self.zipf_fig_fid = pjoin(self.cache_path, "zipf_fig.json")
 
         ## Embeddings cache files
-        # Needed for UI
         self.node_list_fid = pjoin(self.cache_path, "node_list.th")
-        # Needed for UI
         self.fig_tree_json_fid = pjoin(self.cache_path, "fig_tree.json")
 
         self.live = False
@@ -370,7 +380,7 @@ class DatasetStatisticsCacheClass:
         if (
             self.use_cache
             and exists(self.general_stats_json_fid)
-            and exists(self.dup_counts_df_fid)
+            and exists(self.dup_counts_json_fid) #Heads-up@Sasha: I changed this from df to json to support your switcheroo.
             and exists(self.sorted_top_vocab_df_fid)
         ):
             logs.info("Loading cached general stats")
@@ -382,6 +392,8 @@ class DatasetStatisticsCacheClass:
                 if save:
                     write_df(self.sorted_top_vocab_df, self.sorted_top_vocab_df_fid)
                     write_df(self.dup_counts_df, self.dup_counts_df_fid)
+                    # Heads-up@Sasha: Created this to help support the switch to evaluate/json.
+                    write_json(self.dup_counts, self.dup_counts_json_fid)
                     write_json(self.general_stats_dict, self.general_stats_json_fid)
 
     def load_or_prepare_text_lengths(self, save=True):
@@ -403,6 +415,8 @@ class DatasetStatisticsCacheClass:
                 if save:
                     self.fig_tok_length.savefig(self.fig_tok_length_fid)
         # Text length dataframe
+        # Heads-up@Sasha: Ideally this is also from evaluate, but currently
+        # evaluate doesn't have enough functionality for this.
         if self.use_cache and exists(self.length_df_fid):
             self.length_df = feather.read_feather(self.length_df_fid)
         else:
@@ -508,22 +522,28 @@ class DatasetStatisticsCacheClass:
         # Handling for changes in how the index is saved.
         self.vocab_counts_df = _set_idx_col_names(self.vocab_counts_df)
 
+    # Heads-up@Sasha: I changed this to work with json, rather than a dataframe,
+    # so it would be ready for you.
     def load_or_prepare_text_duplicates(self, save=True):
-        if self.use_cache and exists(self.dup_counts_df_fid):
-            with open(self.dup_counts_df_fid, "rb") as f:
-                self.dup_counts_df = feather.read_feather(f)
-        elif self.dup_counts_df is None:
+        # Load the duplicates json file if already there
+        if self.use_cache and exists(self.dup_counts_json_fid):
+            self.dup_counts = json.load(
+                open(self.dup_counts_json_fid, encoding="utf-8")
+            )
+        elif self.dup_counts is None:
             if not self.live:
+                # TODO(sasha): Change to the evaluate version of this
                 self.prepare_text_duplicates()
+                # TODO(sasha): Save the evaluate output as a json file
                 if save:
-                    write_df(self.dup_counts_df, self.dup_counts_df_fid)
+                    write_json(self.dup_counts, self.dup_counts_json_fid)
         else:
             if not self.live:
                 # This happens when self.dup_counts_df is already defined;
                 # This happens when general_statistics were calculated first,
                 # since general statistics requires the number of duplicates
                 if save:
-                    write_df(self.dup_counts_df, self.dup_counts_df_fid)
+                    write_json(self.dup_counts, self.dup_counts_json_fid)
 
     def load_or_prepare_text_perplexities(self, save=True):
         if self.use_cache and exists(self.perplexities_df_fid):
@@ -564,15 +584,26 @@ class DatasetStatisticsCacheClass:
             self.total_words = len(self.vocab_counts_df)
             self.total_open_words = len(self.vocab_counts_filtered_df)
             self.text_nan_count = int(self.tokenized_df.isnull().sum().sum())
+            # TODO(Sasha): Instead of calling prepare_text_duplicates,
+            #  call the evaluate text duplicates measurement.
             self.prepare_text_duplicates()
-            self.dedup_total = sum(self.dup_counts_df[CNT])
+            # TODO(Sasha): dedup_total is the total number of duplicates --
+            # I think the text duplicate evaluate function you wrote returns
+            # this directly,so we can just set self.dedup_total to what evaluate returns instead.
+            self.dedup_total = sum(self.dup_counts[CNT].values())
+            # Save our calculations in a general stats dictionary.
             self.general_stats_dict = {
                 TOT_WORDS: self.total_words,
                 TOT_OPEN_WORDS: self.total_open_words,
                 TEXT_NAN_CNT: self.text_nan_count,
                 DEDUP_TOT: self.dedup_total,
             }
-
+    # TODO(sasha): This function should just be removed/deprecated
+    # in favor of the evaluate version of text_duplicates.
+    # That would just take as input self.text_dset (or self.tokenized_dset), but
+    # you know best on that.
+    # For now, I am editing it so it can work fluidly with a dict/json format.
+    # But the goal would be to remove it altogether.
     def prepare_text_duplicates(self):
         if not self.live:
             if self.tokenized_df is None:
@@ -585,6 +616,10 @@ class DatasetStatisticsCacheClass:
                 columns=[CNT],
             )
             self.dup_counts_df[OUR_TEXT_FIELD] = self.dup_counts_df.index.copy()
+            # Adding this to help ease the transition to json/evaluate from
+            # our original implementation with dataframes.
+            # It will then be saveable as json even if read in as a dataframe.
+            self.dup_counts = json.loads(self.dup_counts_df.to_json())
 
     def prepare_text_perplexities(self):
         if not self.live:
@@ -684,12 +719,11 @@ class DatasetStatisticsCacheClass:
             res[LENGTH_FIELD] = [len(tok_text) for tok_text in res[TOKENIZED_FIELD]]
             return res
 
-        tokenized_dset = self.text_dset.map(
+        self.tokenized_dset = self.text_dset.map(
             tokenize_batch,
             batched=True,
             # remove_columns=[OUR_TEXT_FIELD], keep around to print
         )
-        tokenized_df = pd.DataFrame(tokenized_dset)
         return tokenized_df
 
     def set_label_field(self, label_field="label"):
@@ -728,6 +762,9 @@ class DatasetStatisticsCacheClass:
                         self.label_dset.save_to_disk(self.label_dset_fid)
                         write_plotly(self.fig_labels, self.fig_labels_json_fid)
 
+    # Heads-up@Sasha: I think I saw you added a labels measurement.
+    # We could switch to using that, as long as all of the necessary
+    # information is returned.
     def prepare_labels(self):
         if not self.live:
             self.get_base_dataset()
@@ -989,7 +1026,18 @@ class nPMIStatisticsCacheClass:
         :return:
         """
         # TODO(meg): Incorporate this from evaluate library.
-        # npmi_obj = evaluate.load('npmi', module_type='measurement').compute(subgroup, vocab_counts_df = self.dstats.vocab_counts_df, tokenized_counts_df=self.dstats.tokenized_df)
+        #squad_metric = evaluate.load("squad")
+        #predictions = [
+        #    {'prediction_text': '1976', 'id': '56e10a3be3433e1400422b22'}]
+        #references = [{'answers': {'answer_start': [97], 'text': ['1976']},
+        #               'id': '56e10a3be3433e1400422b22'}]
+        #results = squad_metric.compute(predictions=predictions,
+        #                               references=references)
+        #print(results)
+        debug = evaluate.load("npmi_debug")
+        # THIS IS CACHED IN /Users/margaretmitchell/.cache/huggingface/modules/evaluate_modules/metrics/npmi_debug
+        results = debug.compute(references=self.dstats.tokenized_dset[TOKENIZED_FIELD], vocabulary=self.dstats.vocab_counts_df)
+        #npmi_obj = evaluate.load('npmi', module_type='measurement').compute(subgroup, vocab_counts_df = self.dstats.vocab_counts_df, tokenized_counts_df=self.dstats.tokenized_df)
         npmi_obj = nPMI(self.dstats.vocab_counts_df, self.dstats.tokenized_df)
         return npmi_obj
 
