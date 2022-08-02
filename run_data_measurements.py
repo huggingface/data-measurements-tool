@@ -18,7 +18,7 @@ if Path(".env").is_file():
 HF_TOKEN = getenv("HF_TOKEN")
 EMAIL_PASSWORD = getenv("EMAIL_PASSWORD")
 
-def load_or_prepare_widgets(ds_args, show_embeddings=False, show_perplexities=True, use_cache=False):
+def load_or_prepare_widgets(ds_args, show_embeddings=False, show_perplexities=False, use_cache=False):
     """
     Loader specifically for the widgets used in the app.
     Args:
