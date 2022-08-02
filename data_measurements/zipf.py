@@ -18,7 +18,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import powerlaw
-import streamlit as st
 from scipy.stats import ks_2samp
 from scipy.stats import zipf as zipf_lib
 
@@ -219,6 +218,7 @@ class Zipf:
         self.uniq_counts = unique_counts
         self.uniq_ranks = unique_ranks
 
+"""
     # TODO: Incorporate this function (not currently using)
     def fit_others(self, fit):
         st.markdown(
@@ -244,3 +244,4 @@ class Zipf:
 
         if not better_distro:
             st.markdown("\nSeems your data is best fit by a power law. Celebrate!!")
+"""""
