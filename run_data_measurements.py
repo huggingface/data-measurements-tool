@@ -239,6 +239,7 @@ def main():
         "-f",
         "--feature",
         required=True,
+        nargs="+",
         type=str,
         default="text",
         help="Text column to prepare",
