@@ -54,55 +54,45 @@ class nPMI(evaluate.Measurement):
             inputs_description=_KWARGS_DESCRIPTION,
             features=datasets.Features(
             {
-                "data": datasets.Value("string"),
+                "references": datasets.Sequence(datasets.Value("string", id="sequence"), id="references"),
             }
         )
             # TODO: Create docs for this.
             #reference_urls=["https://huggingface.co/docs/..."],
         )
 
-    def _compute(self, data='', subgroup='', vocab_counts_df='', tokenized_col_name="tokenized_text", batch_size: int = 16, bool = True, device=None):
-        ##logs.INFO("Initiating npmi class.")
-        ##logs.INFO("vocab is")
-        ##logs.INFO(vocab_counts_df)
-        self.vocab_counts_df = vocab_counts_df
-        ##logs.INFO("tokenized is")
-        # TODO(meg): Let this just be lists instead.
-        self.tokenized_df = None #pd.DataFrame(input_texts)
-        #logs.INFO(self.tokenized_df)
-        self.tokenized_col_name = tokenized_col_name
+    def _compute(self, references, vocab_counts, subgroup):
+        self.vocab_counts_df = vocab_counts
+        self.tokenized_df = references
         # self.mlb_list holds num batches x num_sentences
         self.mlb_list = []
         # Index of the subgroup word in the sparse vector
         subgroup_idx = self.vocab_counts_df.index.get_loc(subgroup)
-        #logs.INFO("Calculating co-occurrences...")
+        logs.INFO("Calculating co-occurrences...")
         df_coo = self.calc_cooccurrences(subgroup, subgroup_idx)
         vocab_cooc_df = self.set_idx_cols(df_coo, subgroup)
-        #logs.INFO(vocab_cooc_df)
-        #logs.INFO("Calculating PMI...")
+        logs.INFO("Calculating PMI...")
         pmi_df = self.calc_PMI(vocab_cooc_df, subgroup)
-        #logs.INFO(pmi_df)
-        #logs.INFO("Calculating nPMI...")
+        logs.INFO("Calculating nPMI...")
         npmi_df = self.calc_nPMI(pmi_df, vocab_cooc_df, subgroup)
-        #logs.INFO(npmi_df)
         npmi_bias = npmi_df.max(axis=0) + abs(npmi_df.min(axis=0))
         return {"bias":npmi_bias, "co-occurrences":vocab_cooc_df, "pmi":pmi_df, "npmi":npmi_df}
 
     def _binarize_words_in_sentence(self):
-        #logs.INFO("Creating co-occurrence matrix for PMI calculations.")
-        batches = np.linspace(0, self.tokenized_df.shape[0], _NUM_BATCHES).astype(int)
+        logs.INFO("Creating co-occurrence matrix for PMI calculations.")
+        batches = np.linspace(0, len(self.tokenized_df), _NUM_BATCHES).astype(int)
         i = 0
         # Creates list of size (# batches x # sentences)
         while i < len(batches) - 1:
             # Makes a sparse matrix (shape: # sentences x # words),
             # with the occurrence of each word per sentence.
             mlb = MultiLabelBinarizer(classes=self.vocab_counts_df.index)
-            #logs.INFO(
-            #    "%s of %s sentence binarize batches." % (str(i), str(len(batches)))
-            #)
+            logs.INFO(
+                "%s of %s sentence binarize batches." % (str(i), str(len(batches)))
+            )
             # Returns series: batch size x num_words
             mlb_series = mlb.fit_transform(
-                self.tokenized_df[self.tokenized_col_name][batches[i]:batches[i + 1]]
+                self.tokenized_df[batches[i]:batches[i + 1]]
             )
             i += 1
             self.mlb_list.append(mlb_series)

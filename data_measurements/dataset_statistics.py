@@ -194,12 +194,6 @@ class DatasetStatisticsCacheClass:
         # Heads-up@Sasha: This is what you want for the input of most of the
         # evaluate measurements, I think: It's simply in the HuggingFace Dataset format.
         self.text_dset = None
-<<<<<<< HEAD
-=======
-        # Tokenized version of the dataset
-        # Heads-up@Sasha: If you want to work with an additional tokenized column
-        # in HuggingFace Dataset format, it is stored in this variable.
->>>>>>> main
         self.tokenized_dset = None
         self.dset_peek = None
         # HF dataset with text embeddings in the same order as self.text_dset
@@ -398,14 +392,7 @@ class DatasetStatisticsCacheClass:
                 if save:
                     write_df(self.sorted_top_vocab_df, self.sorted_top_vocab_df_fid)
                     write_df(self.dup_counts_df, self.dup_counts_df_fid)
-<<<<<<< HEAD
-                    #write_df(self.perplexities_df, self.perplexities_df_fid)
-=======
-                    # Heads-up@Sasha: Created this to help support the switch to evaluate/json.
                     write_json(self.dup_counts, self.dup_counts_json_fid)
-                    # TODO(Tristan): Find a home outside of general stats. =)
-                    # write_df(self.perplexities_df, self.perplexities_df_fid)
->>>>>>> main
                     write_json(self.general_stats_dict, self.general_stats_json_fid)
 
     def load_or_prepare_text_lengths(self, save=True):
@@ -453,7 +440,7 @@ class DatasetStatisticsCacheClass:
     def prepare_length_df(self):
         if not self.live:
             if self.tokenized_df is None:
-                self.tokenized_df = self.do_tokenization()
+                self.do_tokenization()
             self.tokenized_df[LENGTH_FIELD] = self.tokenized_df[TOKENIZED_FIELD].apply(
                 len
             )
@@ -604,17 +591,9 @@ class DatasetStatisticsCacheClass:
             # TODO(Sasha): Instead of calling prepare_text_duplicates,
             #  call the evaluate text duplicates measurement.
             self.prepare_text_duplicates()
-<<<<<<< HEAD
             # TODO(meg,tristan): Put this outside of the "general stats" group.
             # self.prepare_text_perplexities()
             self.dedup_total = sum(self.dup_counts_df[CNT])
-=======
-            # TODO(Sasha): dedup_total is the total number of duplicates --
-            # I think the text duplicate evaluate function you wrote returns
-            # this directly,so we can just set self.dedup_total to what evaluate returns instead.
-            self.dedup_total = sum(self.dup_counts[CNT].values())
-            # Save our calculations in a general stats dictionary.
->>>>>>> main
             self.general_stats_dict = {
                 TOT_WORDS: self.total_words,
                 TOT_OPEN_WORDS: self.total_open_words,
@@ -690,7 +669,7 @@ class DatasetStatisticsCacheClass:
         else:
             if not self.live:
                 # tokenize all text instances
-                self.tokenized_df = self.do_tokenization()
+                self.do_tokenization()
                 if save:
                     logs.warning("Saving tokenized dataset to disk")
                     # save tokenized text
@@ -768,12 +747,7 @@ class DatasetStatisticsCacheClass:
             input_columns=[OUR_TEXT_FIELD]
             # remove_columns=[OUR_TEXT_FIELD], keep around to print
         )
-<<<<<<< HEAD
-        # TODO: Just have this be a self; remove the return
-        tokenized_df = pd.DataFrame(self.tokenized_dset)
-=======
->>>>>>> main
-        return tokenized_df
+        self.tokenized_df = pd.DataFrame(self.tokenized_dset)
 
     def set_label_field(self, label_field="label"):
         """
@@ -1081,36 +1055,23 @@ class nPMIStatisticsCacheClass:
         Initializes the nPMI class with the given words and tokenized sentences.
         :return:
         """
-        # TODO(meg): Incorporate this from evaluate library.
-<<<<<<< HEAD
-        #results = _PERPLEXITY.compute(
-        #    input_texts=self.dstats.tokenized_df, model_id='gpt2')
-        #print(self.tokenized_dset[TOKENIZED_FIELD])
-        #print(self.text_dset[OUR_TEXT_FIELD])
-        test_data = self.tokenized_dset[TOKENIZED_FIELD][:10]
 
+        print("Doing %s " % subgroup)
         predictions = ["hello there general kenobi", "foo bar foobar"]
         references = [
             ["hello there general kenobi", "hello there!"],
             ["foo bar foobar"]
             ]
-        print('wtf')
         bleu = evaluate.load("bleu")
-        print('hi')
-        print(evaluate)
-        results = bleu.compute(predictions={
-            'predictions':predictions}, references={'references':references})
-        print("hi?")
-        print(results)
+        results = bleu.compute(predictions=predictions, references=references)
         print(results["bleu"])
-        _NPMI = evaluate.load(module_type='measurement')
+        _NPMI = evaluate.load("npmi", module_type='measurement')
         #_NPMI.cache_file_name = self.dstats.cache_path + "/npmi.cache"
         #_NPMI.add_batch(references=test_data)
         #print(self.tokenized_dset[TOKENIZED_FIELD])
-        npmi_dict = _NPMI.compute(references=test_data, subgroup=subgroup, vocab_counts_df=self.dstats.vocab_counts_df)
+        npmi_dict = _NPMI.compute(references=self.tokenized_df[TOKENIZED_FIELD], subgroup=subgroup, vocab_counts=self.dstats.vocab_counts_df)
         #npmi_obj = nPMI(self.dstats.vocab_counts_df, self.dstats.tokenized_df)
         return npmi_dict
-=======
         #squad_metric = evaluate.load("squad")
         #predictions = [
         #    {'prediction_text': '1976', 'id': '56e10a3be3433e1400422b22'}]
@@ -1119,13 +1080,12 @@ class nPMIStatisticsCacheClass:
         #results = squad_metric.compute(predictions=predictions,
         #                               references=references)
         #print(results)
-        debug = evaluate.load("npmi_debug")
+        #debug = evaluate.load("npmi_debug")
         # THIS IS CACHED IN /Users/margaretmitchell/.cache/huggingface/modules/evaluate_modules/metrics/npmi_debug
-        results = debug.compute(references=self.dstats.tokenized_dset[TOKENIZED_FIELD], vocabulary=self.dstats.vocab_counts_df)
+        #results = debug.compute(references=self.dstats.tokenized_dset[TOKENIZED_FIELD], vocabulary=self.dstats.vocab_counts_df)
         #npmi_obj = evaluate.load('npmi', module_type='measurement').compute(subgroup, vocab_counts_df = self.dstats.vocab_counts_df, tokenized_counts_df=self.dstats.tokenized_df)
-        npmi_obj = nPMI(self.dstats.vocab_counts_df, self.dstats.tokenized_df)
-        return npmi_obj
->>>>>>> main
+        #npmi_obj = nPMI(self.dstats.vocab_counts_df, self.dstats.tokenized_df)
+        #return npmi_obj
 
     @staticmethod
     def load_or_fail_cached_npmi_scores(subgroup, subgroup_fids):
@@ -1255,6 +1215,7 @@ def calc_paired_metrics(subgroup_pair, subgroup_npmi_dict):
         #logs.INFO(shared_npmi_df)
         #logs.INFO("shared vocab df")
         #logs.INFO(shared_vocab_cooc_df)
+    print(shared_npmi_df)
     npmi_bias = (
         shared_npmi_df[subgroup1 + "-npmi"] - shared_npmi_df[subgroup2 + "-npmi"]
     )
