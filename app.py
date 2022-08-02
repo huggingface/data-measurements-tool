@@ -26,6 +26,9 @@ logs = logging.getLogger(__name__)
 logs.setLevel(logging.WARNING)
 logs.propagate = False
 
+ #with open('style.css') as f:
+  #      st.markdown(f'<style>{f.read()}</style>',unsafe_allow_html=True)
+
 if not logs.handlers:
 
     Path('./log_files').mkdir(exist_ok=True)
@@ -219,78 +222,92 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id):
     """
     # Note that at this point we assume we can use cache; default value is True.
     # start showing stuff
-    title_str = f"### Showing{column_id}: {dstats.dset_name} - {dstats.dset_config} - {dstats.split_name} - {'-'.join(dstats.text_field)}"
-    st.markdown(title_str)
-    logs.info("showing header")
-    st_utils.expander_header(dstats, ds_name_to_dict, column_id)
-    logs.info("showing general stats")
-    st_utils.expander_general_stats(dstats, column_id)
-    st_utils.expander_label_distribution(dstats.fig_labels, column_id)
-    st_utils.expander_text_lengths(dstats, column_id)
-    st_utils.expander_text_duplicates(dstats, column_id)
-    st_utils.expander_text_perplexities(dstats, column_id)
+    #title_str = f"### Showing{column_id}: {dstats.dset_name} - {dstats.dset_config} - {dstats.split_name} - {'-'.join(dstats.text_field)}"
+    #st.markdown(title_str)
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7,tab8 = st.tabs(["Dataset Description", "General Text Statistics", "Label Distribution", "Text Lengths","Text Duplicates","Text Perplexities","nPMI","Zipfs Law Fit"])#,"Text Embedding Clustering"])
+    
+    with tab1:
+        logs.info("showing header")
+        st_utils.expander_header(dstats, ds_name_to_dict, column_id)
+    with tab2:
+        logs.info("showing general stats")
+        st_utils.expander_general_stats(dstats, column_id)
+    with tab3:
+        st_utils.expander_label_distribution(dstats.fig_labels, column_id)
+    with tab4:
+        st_utils.expander_text_lengths(dstats, column_id)
+    with tab5:
+        st_utils.expander_text_duplicates(dstats, column_id)
+    with tab6:
+        st_utils.expander_text_perplexities(dstats, column_id)
     # Uses an interaction; handled a bit differently than other widgets.
-    logs.info("showing npmi widget")
-    st_utils.npmi_widget(dstats.npmi_stats, _MIN_VOCAB_COUNT, column_id)
-    logs.info("showing zipf")
-    st_utils.expander_zipf(dstats.z, dstats.zipf_fig, column_id)
-    if show_embeddings:
-        st_utils.expander_text_embeddings(
-            dstats.text_dset,
-            dstats.fig_tree,
-            dstats.node_list,
-            dstats.embeddings,
-            OUR_TEXT_FIELD,
-            column_id,
-        )
+    with tab7:
+        logs.info("showing npmi widget")
+        st_utils.npmi_widget(dstats.npmi_stats, _MIN_VOCAB_COUNT, column_id)
+    with tab8:
+        logs.info("showing zipf")
+        st_utils.expander_zipf(dstats.z, dstats.zipf_fig, column_id)
+    #with tab9:
+        #if show_embeddings:
+        #    st_utils.expander_text_embeddings(
+        #        dstats.text_dset,
+        #        dstats.fig_tree,
+        #        dstats.node_list,
+        #        dstats.embeddings,
+        #        OUR_TEXT_FIELD,
+        #        column_id,
+        #    )
 
 
 def main():
     """ Sidebar description and selection """
     ds_name_to_dict = dataset_utils.get_dataset_info_dicts()
     st.title("Data Measurements Tool")
+    st.markdown("""
+    This demo showcases the [dataset metrics as we develop them](https://huggingface.co/blog/data-measurements-tool).
+    With this tool, you can:
+    
+    ✓ Dynamic loading of datasets in the lib
+
+    ✓ Fetching config and info without downloading the dataset
+
+    ✓ Propose the list of candidate text and label features to select
+    We are still working on:
+
+    √ Implementing all the current tools
+    """,
+        unsafe_allow_html=True,)
     # Get the sidebar details
     st_utils.sidebar_header()
     # Set up naming, configs, and cache path.
-    compare_mode = st.sidebar.checkbox("Comparison mode")
+    #compare_mode = st.sidebar.checkbox("Comparison mode")
 
     # When not doing new development, use the cache.
     use_cache = True
-    show_embeddings = st.sidebar.checkbox("Show text clusters")
+    show_embeddings = 0 #st.sidebar.checkbox("Show text clusters")
     # List of datasets for which embeddings are hard to compute:
 
-    if compare_mode:
-        logs.warning("Using Comparison Mode")
-        dataset_args_left = st_utils.sidebar_selection(ds_name_to_dict, " A")
-        dataset_args_right = st_utils.sidebar_selection(ds_name_to_dict, " B")
-        left_col, _, right_col = st.columns([10, 1, 10])
-        dstats_left, cache_exists_left = load_or_prepare_widgets(
-            dataset_args_left, show_embeddings, use_cache=use_cache
-        )
-        with left_col:
-            if cache_exists_left:
-                show_column(dstats_left, ds_name_to_dict, show_embeddings, " A")
-            else:
-                st.markdown("### Missing pre-computed data measures!")
-                st.write(dataset_args_left)
-        dstats_right, cache_exists_right = load_or_prepare_widgets(
-            dataset_args_right, show_embeddings, use_cache=use_cache
-        )
-        with right_col:
-            if cache_exists_right:
-                show_column(dstats_right, ds_name_to_dict, show_embeddings, " B")
-            else:
-                st.markdown("### Missing pre-computed data measures!")
-                st.write(dataset_args_right)
+    
+  
+    logs.warning("Using Single Dataset Mode")
+    dataset_args = st_utils.sidebar_selection(ds_name_to_dict, "")
+    dstats, cache_exists = load_or_prepare_widgets(dataset_args, show_embeddings, use_cache=use_cache)
+    if cache_exists:
+        show_column(dstats, ds_name_to_dict, show_embeddings, "")
     else:
-        logs.warning("Using Single Dataset Mode")
-        dataset_args = st_utils.sidebar_selection(ds_name_to_dict, "")
-        dstats, cache_exists = load_or_prepare_widgets(dataset_args, show_embeddings, use_cache=use_cache)
-        if cache_exists:
-            show_column(dstats, ds_name_to_dict, show_embeddings, "")
-        else:
-            st.markdown("### Missing pre-computed data measures!")
-            st.write(dataset_args)
+        st.markdown("### Missing pre-computed data measures!")
+        st.write(dataset_args)
+    st.sidebar.write('\n')
+    st.sidebar.write('\n')
+    st.sidebar.write('\n')
+    #st.sidebar.write('\n')
+    st.sidebar.markdown(
+        """
+    
+    The tool is in development, and will keep growing in utility and functionality 🤗🚀
+    """,
+        unsafe_allow_html=True,
+    )
 
 
 if __name__ == "__main__":
