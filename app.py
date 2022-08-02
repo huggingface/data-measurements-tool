@@ -284,7 +284,7 @@ def main():
     ✓ Propose the list of candidate text and label features to select
     We are still working on:
 
-    √ Implementing all the current tools
+    ✓ Implementing all the current tools
     """,
         unsafe_allow_html=True,)
     # Get the sidebar details
@@ -308,6 +308,7 @@ def main():
 
         st.markdown("### Missing pre-computed data measures!")
         st.write(dataset_args)
+    
     st.sidebar.write('\n')
     st.sidebar.write('\n')
     st.sidebar.write('\n')
