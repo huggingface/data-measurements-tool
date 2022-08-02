@@ -5,6 +5,7 @@ from os import getenv
 from os.path import join as pjoin
 from pathlib import Path
 from dotenv import load_dotenv
+import plotly
 
 from data_measurements import dataset_statistics, dataset_utils
 from huggingface_hub import create_repo, Repository, hf_api
@@ -83,32 +84,22 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
 
     if do_all or dataset_args["calculation"] == "lengths":
         print("\n* Calculating text lengths.")
-        fig_tok_length_fid = pjoin(dstats.cache_path, "lengths_fig.html")
-        tok_length_json_fid = pjoin(dstats.cache_path, "lengths.json")
         dstats.load_or_prepare_text_lengths()
-        with open(tok_length_json_fid, "w+") as f:
-            json.dump(dstats.fig_tok_length.to_json(), f)
-            print("Token lengths now available at %s." % tok_length_json_fid)
-        if do_html:
-            dstats.fig_tok_length.write_html(fig_tok_length_fid)
-            print("Figure saved to %s." % fig_tok_length_fid)
         print("Done!")
+        print("- Text length results now available at %s." % dstats.length_df_fid)
+        print()
+
 
     if do_all or dataset_args["calculation"] == "labels":
         if not dstats.label_field:
             print("Warning: You asked for label calculation, but didn't provide "
                   "the labels field name.  Assuming it is 'label'...")
             dstats.set_label_field("label")
-            print("\n* Calculating label distribution.")
-            dstats.load_or_prepare_labels()
-            fig_label_html = pjoin(dstats.cache_path, "labels_fig.html")
-            fig_label_json = pjoin(dstats.cache_path, "labels.json")
-            dstats.fig_labels.write_html(fig_label_html)
-            with open(fig_label_json, "w+") as f:
-                json.dump(dstats.fig_labels.to_json(), f)
-            print("Done!")
-            print("Label distribution now available at %s." % dstats.label_dset_fid)
-            print("Figure saved to %s." % fig_label_html)
+        print("\n* Calculating label distribution.")
+        dstats.load_or_prepare_labels()
+        print("Done!")
+        print("Label distribution now available at %s." % dstats.label_dset_fid)
+        print()
 
     if do_all or dataset_args["calculation"] == "npmi":
         print("\n* Preparing nPMI.")
@@ -126,19 +117,19 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
 
     if do_all or dataset_args["calculation"] == "zipf":
         print("\n* Preparing Zipf.")
-        zipf_fig_fid = pjoin(dstats.cache_path, "zipf_fig.html")
-        zipf_json_fid = pjoin(dstats.cache_path, "zipf_fig.json")
         dstats.load_or_prepare_zipf()
-        zipf_fig = dstats.zipf_fig
-        with open(zipf_json_fid, "w+") as f:
-            json.dump(zipf_fig.to_json(), f)
-        zipf_fig.write_html(zipf_fig_fid)
         print("Done!")
-        print("Zipf results now available at %s." % dstats.zipf_fid)
-        print(
-            "Figure saved to %s, with corresponding json at %s."
-            % (zipf_fig_fid, zipf_json_fid)
-        )
+        print("- Zipf results now available at %s." % dstats.zipf_fid)
+        # Saving image as HTML
+        zipf_html_fid = pjoin(dstats.cache_path, "zipf_fig.html")
+        dstats.zipf_fig.write_html(zipf_html_fid)
+        print("- HTML figure saved to %s" % (zipf_html_fid))
+        # Saving image as json
+        zipf_json_fid = pjoin(dstats.cache_path, "zipf_fig.json")
+        with open(zipf_json_fid, "w+") as f:
+            plotly.io.to_json(dstats.zipf_fig, f)
+        print("- Json to create the HTML figure saved to %s" % (zipf_json_fid))
+        print()
 
     # Don't do this one until someone specifically asks for it -- takes awhile.
     if dataset_args["calculation"] == "embeddings":
