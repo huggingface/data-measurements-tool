@@ -1,0 +1,48 @@
+{
+  "builder_name": "hate_speech18",
+  "citation": "@inproceedings{gibert2018hate,\n    title = \"{Hate Speech Dataset from a White Supremacy Forum}\",\n    author = \"de Gibert, Ona  and\n      Perez, Naiara  and\n      Garcia-Pablos, Aitor  and\n      Cuadros, Montse\",\n    booktitle = \"Proceedings of the 2nd Workshop on Abusive Language Online ({ALW}2)\",\n    month = oct,\n    year = \"2018\",\n    address = \"Brussels, Belgium\",\n    publisher = \"Association for Computational Linguistics\",\n    url = \"https://www.aclweb.org/anthology/W18-5102\",\n    doi = \"10.18653/v1/W18-5102\",\n    pages = \"11--20\",\n}\n",
+  "config_name": "default",
+  "dataset_size": 1375340,
+  "description": "These files contain text extracted from Stormfront, a white supremacist forum. A random set of\nforums posts have been sampled from several subforums and split into sentences. Those sentences\nhave been manually labelled as containing hate speech or not, according to certain annotation guidelines.\n",
+  "download_checksums": {
+    "https://github.com/Vicomtech/hate-speech-dataset/archive/master.zip": {
+      "num_bytes": 3664530,
+      "checksum": "acc0d7ce40e22cf019daa752a5136049a45462b9ba4eab8bf40ea82dcd867eba"
+    }
+  },
+  "download_size": 3664530,
+  "features": {
+    "embedding": {
+      "feature": {
+        "dtype": "float64",
+        "id": null,
+        "_type": "Value"
+      },
+      "length": -1,
+      "id": null,
+      "_type": "Sequence"
+    }
+  },
+  "homepage": "https://github.com/Vicomtech/hate-speech-dataset",
+  "license": "",
+  "post_processed": null,
+  "post_processing_size": null,
+  "size_in_bytes": 5039870,
+  "splits": {
+    "train": {
+      "name": "train",
+      "num_bytes": 1375340,
+      "num_examples": 10944,
+      "dataset_name": "hate_speech18"
+    }
+  },
+  "supervised_keys": null,
+  "task_templates": null,
+  "version": {
+    "version_str": "0.0.0",
+    "description": null,
+    "major": 0,
+    "minor": 0,
+    "patch": 0
+  }
+}

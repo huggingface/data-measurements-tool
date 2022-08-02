@@ -1,0 +1,8 @@
+2022-07-21 15:31:14,456:Fitting based on input vocab counts.
+2022-07-21 15:31:14,650:KS test:
+2022-07-21 15:31:14,651:KstestResult(statistic=0.6108334919728409, pvalue=1.1836087665528794e-12)
+2022-07-21 15:31:14,651:Getting predicted counts.
+2022-07-25 11:26:58,328:Fitting based on input vocab counts.
+2022-07-25 11:26:58,553:KS test:
+2022-07-25 11:26:58,553:KstestResult(statistic=0.6108334919728409, pvalue=1.1836087665528794e-12)
+2022-07-25 11:26:58,554:Getting predicted counts.
