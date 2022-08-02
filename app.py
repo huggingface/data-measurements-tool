@@ -270,7 +270,7 @@ def main():
         "--live", default=False, required=False, action="store_true", help="Flag to specify that this is not running live.")
     arguments = parser.parse_args()
     live = arguments.live
-    """ Sidebar description and selection """
+   # """ Sidebar description and selection """
     ds_name_to_dict = dataset_utils.get_dataset_info_dicts()
     st.title("Data Measurements Tool")
     st.markdown("""
