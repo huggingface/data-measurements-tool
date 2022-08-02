@@ -214,7 +214,7 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, show_perplexities, col
     Args:
         ds_name_to_dict (dict): the dataset name and options in dictionary form
         show_embeddings (Bool): whether embeddings should we loaded and displayed for this dataset
-        show_perplexities (Bool): whether perplexities should we loaded and displayed for this dataset
+        show_perplexities (Bool): whether perplexities should be loaded and displayed for this dataset
         column_id (str): what column of the dataset the analysis is done on
     Returns:
         The function displays the information using the functions defined in the st_utils class.
