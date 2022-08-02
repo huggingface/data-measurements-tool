@@ -371,7 +371,7 @@ class DatasetStatisticsCacheClass:
             self.use_cache
             and exists(self.general_stats_json_fid)
             and exists(self.dup_counts_df_fid)
-            #and exists(self.perplexities_df_fid)
+            and exists(self.perplexities_df_fid)
             and exists(self.sorted_top_vocab_df_fid)
         ):
             logs.info("Loading cached general stats")
@@ -383,7 +383,7 @@ class DatasetStatisticsCacheClass:
                 if save:
                     write_df(self.sorted_top_vocab_df, self.sorted_top_vocab_df_fid)
                     write_df(self.dup_counts_df, self.dup_counts_df_fid)
-                    #write_df(self.perplexities_df, self.perplexities_df_fid)
+                    write_df(self.perplexities_df, self.perplexities_df_fid)
                     write_json(self.general_stats_dict, self.general_stats_json_fid)
 
     def load_or_prepare_text_lengths(self, save=True):
@@ -567,7 +567,7 @@ class DatasetStatisticsCacheClass:
             self.total_open_words = len(self.vocab_counts_filtered_df)
             self.text_nan_count = int(self.tokenized_df.isnull().sum().sum())
             self.prepare_text_duplicates()
-            #self.prepare_text_perplexities()
+            self.prepare_text_perplexities()
             self.dedup_total = sum(self.dup_counts_df[CNT])
             self.general_stats_dict = {
                 TOT_WORDS: self.total_words,
