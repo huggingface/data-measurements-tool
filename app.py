@@ -119,7 +119,7 @@ def load_or_prepare(ds_args, show_embeddings, show_perplexities, use_cache=False
     if show_embeddings:
         logs.warning("Loading Embeddings")
         dstats.load_or_prepare_embeddings()
-    if show_embeddings:
+    if show_perplexities:
         logs.warning("Loading Text Perplexities")
         dstats.load_or_prepare_text_perplexities()
     logs.warning("Loading nPMI")

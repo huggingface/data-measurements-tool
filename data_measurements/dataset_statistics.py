@@ -382,8 +382,6 @@ class DatasetStatisticsCacheClass:
                 if save:
                     write_df(self.sorted_top_vocab_df, self.sorted_top_vocab_df_fid)
                     write_df(self.dup_counts_df, self.dup_counts_df_fid)
-                    # Heads-up@Sasha: Created this to help support the switch to evaluate/json.
-                    write_json(self.dup_counts, self.dup_counts_json_fid)
                     write_json(self.general_stats_dict, self.general_stats_json_fid)
 
     def load_or_prepare_text_lengths(self, save=True):
@@ -566,8 +564,6 @@ class DatasetStatisticsCacheClass:
             self.total_words = len(self.vocab_counts_df)
             self.total_open_words = len(self.vocab_counts_filtered_df)
             self.text_nan_count = int(self.tokenized_df.isnull().sum().sum())
-            # TODO(Sasha): Instead of calling prepare_text_duplicates,
-            #  call the evaluate text duplicates measurement.
             self.prepare_text_duplicates()
             self.dedup_total = sum(self.dup_counts_df[CNT])
             self.general_stats_dict = {
