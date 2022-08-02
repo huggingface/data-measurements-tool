@@ -91,7 +91,7 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
         tok_length_json_fid = pjoin(dstats.cache_path, "lengths.json")
         dstats.load_or_prepare_text_lengths()
         with open(tok_length_json_fid, "w+") as f:
-            json.dump(dstats.fig_tok_length.to_json(), f)
+            #json.dump(dstats.fig_tok_length.to_json(), f)
             print("Token lengths now available at %s." % tok_length_json_fid)
         if do_html:
             dstats.fig_tok_length.write_html(fig_tok_length_fid)

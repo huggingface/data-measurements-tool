@@ -110,8 +110,6 @@ def load_or_prepare(ds_args, show_embeddings, show_perplexities, use_cache=False
     dstats.load_or_prepare_text_lengths()
     logs.warning("Loading duplicates")
     dstats.load_or_prepare_text_duplicates()
-    logs.warning("Loading perplexities")
-    dstats.load_or_prepare_text_perplexities()
     logs.warning("Loading vocabulary")
     dstats.load_or_prepare_vocab()
     logs.warning("Loading general statistics...")
@@ -201,10 +199,6 @@ def load_or_prepare_widgets(ds_args, show_embeddings, show_perplexities, live=Tr
         except:
             logs.warning("Missing a cache for text duplicates")
         try:
-            dstats.load_or_prepare_text_perplexities()
-        except:
-            logs.warning("Missing a cache for text perplexities")
-        try:
             dstats.load_or_prepare_npmi()
         except:
             logs.warning("Missing a cache for npmi")
@@ -214,12 +208,13 @@ def load_or_prepare_widgets(ds_args, show_embeddings, show_perplexities, live=Tr
             logs.warning("Missing a cache for zipf")
     return dstats, cache_dir_exists
 
-def show_column(dstats, ds_name_to_dict, show_embeddings, column_id):
+def show_column(dstats, ds_name_to_dict, show_embeddings, show_perplexities, column_id):
     """
     Function for displaying the elements in the right column of the streamlit app.
     Args:
         ds_name_to_dict (dict): the dataset name and options in dictionary form
         show_embeddings (Bool): whether embeddings should we loaded and displayed for this dataset
+        show_perplexities (Bool): whether perplexities should we loaded and displayed for this dataset
         column_id (str): what column of the dataset the analysis is done on
     Returns:
         The function displays the information using the functions defined in the st_utils class.
