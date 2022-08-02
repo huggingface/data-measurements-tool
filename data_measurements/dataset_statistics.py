@@ -19,7 +19,7 @@ from os import mkdir, getenv
 from os.path import exists, isdir
 from os.path import join as pjoin
 from pathlib import Path
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
@@ -992,6 +992,13 @@ class nPMIStatisticsCacheClass:
         :return:
         """
         # TODO(meg): Incorporate this from evaluate library.
+        predictions = ["hello there general kenobi", "foo bar foobar"]
+        references = [["hello there general kenobi", "hello there!"],["foo bar foobar"]]
+        bleu = evaluate.load("bleu")
+        results = bleu.compute(predictions=predictions,
+                                    references=references)
+        print(results["bleu"])
+        sys.exit()
         # npmi_obj = evaluate.load('npmi', module_type='measurement').compute(subgroup, vocab_counts_df = self.dstats.vocab_counts_df, tokenized_counts_df=self.dstats.tokenized_df)
         npmi_obj = nPMI(self.dstats.vocab_counts_df, self.dstats.tokenized_df)
         return npmi_obj
