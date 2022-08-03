@@ -12,20 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import datasets
 # TODO: Change print statements to logging?
 # from evaluate import logging as logs
 import warnings
 
+import datasets
+import evaluate
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MultiLabelBinarizer
 
-import evaluate
-
-
 _CITATION = """\
-Osman Aka, Ken Burke, Alex Bauerle, Christina Greer, and Margaret Mitchell. 2021. Measuring Model Biases in the Absence of Ground Truth. In Proceedings of the 2021 AAAI/ACM Conference on AI, Ethics, and Society (AIES '21). Association for Computing Machinery, New York, NY, USA, 327–335. https://doi.org/10.1145/3461702.3462557
+Osman Aka, Ken Burke, Alex Bauerle, Christina Greer, and Margaret Mitchell. \
+2021. Measuring Model Biases in the Absence of Ground Truth. \
+In Proceedings of the 2021 AAAI/ACM Conference on AI, Ethics, and Society \
+(AIES '21). Association for Computing Machinery, New York, NY, USA, 327–335. \
+https://doi.org/10.1145/3461702.3462557
 """
 
 _DESCRIPTION = """\
@@ -38,9 +40,11 @@ Args:
     references (list of lists): List of tokenized sentences.
     vocab_counts (dict or dataframe): Vocab terms and their counts
 Returns:
-    npmi_df: A dataframe with (1) nPMI association scores for each term; (2) the difference between them.
+    npmi_df: A dataframe with (1) nPMI association scores for each term; \
+    (2) the difference between them.
 """
 
+# TODO: Is this necessary?
 warnings.filterwarnings(action="ignore", category=UserWarning)
 # When we divide by 0 in log
 np.seterr(divide="ignore")
@@ -48,8 +52,11 @@ np.seterr(divide="ignore")
 # treating inf values as NaN as well
 pd.set_option("use_inf_as_na", True)
 
-
+# This can be changed to whatever a person likes;
+# it is the number of batches to use when iterating through the vocabulary.
 _NUM_BATCHES = 500
+PROP = "proportion"
+CNT = "count"
 
 class nPMI(evaluate.Measurement):
     def _info(self):
@@ -59,17 +66,21 @@ class nPMI(evaluate.Measurement):
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
             features=datasets.Features(
-            {
-                "references": datasets.Sequence(datasets.Value("string", id="sequence"), id="references"),
-            }
-        )
+                {
+                    "references": datasets.Sequence(
+                        datasets.Value("string", id="sequence"),
+                        id="references"),
+                }
+            )
             # TODO: Create docs for this.
-            #reference_urls=["https://huggingface.co/docs/..."],
+            # reference_urls=["https://huggingface.co/docs/..."],
         )
 
     def _compute(self, references, vocab_counts, subgroup):
         if isinstance(vocab_counts, dict):
-            vocab_counts_df = pd.DataFrame.from_dict(vocab_counts, orient='index', columns=["count"])
+            vocab_counts_df = pd.DataFrame.from_dict(vocab_counts,
+                                                     orient='index',
+                                                     columns=[CNT])
         elif isinstance(vocab_counts, pd.DataFrame):
             vocab_counts_df = vocab_counts
         else:
@@ -78,7 +89,8 @@ class nPMI(evaluate.Measurement):
         # These are used throughout the rest of the functions
         self.references = references
         self.vocab_counts_df = vocab_counts_df
-        self.vocab_counts_df["proportion"] = vocab_counts_df["count"]/sum(vocab_counts_df["count"])
+        self.vocab_counts_df[PROP] = vocab_counts_df[CNT] / sum(
+            vocab_counts_df[CNT])
         # self.mlb_list holds num batches x num_sentences
         self.mlb_list = []
         # Index of the subgroup word in the sparse vector
@@ -91,7 +103,8 @@ class nPMI(evaluate.Measurement):
         print("Calculating nPMI...")
         npmi_df = self.calc_nPMI(pmi_df, vocab_cooc_df, subgroup)
         npmi_bias = npmi_df.max(axis=0) + abs(npmi_df.min(axis=0))
-        return {"bias":npmi_bias, "co-occurrences":vocab_cooc_df, "pmi":pmi_df, "npmi":npmi_df}
+        return {"bias": npmi_bias, "co-occurrences": vocab_cooc_df,
+                "pmi": pmi_df, "npmi": npmi_df}
 
     def _binarize_words_in_sentence(self):
         print("Creating co-occurrence matrix for PMI calculations.")
@@ -103,7 +116,8 @@ class nPMI(evaluate.Measurement):
             # with the occurrence of each word per sentence.
             mlb = MultiLabelBinarizer(classes=self.vocab_counts_df.index)
             print(
-                "%s of %s sentence binarize batches." % (str(i), str(len(batches)))
+                "%s of %s sentence binarize batches." % (
+                str(i), str(len(batches)))
             )
             # Returns series: batch size x num_words
             mlb_series = mlb.fit_transform(
@@ -157,7 +171,8 @@ class nPMI(evaluate.Measurement):
         """
         count_df = df_coo.set_index(self.vocab_counts_df.index)
         count_df.columns = [subgroup + "-count"]
-        count_df[subgroup + "-count"] = count_df[subgroup + "-count"].astype(int)
+        count_df[subgroup + "-count"] = count_df[subgroup + "-count"].astype(
+            int)
         return count_df
 
     def calc_PMI(self, vocab_cooc_df, subgroup):
@@ -169,13 +184,15 @@ class nPMI(evaluate.Measurement):
         """
         # Calculation of p(subgroup)
         # TODO: Is this better?
-        #  subgroup_prob = vocab_counts_df.loc[subgroup]["proportion"]
-        subgroup_prob = self.vocab_counts_df.loc[subgroup]["count"] / sum(self.vocab_counts_df["count"])
+        #  subgroup_prob = vocab_counts_df.loc[subgroup][PROP]
+        subgroup_prob = self.vocab_counts_df.loc[subgroup][CNT] / sum(
+            self.vocab_counts_df[CNT])
         # Calculation of p(subgroup|word) = count(subgroup,word) / count(word)
         # Because the indices match (the vocab words),
         # this division doesn't need to specify the index (I think?!)
         p_subgroup_g_word = (
-            vocab_cooc_df[subgroup + "-count"] / self.vocab_counts_df["count"]
+                vocab_cooc_df[subgroup + "-count"] / self.vocab_counts_df[
+            CNT]
         )
         pmi_df = pd.DataFrame()
         pmi_df[subgroup + "-pmi"] = np.log(p_subgroup_g_word / subgroup_prob)
@@ -194,7 +211,7 @@ class nPMI(evaluate.Measurement):
             vocab_cooc_df[subgroup + "-count"]
         )
         p_word = pmi_df.apply(
-            lambda x: self.vocab_counts_df.loc[x.name]["proportion"], axis=1
+            lambda x: self.vocab_counts_df.loc[x.name][PROP], axis=1
         )
         normalize_pmi = -np.log(p_word_g_subgroup * p_word)
         npmi_df = pd.DataFrame()
