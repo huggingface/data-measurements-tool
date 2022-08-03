@@ -75,9 +75,6 @@ class nPMI:
 
     def binarize_words_in_sentence(self):
         logs.info("Creating co-occurrence matrix for PMI calculations.")
-        #print(self.tokenized_df.head())
-        #import sys
-        #sys.exit()
         batches = np.linspace(0, self.tokenized_df.shape[0], _NUM_BATCHES).astype(int)
         i = 0
         # Creates list of size (# batches x # sentences)
