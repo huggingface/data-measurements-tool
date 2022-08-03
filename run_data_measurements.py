@@ -4,7 +4,7 @@ import textwrap
 from os import getenv
 from os.path import join as pjoin
 from pathlib import Path
-#from dotenv import load_dotenv
+from dotenv import load_dotenv
 
 from data_measurements import dataset_statistics, dataset_utils
 from huggingface_hub import create_repo, Repository, hf_api
@@ -12,18 +12,19 @@ import shutil
 import smtplib, ssl
 port = 465  # For SSL
 
-#if Path(".env").is_file():
-#    load_dotenv(".env")
+if Path(".env").is_file():
+    load_dotenv(".env")
 
 HF_TOKEN = getenv("HF_TOKEN")
 EMAIL_PASSWORD = getenv("EMAIL_PASSWORD")
 
-def load_or_prepare_widgets(ds_args, show_embeddings=False, use_cache=False):
+def load_or_prepare_widgets(ds_args, show_embeddings=False, show_perplexities=False, use_cache=False):
     """
     Loader specifically for the widgets used in the app.
     Args:
         ds_args:
         show_embeddings:
+        show_perplexities:
         use_cache:
 
     Returns:
@@ -47,6 +48,9 @@ def load_or_prepare_widgets(ds_args, show_embeddings=False, use_cache=False):
     if show_embeddings:
         # Embeddings widget
         dstats.load_or_prepare_embeddings()
+    if show_perplexities:
+        # Text perplexities widget
+        dstats.load_or_prepare_text_perplexities()
     # Text duplicates widget
     dstats.load_or_prepare_text_duplicates()
     # nPMI widget
@@ -63,12 +67,10 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
     dstats = dataset_statistics.DatasetStatisticsCacheClass(**dataset_args, use_cache=use_cache)
     print("Loading dataset.")
     dstats.load_or_prepare_dataset()
-    print('hi13')
     print("Dataset loaded.  Preparing vocab.")
     dstats.load_or_prepare_tokenized_df()
     print("Tokenized.")
     dstats.load_or_prepare_vocab()
-    print('hi14')
     print("Vocab prepared.")
 
     if not dataset_args["calculation"]:
@@ -80,7 +82,7 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
         print("Done!")
         print("Basic text statistics now available at %s." % dstats.general_stats_json_fid)
         print(
-            "Text duplicates now available at %s." % dstats.dup_counts_json_fid
+            "Text duplicates now available at %s." % dstats.dup_counts_df_fid
         )
 
     if do_all or dataset_args["calculation"] == "lengths":
@@ -89,7 +91,7 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
         tok_length_json_fid = pjoin(dstats.cache_path, "lengths.json")
         dstats.load_or_prepare_text_lengths()
         with open(tok_length_json_fid, "w+") as f:
-            json.dump(dstats.fig_tok_length.to_json(), f)
+            #json.dump(dstats.fig_tok_length.to_json(), f)
             print("Token lengths now available at %s." % tok_length_json_fid)
         if do_html:
             dstats.fig_tok_length.write_html(fig_tok_length_fid)
@@ -114,13 +116,10 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
 
     if do_all or dataset_args["calculation"] == "npmi":
         print("\n* Preparing nPMI.")
-        print('hi20')
         npmi_stats = dataset_statistics.nPMIStatisticsCacheClass(
             dstats, use_cache=use_cache
         )
-        print('hi21')
         do_npmi(npmi_stats, use_cache=use_cache)
-        print('hi22')
         print("Done!")
         print(
             "nPMI results now available in %s for all identity terms that "
@@ -149,6 +148,11 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
     if dataset_args["calculation"] == "embeddings":
         print("\n* Preparing text embeddings.")
         dstats.load_or_prepare_embeddings()
+
+    # Don't do this one until someone specifically asks for it -- takes awhile.
+    if dataset_args["calculation"] == "perplexities":
+        print("\n* Preparing text perplexities.")
+        dstats.load_or_prepare_text_perplexities()
 
 
 def do_npmi(npmi_stats, use_cache=True):
@@ -235,6 +239,7 @@ def main():
         "-f",
         "--feature",
         required=True,
+        nargs="+",
         type=str,
         default="text",
         help="Text column to prepare",
@@ -242,7 +247,7 @@ def main():
     parser.add_argument(
         "-w",
         "--calculation",
-        help="""What to calculate (defaults to everything except embeddings).\n
+        help="""What to calculate (defaults to everything except embeddings and perplexities).\n
                                                     Options are:\n
 
                                                     - `general` (for duplicate counts, missing values, length statistics.)\n
@@ -252,6 +257,8 @@ def main():
                                                     - `labels` for label distribution\n
 
                                                     - `embeddings` (Warning: Slow.)\n
+
+                                                    - `perplexities` (Warning: Slow.)\n
 
                                                     - `npmi` for word associations\n
 
@@ -313,7 +320,6 @@ def main():
 
     dataset_cache_dir = f"{args.dataset}_{args.config}_{args.split}_{args.feature}"
     cache_path = args.out_dir + "/" + dataset_cache_dir
-
     dataset_utils.make_cache_path(cache_path)
 
     dataset_arguments_message=f"dataset: {args.dataset}, config: {args.config}, split: {args.split}, feature: {args.feature}, label field: {args.label_field}"
@@ -336,10 +342,10 @@ def main():
                 print(not_computing_message)
                 if args.email is not None:
                     server.sendmail("data.measurements.tool@gmail.com", args.email, "Subject: Data Measurments not Computed\n\n" + already_computed_message + " " + not_computing_message)
-                return 
+                return
         # Some other error that we do not anticipate.
         except Exception as err:
-            error_message = f"There is an error on the hub that is preventing repo creation. Details: " + " - ".join(err.args)        
+            error_message = f"There is an error on the hub that is preventing repo creation. Details: " + " - ".join(err.args)
             print(error_message)
             print(not_computing_message)
             if args.email is not None:
@@ -356,7 +362,7 @@ def main():
             new_cache_path = cache_path
             while os.path.exists(new_cache_path) and not os.path.exists(new_cache_path + "/.git"):
                print("Trying to clone from repo to %s, but it exists already and is not a git repo." % new_cache_path)
-               new_cache_path = cache_path + "." + str(n) 
+               new_cache_path = cache_path + "." + str(n)
                print("Trying to clone to %s instead" % new_cache_path)
                n += 1
             """
@@ -401,8 +407,8 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
-    
+
+
     # Deleted this because of merge conflict -- saving here in case it should not have been deleted.
     # try:
     #    create_repo(dataset_cache_dir, organization="datameasurements", repo_type="dataset", private=True, token=HF_TOKEN)

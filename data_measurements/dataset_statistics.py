@@ -19,14 +19,13 @@ from os import mkdir, getenv
 from os.path import exists, isdir
 from os.path import join as pjoin
 from pathlib import Path
-#from dotenv import load_dotenv
+from dotenv import load_dotenv
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import nltk
 import numpy as np
 import pandas as pd
-import pyarrow as pa
 import plotly
 import plotly.express as px
 import plotly.graph_objects as go
@@ -36,20 +35,20 @@ from datasets import load_from_disk, load_metric
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 from huggingface_hub import Repository, list_datasets
-import sys
-import evaluate
+
 from .dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD,
                             OUR_LABEL_FIELD, OUR_TEXT_FIELD, PERPLEXITY_FIELD, PROP,
                             TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
                             TOT_WORDS, VOCAB, WORD, extract_field,
-                            load_truncated_dataset, make_cache_path)
+                            load_truncated_dataset)
 from .embeddings import Embeddings
-import evaluate
+# TODO(meg): Incorporate this from evaluate library.
+# import evaluate
 from .zipf import Zipf
-#from .npmi import nPMI
+from .npmi import nPMI
 
-#if Path(".env").is_file():
-#    load_dotenv(".env")
+if Path(".env").is_file():
+    load_dotenv(".env")
 
 HF_TOKEN = getenv("HF_TOKEN")
 
@@ -147,7 +146,7 @@ _NUM_VOCAB_BATCHES = 2000
 _TOP_N = 100
 _CVEC = CountVectorizer(token_pattern="(?u)\\b\\w+\\b", lowercase=True)
 
-_PERPLEXITY = evaluate.load(module_type='measurement', path='/Users/margaretmitchell/HuggingFace/git/evaluate/measurements/perplexity')
+_PERPLEXITY = load_metric("perplexity")
 
 
 class DatasetStatisticsCacheClass:
@@ -191,10 +190,7 @@ class DatasetStatisticsCacheClass:
         ## Hugging Face dataset objects
         self.dset = None  # original dataset
         # HF dataset with all of the self.text_field instances in self.dset
-        # Heads-up@Sasha: This is what you want for the input of most of the
-        # evaluate measurements, I think: It's simply in the HuggingFace Dataset format.
         self.text_dset = None
-        self.tokenized_dset = None
         self.dset_peek = None
         # HF dataset with text embeddings in the same order as self.text_dset
         self.embeddings_dset = None
@@ -221,12 +217,8 @@ class DatasetStatisticsCacheClass:
         # Number of NaN values (NOT empty strings)
         self.text_nan_count = 0
         # Number of text items that appear more than once in the dataset
-        # TODO(Sasha): Get this from your evaluate call
         self.dedup_total = 0
         # Duplicated text items along with their number of occurences ("count")
-        # TODO(Sasha): Get this from your evaluate call
-        self.dup_counts = None
-        # TODO(Sasha/Meg): Deprecate
         self.dup_counts_df = None
         self.perplexities_df = None
         self.avg_length = None
@@ -271,10 +263,6 @@ class DatasetStatisticsCacheClass:
         self.length_stats_dict = None
 
         # Try to pull from the hub to see if the cache already exists.
-        # TODO: Fix this so that it doesn't assume that someone is using a Repo.
-        # This also needs to be optimized: We're already creating the repository and cloning in run_data_measurements.py
-        # And should probably have something similar in app.py. Perhaps all of these should be calling from one place?
-        """
         try:
             if not isdir(self.cache_path) and self.dataset_cache_dir in [dataset_info.id.split("/")[-1] for dataset_info in list_datasets(author="datameasurements", use_auth_token=HF_TOKEN)]:
                 repo = Repository(local_dir=self.cache_path, clone_from="datameasurements/" + self.dataset_cache_dir, repo_type="dataset", use_auth_token=HF_TOKEN)
@@ -283,11 +271,10 @@ class DatasetStatisticsCacheClass:
         except Exception as e:
             print(e)
             logs.warning("Cannot find cached repo.")
-        """
+
         # Cache files not needed for UI
         self.dset_fid = pjoin(self.cache_path, "base_dset")
         self.tokenized_df_fid = pjoin(self.cache_path, "tokenized_df.feather")
-        self.tokenized_dset_fid = pjoin(self.cache_path, "tokenized_dset")
         self.label_dset_fid = pjoin(self.cache_path, "label_dset")
 
         # Needed for UI -- embeddings
@@ -299,19 +286,15 @@ class DatasetStatisticsCacheClass:
         # Needed for UI
         self.fig_labels_json_fid = pjoin(self.cache_path, "fig_labels.json")
 
+        ## Length cache files
         # Needed for UI
-        # Heads-up@Sasha: Would be cool to sync this with evaluate,
-        # but it seems that evaluate only returns the average length;
-        # we use a lot more than that, including each sentence with a corresponding length!
         self.length_df_fid = pjoin(self.cache_path, "length_df.feather")
+        # Needed for UI
         self.length_stats_json_fid = pjoin(self.cache_path, "length_stats.json")
         self.vocab_counts_df_fid = pjoin(self.cache_path, "vocab_counts.feather")
-        # Heads-up@Sasha: We can remove this variable once we switch to json,
-        # using the self.dup_counts_json_fid variable instead.
+        # Needed for UI
         self.dup_counts_df_fid = pjoin(self.cache_path, "dup_counts_df.feather")
-        # Heads-up@Sasha: Made a json filename so you can just put evaluate
-        # output in there.
-        self.dup_counts_json_fid = pjoin(self.cache_path, "dup_counts.json")
+        # Needed for UI
         self.perplexities_df_fid = pjoin(self.cache_path, "perplexities_df.feather")
         # Needed for UI
         self.fig_tok_length_fid = pjoin(self.cache_path, "fig_tok_length.png")
@@ -319,15 +302,20 @@ class DatasetStatisticsCacheClass:
         ## General text stats
         # Needed for UI
         self.general_stats_json_fid = pjoin(self.cache_path, "general_stats_dict.json")
+        # Needed for UI
         self.sorted_top_vocab_df_fid = pjoin(
             self.cache_path, "sorted_top_vocab.feather"
         )
         ## Zipf cache files
+        # Needed for UI
         self.zipf_fid = pjoin(self.cache_path, "zipf_basic_stats.json")
+        # Needed for UI
         self.zipf_fig_fid = pjoin(self.cache_path, "zipf_fig.json")
 
         ## Embeddings cache files
+        # Needed for UI
         self.node_list_fid = pjoin(self.cache_path, "node_list.th")
+        # Needed for UI
         self.fig_tree_json_fid = pjoin(self.cache_path, "fig_tree.json")
 
         self.live = False
@@ -339,7 +327,7 @@ class DatasetStatisticsCacheClass:
         """
         self.live = live
 
-    def do_cache_dir(self):
+    def check_cache_dir(self):
         """
         First function to call to create the cache directory.
         If in deployment mode and cache directory does not already exist,
@@ -348,8 +336,13 @@ class DatasetStatisticsCacheClass:
         if self.live:
             return isdir(self.cache_path)
         else:
-            logs.warning("Creating cache directory %s." % self.cache_path)
-            return make_cache_path(self.cache_path)
+            if not isdir(self.cache_path):
+                logs.warning("Creating cache directory %s." % self.cache_path)
+                if not isdir(self.cache_dir):
+                    mkdir(self.cache_dir)
+                mkdir(self.cache_path)
+            return isdir(self.cache_path)
+
 
     def get_base_dataset(self):
         """Gets a pointer to the truncated base dataset object."""
@@ -374,13 +367,10 @@ class DatasetStatisticsCacheClass:
 
         """
         # General statistics
-        # TODO(Tristan): I removed exists(self.perplexities_df_fid), that should be handled separately.
-        # since it's not a quick/general statistic. It's quite time-consuming for just trying to pick up
-        # some basic stats!
         if (
             self.use_cache
             and exists(self.general_stats_json_fid)
-            and exists(self.dup_counts_json_fid) #Heads-up@Sasha: I changed this from df to json to support your switcheroo.
+            and exists(self.dup_counts_df_fid)
             and exists(self.sorted_top_vocab_df_fid)
         ):
             logs.info("Loading cached general stats")
@@ -392,7 +382,6 @@ class DatasetStatisticsCacheClass:
                 if save:
                     write_df(self.sorted_top_vocab_df, self.sorted_top_vocab_df_fid)
                     write_df(self.dup_counts_df, self.dup_counts_df_fid)
-                    write_json(self.dup_counts, self.dup_counts_json_fid)
                     write_json(self.general_stats_dict, self.general_stats_json_fid)
 
     def load_or_prepare_text_lengths(self, save=True):
@@ -414,8 +403,6 @@ class DatasetStatisticsCacheClass:
                 if save:
                     self.fig_tok_length.savefig(self.fig_tok_length_fid)
         # Text length dataframe
-        # Heads-up@Sasha: Ideally this is also from evaluate, but currently
-        # evaluate doesn't have enough functionality for this.
         if self.use_cache and exists(self.length_df_fid):
             self.length_df = feather.read_feather(self.length_df_fid)
         else:
@@ -440,7 +427,7 @@ class DatasetStatisticsCacheClass:
     def prepare_length_df(self):
         if not self.live:
             if self.tokenized_df is None:
-                self.do_tokenization()
+                self.tokenized_df = self.do_tokenization()
             self.tokenized_df[LENGTH_FIELD] = self.tokenized_df[TOKENIZED_FIELD].apply(
                 len
             )
@@ -493,12 +480,11 @@ class DatasetStatisticsCacheClass:
         :return:
         """
         if self.use_cache and exists(self.vocab_counts_df_fid):
-            logs.warning("Reading vocab from cache")
+            logs.info("Reading vocab from cache")
             self.load_vocab()
             self.vocab_counts_filtered_df = filter_vocab(self.vocab_counts_df)
         else:
-            # TODO(meg): Should this be in an if..else so it doesn't run 'live'?
-            logs.warning("Calculating vocab afresh")
+            logs.info("Calculating vocab afresh")
             if self.tokenized_df is None:
                 self.tokenized_df = self.do_tokenization()
                 if save:
@@ -522,28 +508,22 @@ class DatasetStatisticsCacheClass:
         # Handling for changes in how the index is saved.
         self.vocab_counts_df = _set_idx_col_names(self.vocab_counts_df)
 
-    # Heads-up@Sasha: I changed this to work with json, rather than a dataframe,
-    # so it would be ready for you.
     def load_or_prepare_text_duplicates(self, save=True):
-        # Load the duplicates json file if already there
-        if self.use_cache and exists(self.dup_counts_json_fid):
-            self.dup_counts = json.load(
-                open(self.dup_counts_json_fid, encoding="utf-8")
-            )
-        elif self.dup_counts is None:
+        if self.use_cache and exists(self.dup_counts_df_fid):
+            with open(self.dup_counts_df_fid, "rb") as f:
+                self.dup_counts_df = feather.read_feather(f)
+        elif self.dup_counts_df is None:
             if not self.live:
-                # TODO(sasha): Change to the evaluate version of this
                 self.prepare_text_duplicates()
-                # TODO(sasha): Save the evaluate output as a json file
                 if save:
-                    write_json(self.dup_counts, self.dup_counts_json_fid)
+                    write_df(self.dup_counts_df, self.dup_counts_df_fid)
         else:
             if not self.live:
                 # This happens when self.dup_counts_df is already defined;
                 # This happens when general_statistics were calculated first,
                 # since general statistics requires the number of duplicates
                 if save:
-                    write_json(self.dup_counts, self.dup_counts_json_fid)
+                    write_df(self.dup_counts_df, self.dup_counts_df_fid)
 
     def load_or_prepare_text_perplexities(self, save=True):
         if self.use_cache and exists(self.perplexities_df_fid):
@@ -572,7 +552,7 @@ class DatasetStatisticsCacheClass:
 
     def prepare_general_stats(self):
         if not self.live:
-            if self.tokenized_df is None or self.tokenized_dset is None:
+            if self.tokenized_df is None:
                 logs.warning("Tokenized dataset not yet loaded; doing so.")
                 self.load_or_prepare_tokenized_df()
             if self.vocab_counts_df is None:
@@ -584,15 +564,7 @@ class DatasetStatisticsCacheClass:
             self.total_words = len(self.vocab_counts_df)
             self.total_open_words = len(self.vocab_counts_filtered_df)
             self.text_nan_count = int(self.tokenized_df.isnull().sum().sum())
-            # TODO(Tristan): Remove perplexities from being a "general stat"
-            # It is quite time-consuming to run unfortunately.
-            # For now I commented it out so I can dev quickly.
-            # self.prepare_text_perplexities()
-            # TODO(Sasha): Instead of calling prepare_text_duplicates,
-            #  call the evaluate text duplicates measurement.
             self.prepare_text_duplicates()
-            # TODO(meg,tristan): Put this outside of the "general stats" group.
-            # self.prepare_text_perplexities()
             self.dedup_total = sum(self.dup_counts_df[CNT])
             self.general_stats_dict = {
                 TOT_WORDS: self.total_words,
@@ -600,12 +572,7 @@ class DatasetStatisticsCacheClass:
                 TEXT_NAN_CNT: self.text_nan_count,
                 DEDUP_TOT: self.dedup_total,
             }
-    # TODO(sasha): This function should just be removed/deprecated
-    # in favor of the evaluate version of text_duplicates.
-    # That would just take as input self.text_dset (or self.tokenized_dset), but
-    # you know best on that.
-    # For now, I am editing it so it can work fluidly with a dict/json format.
-    # But the goal would be to remove it altogether.
+
     def prepare_text_duplicates(self):
         if not self.live:
             if self.tokenized_df is None:
@@ -618,10 +585,6 @@ class DatasetStatisticsCacheClass:
                 columns=[CNT],
             )
             self.dup_counts_df[OUR_TEXT_FIELD] = self.dup_counts_df.index.copy()
-            # Adding this to help ease the transition to json/evaluate from
-            # our original implementation with dataframes.
-            # It will then be saveable as json even if read in as a dataframe.
-            self.dup_counts = json.loads(self.dup_counts_df.to_json())
 
     def prepare_text_perplexities(self):
         if not self.live:
@@ -645,9 +608,8 @@ class DatasetStatisticsCacheClass:
         """
         logs.info("Doing text dset.")
         self.load_or_prepare_text_dset(save)
-        self.load_or_prepare_tokenized_dset(save)
-        logs.info("Doing tokenized dataframe")
-        self.load_or_prepare_tokenized_df(save)
+        #logs.info("Doing tokenized dataframe")
+        #self.load_or_prepare_tokenized_df(save)
         logs.info("Doing dataset peek")
         self.load_or_prepare_dset_peek(save)
 
@@ -669,26 +631,11 @@ class DatasetStatisticsCacheClass:
         else:
             if not self.live:
                 # tokenize all text instances
-                self.do_tokenization()
+                self.tokenized_df = self.do_tokenization()
                 if save:
                     logs.warning("Saving tokenized dataset to disk")
                     # save tokenized text
                     write_df(self.tokenized_df, self.tokenized_df_fid)
-
-    def load_or_prepare_tokenized_dset(self, save=True):
-        if self.use_cache and exists(self.tokenized_dset_fid):
-            # load extracted text
-            self.tokenized_dset = load_from_disk(self.tokenized_dset_fid)
-            logs.warning("Loaded dataset from disk")
-            logs.info(self.tokenized_dset)
-        # ...Or load it from the server and store it anew
-        else:
-            if not self.live:
-                self.prepare_tokenized_dset()
-                if save:
-                    # save extracted text instances
-                    logs.warning("Saving dataset to disk")
-                    self.tokenized_dset.save_to_disk(self.tokenized_dset_fid)
 
     def load_or_prepare_text_dset(self, save=True):
         if self.use_cache and exists(self.text_dset_fid):
@@ -704,10 +651,6 @@ class DatasetStatisticsCacheClass:
                     # save extracted text instances
                     logs.warning("Saving dataset to disk")
                     self.text_dset.save_to_disk(self.text_dset_fid)
-
-    def prepare_tokenized_dset(self):
-        if not self.live:
-            self.tokenized_df = self.do_tokenization()
 
     def prepare_text_dset(self):
         if not self.live:
@@ -735,19 +678,19 @@ class DatasetStatisticsCacheClass:
             res = {
                 TOKENIZED_FIELD: [
                     tuple(sent_tokenizer(text.lower()))
-                    for text in examples
+                    for text in examples[OUR_TEXT_FIELD]
                 ]
             }
             res[LENGTH_FIELD] = [len(tok_text) for tok_text in res[TOKENIZED_FIELD]]
             return res
 
-        self.tokenized_dset = self.text_dset.map(
+        tokenized_dset = self.text_dset.map(
             tokenize_batch,
             batched=True,
-            input_columns=[OUR_TEXT_FIELD]
             # remove_columns=[OUR_TEXT_FIELD], keep around to print
         )
-        self.tokenized_df = pd.DataFrame(self.tokenized_dset)
+        tokenized_df = pd.DataFrame(tokenized_dset)
+        return tokenized_df
 
     def set_label_field(self, label_field="label"):
         """
@@ -785,9 +728,6 @@ class DatasetStatisticsCacheClass:
                         self.label_dset.save_to_disk(self.label_dset_fid)
                         write_plotly(self.fig_labels, self.fig_labels_json_fid)
 
-    # Heads-up@Sasha: I think I saw you added a labels measurement.
-    # We could switch to using that, as long as all of the necessary
-    # information is returned.
     def prepare_labels(self):
         if not self.live:
             self.get_base_dataset()
@@ -804,8 +744,6 @@ class DatasetStatisticsCacheClass:
             )
 
     def load_or_prepare_npmi(self):
-        if self.tokenized_dset is None:
-            self.load_or_prepare_tokenized_dset()
         self.npmi_stats = nPMIStatisticsCacheClass(self, use_cache=self.use_cache)
         self.npmi_stats.load_or_prepare_npmi_terms()
 
@@ -869,7 +807,6 @@ def _set_idx_cols_from_cache(csv_df, subgroup=None, calc_str=None):
     return csv_df
 
 
-# TODO: Should this just inherit the Dataset Stats class?
 class nPMIStatisticsCacheClass:
     """ "Class to interface between the app and the nPMI class
     by calling the nPMI class with the user's selections."""
@@ -877,9 +814,6 @@ class nPMIStatisticsCacheClass:
     def __init__(self, dataset_stats, use_cache=False):
         self.live = dataset_stats.live
         self.dstats = dataset_stats
-        self.text_dset = dataset_stats.text_dset
-        self.tokenized_dset = dataset_stats.tokenized_dset
-        self.tokenized_df = dataset_stats.tokenized_df
         self.pmi_cache_path = pjoin(self.dstats.cache_path, "pmi_files")
         if not isdir(self.pmi_cache_path):
             logs.warning("Creating pmi cache directory %s." % self.pmi_cache_path)
@@ -1029,63 +963,35 @@ class nPMIStatisticsCacheClass:
         :return: Selected identity term's co-occurrence counts with
                  other words, pmi per word, and nPMI per word.
         """
+        logs.info("Initializing npmi class")
+        npmi_obj = self.set_npmi_obj()
         # Canonical ordering used
         subgroup_pair = tuple(sorted(subgroup_pair))
         # Calculating nPMI statistics
         for subgroup in subgroup_pair:
             # If the subgroup data is already computed, grab it.
+            # TODO: Should we set idx and column names similarly to how we set them for cached files?
             if subgroup not in subgroup_dict:
-                logs.info("Calculating npmi statistics for %s" % subgroup)
-                npmi_dict = self.calculate_npmi(subgroup)
-                npmi_bias = npmi_dict["bias"]
-                vocab_cooc_df = npmi_dict["co-occurrences"]
-                pmi_df = npmi_dict["pmi"]
-                npmi_df = npmi_dict["npmi"]
+                logs.info("Calculating statistics for %s" % subgroup)
+                vocab_cooc_df, pmi_df, npmi_df = npmi_obj.calc_metrics(subgroup)
                 # Store the nPMI information for the current subgroups
                 subgroup_dict[subgroup] = (vocab_cooc_df, pmi_df, npmi_df)
         # Pair the subgroups together, indexed by all words that
         # co-occur between them.
         logs.info("Computing pairwise npmi bias")
-        paired_results = calc_paired_metrics(subgroup_pair, subgroup_dict)
+        paired_results = npmi_obj.calc_paired_metrics(subgroup_pair, subgroup_dict)
         UI_results = make_npmi_fig(paired_results, subgroup_pair)
         return UI_results, subgroup_dict
 
-    def calculate_npmi(self, subgroup):
+    def set_npmi_obj(self):
         """
         Initializes the nPMI class with the given words and tokenized sentences.
         :return:
         """
-
-        print("Doing %s " % subgroup)
-        predictions = ["hello there general kenobi", "foo bar foobar"]
-        references = [
-            ["hello there general kenobi", "hello there!"],
-            ["foo bar foobar"]
-            ]
-        bleu = evaluate.load("bleu")
-        results = bleu.compute(predictions=predictions, references=references)
-        print(results["bleu"])
-        _NPMI = evaluate.load("npmi", module_type='measurement')
-        #_NPMI.cache_file_name = self.dstats.cache_path + "/npmi.cache"
-        #_NPMI.add_batch(references=test_data)
-        #print(self.tokenized_dset[TOKENIZED_FIELD])
-        npmi_dict = _NPMI.compute(references=self.tokenized_df[TOKENIZED_FIELD], subgroup=subgroup, vocab_counts=self.dstats.vocab_counts_df)
-        #npmi_obj = nPMI(self.dstats.vocab_counts_df, self.dstats.tokenized_df)
-        return npmi_dict
-        #squad_metric = evaluate.load("squad")
-        #predictions = [
-        #    {'prediction_text': '1976', 'id': '56e10a3be3433e1400422b22'}]
-        #references = [{'answers': {'answer_start': [97], 'text': ['1976']},
-        #               'id': '56e10a3be3433e1400422b22'}]
-        #results = squad_metric.compute(predictions=predictions,
-        #                               references=references)
-        #print(results)
-        #debug = evaluate.load("npmi_debug")
-        # THIS IS CACHED IN /Users/margaretmitchell/.cache/huggingface/modules/evaluate_modules/metrics/npmi_debug
-        #results = debug.compute(references=self.dstats.tokenized_dset[TOKENIZED_FIELD], vocabulary=self.dstats.vocab_counts_df)
-        #npmi_obj = evaluate.load('npmi', module_type='measurement').compute(subgroup, vocab_counts_df = self.dstats.vocab_counts_df, tokenized_counts_df=self.dstats.tokenized_df)
-        #npmi_obj = nPMI(self.dstats.vocab_counts_df, self.dstats.tokenized_df)
-        #return npmi_obj
+        # TODO(meg): Incorporate this from evaluate library.
+        # npmi_obj = evaluate.load('npmi', module_type='measurement').compute(subgroup, vocab_counts_df = self.dstats.vocab_counts_df, tokenized_counts_df=self.dstats.tokenized_df)
+        npmi_obj = nPMI(self.dstats.vocab_counts_df, self.dstats.tokenized_df)
+        return npmi_obj
 
     @staticmethod
     def load_or_fail_cached_npmi_scores(subgroup, subgroup_fids):
@@ -1175,55 +1081,6 @@ def calc_p_word(word_count_df):
     vocab_counts_df[VOCAB] = vocab_counts_df.index
     return vocab_counts_df
 
-def calc_paired_metrics(subgroup_pair, subgroup_npmi_dict):
-    """
-    Calculates nPMI metrics between paired subgroups.
-    Special handling for a subgroup paired with itself.
-    :param subgroup_npmi_dict: vocab, pmi, and npmi for each subgroup.
-    :return:
-
-    Args:
-        subgroup_pair:
-    """
-    paired_results_dict = {"npmi": {}, "pmi": {}, "count": {}}
-    # Canonical ordering. This is done previously, but just in case...
-    subgroup1, subgroup2 = sorted(subgroup_pair)
-    vocab_cooc_df1, pmi_df1, npmi_df1 = subgroup_npmi_dict[subgroup1]
-    #logs.INFO("vocab cooc")
-    #logs.INFO(vocab_cooc_df1)
-    if subgroup1 == subgroup2:
-        shared_npmi_df = npmi_df1
-        shared_pmi_df = pmi_df1
-        shared_vocab_cooc_df = vocab_cooc_df1
-    else:
-        vocab_cooc_df2, pmi_df2, npmi_df2 = subgroup_npmi_dict[subgroup2]
-        #logs.INFO("vocab cooc2")
-        #logs.INFO(vocab_cooc_df2)
-        # Note that lsuffix and rsuffix should not come into play.
-        shared_npmi_df = npmi_df1.join(
-            npmi_df2, how="inner", lsuffix="1", rsuffix="2"
-        )
-        shared_pmi_df = pmi_df1.join(pmi_df2, how="inner", lsuffix="1", rsuffix="2")
-        shared_vocab_cooc_df = vocab_cooc_df1.join(
-            vocab_cooc_df2, how="inner", lsuffix="1", rsuffix="2"
-        )
-        shared_vocab_cooc_df = shared_vocab_cooc_df.dropna()
-        shared_vocab_cooc_df = shared_vocab_cooc_df[
-            shared_vocab_cooc_df.index.notnull()
-        ]
-        #logs.INFO("shared npmi df")
-        #logs.INFO(shared_npmi_df)
-        #logs.INFO("shared vocab df")
-        #logs.INFO(shared_vocab_cooc_df)
-    print(shared_npmi_df)
-    npmi_bias = (
-        shared_npmi_df[subgroup1 + "-npmi"] - shared_npmi_df[subgroup2 + "-npmi"]
-    )
-    paired_results_dict["npmi-bias"] = npmi_bias.dropna()
-    paired_results_dict["npmi"] = shared_npmi_df.dropna()
-    paired_results_dict["pmi"] = shared_pmi_df.dropna()
-    paired_results_dict["count"] = shared_vocab_cooc_df.dropna()
-    return paired_results_dict
 
 def filter_vocab(vocab_counts_df):
     # TODO: Add warnings (which words are missing) to log file?
