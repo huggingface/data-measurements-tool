@@ -4,16 +4,17 @@ import textwrap
 from os import getenv
 from os.path import join as pjoin
 from pathlib import Path
-from dotenv import load_dotenv
+import sys
+#from dotenv import load_dotenv
 
-from data_measurements import dataset_statistics, dataset_utils
+from data_measurements import dataset_statistics, dataset_utils, zipf
 from huggingface_hub import create_repo, Repository, hf_api
 import shutil
 import smtplib, ssl
 port = 465  # For SSL
 
-if Path(".env").is_file():
-    load_dotenv(".env")
+#if Path(".env").is_file():
+#    load_dotenv(".env")
 
 HF_TOKEN = getenv("HF_TOKEN")
 EMAIL_PASSWORD = getenv("EMAIL_PASSWORD")
@@ -94,7 +95,7 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
             #json.dump(dstats.fig_tok_length.to_json(), f)
             print("Token lengths now available at %s." % tok_length_json_fid)
         if do_html:
-            dstats.fig_tok_length.write_html(fig_tok_length_fid)
+            dstats.fig_tok_length(fig_tok_length_fid)
             print("Figure saved to %s." % fig_tok_length_fid)
         print("Done!")
 
@@ -130,18 +131,14 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
 
     if do_all or dataset_args["calculation"] == "zipf":
         print("\n* Preparing Zipf.")
-        zipf_fig_fid = pjoin(dstats.cache_path, "zipf_fig.html")
-        zipf_json_fid = pjoin(dstats.cache_path, "zipf_fig.json")
         dstats.load_or_prepare_zipf()
-        zipf_fig = dstats.zipf_fig
-        with open(zipf_json_fid, "w+") as f:
-            json.dump(zipf_fig.to_json(), f)
-        zipf_fig.write_html(zipf_fig_fid)
         print("Done!")
-        print("Zipf results now available at %s." % dstats.zipf_fid)
+        zipf_json_fid, zipf_fig_json_fid, zipf_fig_html_fid = zipf.get_zipf_fids(
+            dstats.cache_path)
+        print("Zipf results now available at %s." % zipf_json_fid)
         print(
             "Figure saved to %s, with corresponding json at %s."
-            % (zipf_fig_fid, zipf_json_fid)
+            % (zipf_fig_html_fid, zipf_fig_json_fid)
         )
 
     # Don't do this one until someone specifically asks for it -- takes awhile.
@@ -318,6 +315,9 @@ def main():
         server = smtplib.SMTP_SSL("smtp.gmail.com", port, context=context)
         server.login("data.measurements.tool@gmail.com", EMAIL_PASSWORD)
 
+    # The args specify that multiple features can be selected. ß
+    # We combine them for the filename here.
+    args.feature = ".".join(args.feature)
     dataset_cache_dir = f"{args.dataset}_{args.config}_{args.split}_{args.feature}"
     cache_path = args.out_dir + "/" + dataset_cache_dir
     dataset_utils.make_cache_path(cache_path)
