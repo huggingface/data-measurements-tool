@@ -312,6 +312,10 @@ def read_plotly(fid):
     fig = plotly.io.from_json(json.load(open(fid, encoding="utf-8")))
     return fig
 
+def read_df(df_fid):
+    df = feather.read_feather(df_fid)
+    return df
+
 def write_df(df, df_fid):
     feather.write_feather(df, df_fid)
 

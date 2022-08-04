@@ -26,10 +26,8 @@ import matplotlib.image as mpimg
 import nltk
 import numpy as np
 import pandas as pd
-import plotly
 import plotly.express as px
 import plotly.graph_objects as go
-import pyarrow.feather as feather
 import seaborn as sns
 from datasets import load_from_disk, load_metric
 from nltk.corpus import stopwords
@@ -406,12 +404,12 @@ class DatasetStatisticsCacheClass:
                     self.fig_tok_length.savefig(self.fig_tok_length_fid)
         # Text length dataframe
         if self.use_cache and exists(self.length_df_fid):
-            self.length_df = feather.read_feather(self.length_df_fid)
+            self.length_df = utils.read_df(self.length_df_fid)
         else:
             if not self.live:
                 self.prepare_length_df()
                 if save:
-                    write_df(self.length_df, self.length_df_fid)
+                    utils.write_df(self.length_df, self.length_df_fid)
 
         # Text length stats.
         if self.use_cache and exists(self.length_stats_json_fid):
@@ -506,14 +504,14 @@ class DatasetStatisticsCacheClass:
 
     def load_vocab(self):
         with open(self.vocab_counts_df_fid, "rb") as f:
-            self.vocab_counts_df = feather.read_feather(f)
+            self.vocab_counts_df = utils.read_df(f)
         # Handling for changes in how the index is saved.
         self.vocab_counts_df = _set_idx_col_names(self.vocab_counts_df)
 
     def load_or_prepare_text_duplicates(self, save=True):
         if self.use_cache and exists(self.dup_counts_df_fid):
             with open(self.dup_counts_df_fid, "rb") as f:
-                self.dup_counts_df = feather.read_feather(f)
+                self.dup_counts_df = utils.read_df(f)
         elif self.dup_counts_df is None:
             if not self.live:
                 self.prepare_text_duplicates()
@@ -530,7 +528,7 @@ class DatasetStatisticsCacheClass:
     def load_or_prepare_text_perplexities(self, save=True):
         if self.use_cache and exists(self.perplexities_df_fid):
             with open(self.perplexities_df_fid, "rb") as f:
-                self.perplexities_df = feather.read_feather(f)
+                self.perplexities_df = utils.read_df(f)
         elif self.perplexities_df is None:
             if not self.live:
                 self.prepare_text_perplexities()
@@ -546,7 +544,7 @@ class DatasetStatisticsCacheClass:
             open(self.general_stats_json_fid, encoding="utf-8")
         )
         with open(self.sorted_top_vocab_df_fid, "rb") as f:
-            self.sorted_top_vocab_df = feather.read_feather(f)
+            self.sorted_top_vocab_df = utils.read_df(f)
         self.text_nan_count = self.general_stats_dict[TEXT_NAN_CNT]
         self.dedup_total = self.general_stats_dict[DEDUP_TOT]
         self.total_words = self.general_stats_dict[TOT_WORDS]
@@ -629,7 +627,7 @@ class DatasetStatisticsCacheClass:
 
     def load_or_prepare_tokenized_df(self, save=True):
         if self.use_cache and exists(self.tokenized_df_fid):
-            self.tokenized_df = feather.read_feather(self.tokenized_df_fid)
+            self.tokenized_df = utils.read_df(self.tokenized_df_fid)
         else:
             if not self.live:
                 # tokenize all text instances
@@ -712,7 +710,7 @@ class DatasetStatisticsCacheClass:
         # extracted labels
         if len(self.label_field) > 0:
             if self.use_cache and exists(self.fig_labels_json_fid):
-                self.fig_labels = read_plotly(self.fig_labels_json_fid)
+                self.fig_labels = utils.read_plotly(self.fig_labels_json_fid)
             elif self.use_cache and exists(self.label_dset_fid):
                 # load extracted labels
                 self.label_dset = load_from_disk(self.label_dset_fid)
@@ -758,7 +756,7 @@ class DatasetStatisticsCacheClass:
                 zipf_dict = json.load(f)
             self.z = Zipf()
             self.z.load(zipf_dict)
-            self.zipf_fig = read_plotly(self.zipf_fig_fid)
+            self.zipf_fig = utils.read_plotly(self.zipf_fig_fid)
         elif self.use_cache and exists(self.zipf_fid):
             # TODO: Read zipf data so that the vocab is there.
             with open(self.zipf_fid, "r") as f:
