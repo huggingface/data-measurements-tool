@@ -16,6 +16,7 @@ port = 465  # For SSL
 #if Path(".env").is_file():
 #    load_dotenv(".env")
 
+# TODO: Explain that this needs to be done/how to do it.
 HF_TOKEN = getenv("HF_TOKEN")
 EMAIL_PASSWORD = getenv("EMAIL_PASSWORD")
 

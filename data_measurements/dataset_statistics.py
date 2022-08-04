@@ -217,6 +217,8 @@ class DatasetStatisticsCacheClass:
         self.fig_labels = None
         # Save zipf fig so it doesn't need to be recreated.
         self.zipf_fig = None
+        # Zipf object
+        self.z = None
         # Vocabulary with word counts in the dataset
         self.vocab_counts_df = None
         # Vocabulary filtered to remove stopwords
@@ -743,11 +745,6 @@ class DatasetStatisticsCacheClass:
         self.npmi_stats.load_or_prepare_npmi_terms()
 
     def load_or_prepare_zipf(self, save=True):
-        # TODO: Current UI only uses the fig, meaning the self.z here is irrelevant
-        # when only reading from cache. Either the UI should use it, or it should
-        # be removed when reading in cache
-        # TODO: Move to init?
-        self.z = None
         zipf_json_fid, zipf_fig_json_fid, zipf_fig_html_fid = get_zipf_fids(
             self.cache_path)
         if self.use_cache:
@@ -760,10 +757,10 @@ class DatasetStatisticsCacheClass:
                     self.z.load(zipf_dict)
             # Zipf figure
             if exists(zipf_fig_json_fid):
-                read_plotly(zipf_fig_json_fid)
+                self.zipf_fig = read_plotly(zipf_fig_json_fid)
             elif self.z:
                 # If the figure doesn't exist, but the object does, make the figure.
-                # (Not currently happening though).
+                # (Happens if just the figure file got deleted).
                 self.zipf_fig = make_zipf_fig(self.vocab_counts_df, self.z)
                 # TODO: Save the figure
             else:
@@ -782,8 +779,8 @@ class DatasetStatisticsCacheClass:
             zipf_dict = self.z.get_zipf_dict()
             zipf_json_fid, zipf_fig_fid, zipf_fig_html_fid = get_zipf_fids(self.cache_path)
             write_json(zipf_dict, zipf_json_fid)
-            write_plotly(zipf_fig, zipf_fig_fid)
-            zipf_fig.write_html(zipf_fig_html_fid)
+            write_plotly(self.zipf_fig, zipf_fig_fid)
+            self.zipf_fig.write_html(zipf_fig_html_fid)
 
 def _set_idx_col_names(input_vocab_df):
     if input_vocab_df.index.name != VOCAB and VOCAB in input_vocab_df.columns:
