@@ -19,7 +19,7 @@ from os import mkdir, getenv
 from os.path import exists, isdir
 from os.path import join as pjoin
 from pathlib import Path
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
@@ -36,11 +36,13 @@ from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 from huggingface_hub import Repository, list_datasets
 
-from .dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD,
+from .utils import dataset_utils as utils
+# Column label strings
+from .utils.dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD,
                             OUR_LABEL_FIELD, OUR_TEXT_FIELD, PERPLEXITY_FIELD, PROP,
                             TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
-                            TOT_WORDS, VOCAB, WORD, extract_field,
-                            load_truncated_dataset)
+                            TOT_WORDS, VOCAB, WORD)
+
 from .embeddings import Embeddings
 # TODO(meg): Incorporate this from evaluate library.
 # import evaluate
@@ -347,7 +349,7 @@ class DatasetStatisticsCacheClass:
     def get_base_dataset(self):
         """Gets a pointer to the truncated base dataset object."""
         if not self.dset:
-            self.dset = load_truncated_dataset(
+            self.dset = utils.load_truncated_dataset(
                 self.dset_name,
                 self.dset_config,
                 self.split_name,
@@ -380,9 +382,9 @@ class DatasetStatisticsCacheClass:
                 logs.info("Preparing general stats")
                 self.prepare_general_stats()
                 if save:
-                    write_df(self.sorted_top_vocab_df, self.sorted_top_vocab_df_fid)
-                    write_df(self.dup_counts_df, self.dup_counts_df_fid)
-                    write_json(self.general_stats_dict, self.general_stats_json_fid)
+                    utils.write_df(self.sorted_top_vocab_df, self.sorted_top_vocab_df_fid)
+                    utils.write_df(self.dup_counts_df, self.dup_counts_df_fid)
+                    utils.write_json(self.general_stats_dict, self.general_stats_json_fid)
 
     def load_or_prepare_text_lengths(self, save=True):
         """
@@ -422,7 +424,7 @@ class DatasetStatisticsCacheClass:
             if not self.live:
                 self.prepare_text_length_stats()
                 if save:
-                    write_json(self.length_stats_dict, self.length_stats_json_fid)
+                    utils.write_json(self.length_stats_dict, self.length_stats_json_fid)
 
     def prepare_length_df(self):
         if not self.live:
@@ -489,14 +491,14 @@ class DatasetStatisticsCacheClass:
                 self.tokenized_df = self.do_tokenization()
                 if save:
                     logs.info("Writing out.")
-                    write_df(self.tokenized_df, self.tokenized_df_fid)
+                    utils.write_df(self.tokenized_df, self.tokenized_df_fid)
             word_count_df = count_vocab_frequencies(self.tokenized_df)
             logs.info("Making dfs with proportion.")
             self.vocab_counts_df = calc_p_word(word_count_df)
             self.vocab_counts_filtered_df = filter_vocab(self.vocab_counts_df)
             if save:
                 logs.info("Writing out.")
-                write_df(self.vocab_counts_df, self.vocab_counts_df_fid)
+                utils.write_df(self.vocab_counts_df, self.vocab_counts_df_fid)
         logs.info("unfiltered vocab")
         logs.info(self.vocab_counts_df)
         logs.info("filtered vocab")
@@ -516,14 +518,14 @@ class DatasetStatisticsCacheClass:
             if not self.live:
                 self.prepare_text_duplicates()
                 if save:
-                    write_df(self.dup_counts_df, self.dup_counts_df_fid)
+                    utils.write_df(self.dup_counts_df, self.dup_counts_df_fid)
         else:
             if not self.live:
                 # This happens when self.dup_counts_df is already defined;
                 # This happens when general_statistics were calculated first,
                 # since general statistics requires the number of duplicates
                 if save:
-                    write_df(self.dup_counts_df, self.dup_counts_df_fid)
+                    utils.write_df(self.dup_counts_df, self.dup_counts_df_fid)
 
     def load_or_prepare_text_perplexities(self, save=True):
         if self.use_cache and exists(self.perplexities_df_fid):
@@ -533,11 +535,11 @@ class DatasetStatisticsCacheClass:
             if not self.live:
                 self.prepare_text_perplexities()
                 if save:
-                    write_df(self.perplexities_df, self.perplexities_df_fid)
+                    utils.write_df(self.perplexities_df, self.perplexities_df_fid)
         else:
             if not self.live:
                 if save:
-                    write_df(self.perplexities_df, self.perplexities_df_fid)
+                    utils.write_df(self.perplexities_df, self.perplexities_df_fid)
 
     def load_general_stats(self):
         self.general_stats_dict = json.load(
@@ -623,7 +625,7 @@ class DatasetStatisticsCacheClass:
                     self.get_base_dataset()
                 self.dset_peek = self.dset[:100]
                 if save:
-                    write_json({"dset peek": self.dset_peek}, self.dset_peek_json_fid)
+                    utils.write_json({"dset peek": self.dset_peek}, self.dset_peek_json_fid)
 
     def load_or_prepare_tokenized_df(self, save=True):
         if self.use_cache and exists(self.tokenized_df_fid):
@@ -635,7 +637,7 @@ class DatasetStatisticsCacheClass:
                 if save:
                     logs.warning("Saving tokenized dataset to disk")
                     # save tokenized text
-                    write_df(self.tokenized_df, self.tokenized_df_fid)
+                    utils.write_df(self.tokenized_df, self.tokenized_df_fid)
 
     def load_or_prepare_text_dset(self, save=True):
         if self.use_cache and exists(self.text_dset_fid):
@@ -657,7 +659,7 @@ class DatasetStatisticsCacheClass:
             self.get_base_dataset()
             # extract all text instances
             self.text_dset = self.dset.map(
-                lambda examples: extract_field(
+                lambda examples: utils.extract_field(
                     examples, self.text_field, OUR_TEXT_FIELD
                 ),
                 batched=True,
@@ -719,14 +721,14 @@ class DatasetStatisticsCacheClass:
                     self.label_df, self.label_names, OUR_LABEL_FIELD
                 )
                 if save:
-                    write_plotly(self.fig_labels, self.fig_labels_json_fid)
+                    utils.write_plotly(self.fig_labels, self.fig_labels_json_fid)
             else:
                 if not self.live:
                     self.prepare_labels()
                     if save:
                         # save extracted label instances
                         self.label_dset.save_to_disk(self.label_dset_fid)
-                        write_plotly(self.fig_labels, self.fig_labels_json_fid)
+                        utils.write_plotly(self.fig_labels, self.fig_labels_json_fid)
 
     def prepare_labels(self):
         if not self.live:
@@ -765,13 +767,13 @@ class DatasetStatisticsCacheClass:
             self.z.load(zipf_dict)
             self.zipf_fig = make_zipf_fig(self.vocab_counts_df, self.z)
             if save:
-                write_plotly(self.zipf_fig, self.zipf_fig_fid)
+                utils.write_plotly(self.zipf_fig, self.zipf_fig_fid)
         else:
             self.z = Zipf(self.vocab_counts_df)
             self.zipf_fig = make_zipf_fig(self.vocab_counts_df, self.z)
             if save:
                 write_zipf_data(self.z, self.zipf_fid)
-                write_plotly(self.zipf_fig, self.zipf_fig_fid)
+                utils.write_plotly(self.zipf_fig, self.zipf_fig_fid)
 
 def _set_idx_col_names(input_vocab_df):
     if input_vocab_df.index.name != VOCAB and VOCAB in input_vocab_df.columns:
@@ -1094,15 +1096,6 @@ def filter_vocab(vocab_counts_df):
 ## Figures ##
 
 
-def write_plotly(fig, fid):
-    write_json(plotly.io.to_json(fig), fid)
-
-
-def read_plotly(fid):
-    fig = plotly.io.from_json(json.load(open(fid, encoding="utf-8")))
-    return fig
-
-
 def make_fig_lengths(tokenized_df, length_field):
     fig_tok_length, axs = plt.subplots(figsize=(15, 6), dpi=150)
     sns.histplot(data=tokenized_df[length_field], kde=True, bins=100, ax=axs)
@@ -1233,15 +1226,6 @@ def intersect_dfs(df_dict):
                 new_df = df.join(df2, how="inner", lsuffix="1", rsuffix="2")
                 started = 1
     return new_df.copy()
-
-
-def write_df(df, df_fid):
-    feather.write_feather(df, df_fid)
-
-
-def write_json(json_dict, json_fid):
-    with open(json_fid, "w", encoding="utf-8") as f:
-        json.dump(json_dict, f)
 
 
 def write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files):
