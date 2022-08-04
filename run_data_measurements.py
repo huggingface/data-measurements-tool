@@ -4,7 +4,8 @@ import textwrap
 from os import getenv
 from os.path import join as pjoin
 from pathlib import Path
-from dotenv import load_dotenv
+# TODO(Tristan): Fix this dependency
+# from dotenv import load_dotenv
 import plotly
 
 from data_measurements import dataset_statistics, dataset_utils
@@ -13,8 +14,8 @@ import shutil
 import smtplib, ssl
 port = 465  # For SSL
 
-if Path(".env").is_file():
-    load_dotenv(".env")
+# if Path(".env").is_file():
+#    load_dotenv(".env")
 
 HF_TOKEN = getenv("HF_TOKEN")
 EMAIL_PASSWORD = getenv("EMAIL_PASSWORD")
@@ -308,6 +309,10 @@ def main():
         context = ssl.create_default_context()
         server = smtplib.SMTP_SSL("smtp.gmail.com", port, context=context)
         server.login("data.measurements.tool@gmail.com", EMAIL_PASSWORD)
+
+    # The args specify that multiple features can be selected.
+    # We combine them for the filename here.
+    args.feature = ".".join(args.feature)
 
     dataset_cache_dir = f"{args.dataset}_{args.config}_{args.split}_{args.feature}"
     cache_path = args.out_dir + "/" + dataset_cache_dir
