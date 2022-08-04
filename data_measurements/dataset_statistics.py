@@ -754,18 +754,16 @@ class DatasetStatisticsCacheClass:
                 # Read Zipf statistics: Alpha, p-value, etc.
                 with open(zipf_json_fid, "r") as f:
                     zipf_dict = json.load(f)
-                    print("a")
                     self.z = Zipf(None)
-                    print("b")
                     self.z.load(zipf_dict)
-                    print("c")
             # Zipf figure
             if exists(zipf_fig_json_fid):
                 read_plotly(zipf_fig_json_fid)
             elif self.z:
                 # If the figure doesn't exist, but the object does, make the figure.
-                # (Not currently happening).
+                # (Not currently happening though).
                 self.zipf_fig = make_zipf_fig(self.vocab_counts_df, self.z)
+                # TODO: Save the figure
             else:
                 # Cache files do not exist.
                 self.prepare_zipf(save)
