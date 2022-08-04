@@ -215,6 +215,8 @@ class DatasetStatisticsCacheClass:
         self.label_df = None
         # save label pie chart in the class so it doesn't ge re-computed
         self.fig_labels = None
+        # Save zipf fig so it doesn't need to be recreated.
+        self.zipf_fig = None
         # Vocabulary with word counts in the dataset
         self.vocab_counts_df = None
         # Vocabulary filtered to remove stopwords
@@ -775,7 +777,7 @@ class DatasetStatisticsCacheClass:
         # TODO: Does z even need to be self?
         self.z = Zipf(self.vocab_counts_df)
         self.z.calc_fit()
-        zipf_fig = make_zipf_fig(self.z)
+        self.zipf_fig = make_zipf_fig(self.z)
         if save:
             zipf_dict = self.z.get_zipf_dict()
             zipf_json_fid, zipf_fig_fid, zipf_fig_html_fid = get_zipf_fids(self.cache_path)
