@@ -8,7 +8,8 @@ from pathlib import Path
 # from dotenv import load_dotenv
 import plotly
 
-from data_measurements import dataset_statistics, dataset_utils
+from data_measurements import dataset_statistics
+from data_measurements.utils import dataset_utils
 from huggingface_hub import create_repo, Repository, hf_api
 import shutil
 import smtplib, ssl
