@@ -255,6 +255,18 @@ class DatasetStatisticsCacheClass:
         self.min_vocab_count = _MIN_VOCAB_COUNT
         self.cvec = _CVEC
         # File definitions
+        # path to the directory used for caching
+        if not isinstance(text_field, str):
+            text_field = ".".join(text_field)
+        # if isinstance(label_field, str):
+        #    label_field = label_field
+        # else:
+        #    label_field = "-".join(label_field)
+        self.dataset_cache_dir = f"{dset_name}_{dset_config}_{split_name}_{text_field}"
+        self.cache_path = pjoin(
+            self.cache_dir,
+            self.dataset_cache_dir,  # {label_field},
+        )
         # Things that get defined later.
         self.fig_tok_length_png = None
         self.length_stats_dict = None
@@ -264,10 +276,10 @@ class DatasetStatisticsCacheClass:
             if not isdir(self.cache_path) and self.dataset_cache_dir in [dataset_info.id.split("/")[-1] for dataset_info in list_datasets(author="datameasurements", use_auth_token=HF_TOKEN)]:
                 repo = Repository(local_dir=self.cache_path, clone_from="datameasurements/" + self.dataset_cache_dir, repo_type="dataset", use_auth_token=HF_TOKEN)
             else:
-                logs.warning("Cannot find cached repo.")
+                logs.warning("Cannot find cached repo on the hub.")
         except Exception as e:
             print(e)
-            logs.warning("Cannot find cached repo.")
+            logs.warning("Cannot load cached repo on the hub.")
 
         # Cache files not needed for UI
         self.dset_fid = pjoin(self.cache_path, "base_dset")
