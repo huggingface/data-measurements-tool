@@ -23,7 +23,7 @@ from datasets import load_from_disk
 from plotly.io import read_json
 from tqdm import tqdm
 
-from .dataset_utils import EMBEDDING_FIELD
+from utils.dataset_utils import EMBEDDING_FIELD
 
 
 def sentence_mean_pooling(model_output, attention_mask):

@@ -19,8 +19,9 @@ from pathlib import Path
 
 import streamlit as st
 
-from data_measurements import dataset_statistics, dataset_utils
-from data_measurements import streamlit_utils as st_utils
+from data_measurements import dataset_statistics
+from utils import dataset_utils
+from utils import streamlit_utils as st_utils
 
 logs = logging.getLogger(__name__)
 logs.setLevel(logging.WARNING)
@@ -167,6 +168,10 @@ def load_or_prepare_widgets(ds_args, show_embeddings, show_perplexities, live=Tr
             dstats.load_or_prepare_dset_peek()
         except:
             logs.warning("Missing a cache for dset peek")
+        try:
+            dstats.load_or_prepare_vocab()
+        except:
+            logs.warning("Missing a cache for vocab.")
         try:
             # General stats widget
             dstats.load_or_prepare_general_stats()
