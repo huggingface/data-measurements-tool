@@ -6,10 +6,9 @@ from os.path import join as pjoin
 from pathlib import Path
 # TODO(Tristan): Fix this dependency
 # from dotenv import load_dotenv
-import plotly
-
 from data_measurements import dataset_statistics
 from utils import dataset_utils
+from data_measurements import dataset_statistics, zipf
 from huggingface_hub import create_repo, Repository, hf_api
 import shutil
 import smtplib, ssl
@@ -18,6 +17,7 @@ port = 465  # For SSL
 # if Path(".env").is_file():
 #    load_dotenv(".env")
 
+# TODO: Explain that this needs to be done/how to do it.
 HF_TOKEN = getenv("HF_TOKEN")
 EMAIL_PASSWORD = getenv("EMAIL_PASSWORD")
 
@@ -125,17 +125,13 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
         print("\n* Preparing Zipf.")
         dstats.load_or_prepare_zipf()
         print("Done!")
-        print("- Zipf results now available at %s." % dstats.zipf_fid)
-        # Saving image as HTML
-        zipf_html_fid = pjoin(dstats.cache_path, "zipf_fig.html")
-        dstats.zipf_fig.write_html(zipf_html_fid)
-        print("- HTML figure saved to %s" % (zipf_html_fid))
-        # Saving image as json
-        zipf_json_fid = pjoin(dstats.cache_path, "zipf_fig.json")
-        with open(zipf_json_fid, "w+") as f:
-            plotly.io.to_json(dstats.zipf_fig, f)
-        print("- Json to create the HTML figure saved to %s" % (zipf_json_fid))
-        print()
+        zipf_json_fid, zipf_fig_json_fid, zipf_fig_html_fid = zipf.get_zipf_fids(
+            dstats.cache_path)
+        print("Zipf results now available at %s." % zipf_json_fid)
+        print(
+            "Figure saved to %s, with corresponding json at %s."
+            % (zipf_fig_html_fid, zipf_fig_json_fid)
+        )
 
     # Don't do this one until someone specifically asks for it -- takes awhile.
     if dataset_args["calculation"] == "embeddings":

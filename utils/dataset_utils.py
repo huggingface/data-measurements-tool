@@ -16,7 +16,6 @@ import json
 import os
 from dataclasses import asdict
 from os.path import exists
-import streamlit as st
 
 import pandas as pd
 from datasets import Dataset, get_dataset_infos, load_dataset, load_from_disk, \
@@ -250,7 +249,9 @@ def dictionarize_info(dset_info):
     return res
 
 
-@st.cache
+# TODO: Is it okay to remove this cache? It creates a streamlit dependency
+# that we shouldn't have in this file, as it is not a UI file.
+# @st.cache
 def get_dataset_info_dicts(dataset_id=None):
     """
     Creates a dict from dataset configs.

@@ -42,11 +42,11 @@ from utils.dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD,
 from embeddings import Embeddings
 # TODO(meg): Incorporate this from evaluate library.
 # import evaluate
-from zipf import Zipf
+from zipf import Zipf, make_zipf_fig, get_zipf_fids
 from npmi import nPMI
 
-if Path(".env").is_file():
-    load_dotenv(".env")
+#if Path(".env").is_file():
+#    load_dotenv(".env")
 
 HF_TOKEN = getenv("HF_TOKEN")
 
@@ -169,6 +169,15 @@ class DatasetStatisticsCacheClass:
         self.our_tokenized_field = TOKENIZED_FIELD
         self.our_embedding_field = EMBEDDING_FIELD
         self.cache_dir = cache_dir
+        # path to the directory used for caching
+        if isinstance(text_field, list):
+            text_field = "-".join(text_field)
+        self.dataset_cache_dir = f"{dset_name}_{dset_config}_{split_name}_{text_field}"
+        # TODO: Having "cache_dir" and "cache_path" is confusing.
+        self.cache_path = pjoin(
+            self.cache_dir,
+            self.dataset_cache_dir,
+        )
         # Use stored data if there; otherwise calculate afresh
         self.use_cache = use_cache
         ### What are we analyzing?
@@ -204,6 +213,10 @@ class DatasetStatisticsCacheClass:
         self.label_df = None
         # save label pie chart in the class so it doesn't ge re-computed
         self.fig_labels = None
+        # Save zipf fig so it doesn't need to be recreated.
+        self.zipf_fig = None
+        # Zipf object
+        self.z = None
         # Vocabulary with word counts in the dataset
         self.vocab_counts_df = None
         # Vocabulary filtered to remove stopwords
@@ -239,23 +252,8 @@ class DatasetStatisticsCacheClass:
         # The minimum amount of times a word should occur to be included in
         # word-count-based calculations (currently just relevant to nPMI)
         self.min_vocab_count = _MIN_VOCAB_COUNT
-        # zipf
-        self.z = None
-        self.zipf_fig = None
         self.cvec = _CVEC
         # File definitions
-        # path to the directory used for caching
-        if not isinstance(text_field, str):
-            text_field = "-".join(text_field)
-        # if isinstance(label_field, str):
-        #    label_field = label_field
-        # else:
-        #    label_field = "-".join(label_field)
-        self.dataset_cache_dir = f"{dset_name}_{dset_config}_{split_name}_{text_field}"
-        self.cache_path = pjoin(
-            self.cache_dir,
-            self.dataset_cache_dir,  # {label_field},
-        )
         # Things that get defined later.
         self.fig_tok_length_png = None
         self.length_stats_dict = None
@@ -304,11 +302,7 @@ class DatasetStatisticsCacheClass:
         self.sorted_top_vocab_df_fid = pjoin(
             self.cache_path, "sorted_top_vocab.feather"
         )
-        ## Zipf cache files
-        # Needed for UI
-        self.zipf_fid = pjoin(self.cache_path, "zipf_basic_stats.json")
-        # Needed for UI
-        self.zipf_fig_fid = pjoin(self.cache_path, "zipf_fig.json")
+
 
         ## Embeddings cache files
         # Needed for UI
@@ -317,6 +311,9 @@ class DatasetStatisticsCacheClass:
         self.fig_tree_json_fid = pjoin(self.cache_path, "fig_tree.json")
 
         self.live = False
+
+    def get_cache_dir(self):
+        return self.cache_path
 
     def set_deployment(self, live=True):
         """
@@ -746,30 +743,42 @@ class DatasetStatisticsCacheClass:
         self.npmi_stats.load_or_prepare_npmi_terms()
 
     def load_or_prepare_zipf(self, save=True):
-        # TODO: Current UI only uses the fig, meaning the self.z here is irrelevant
-        # when only reading from cache. Either the UI should use it, or it should
-        # be removed when reading in cache
-        if self.use_cache and exists(self.zipf_fig_fid) and exists(self.zipf_fid):
-            with open(self.zipf_fid, "r") as f:
-                zipf_dict = json.load(f)
-            self.z = Zipf()
-            self.z.load(zipf_dict)
-            self.zipf_fig = utils.read_plotly(self.zipf_fig_fid)
-        elif self.use_cache and exists(self.zipf_fid):
-            # TODO: Read zipf data so that the vocab is there.
-            with open(self.zipf_fid, "r") as f:
-                zipf_dict = json.load(f)
-            self.z = Zipf()
-            self.z.load(zipf_dict)
-            self.zipf_fig = make_zipf_fig(self.vocab_counts_df, self.z)
-            if save:
-                utils.write_plotly(self.zipf_fig, self.zipf_fig_fid)
+        zipf_json_fid, zipf_fig_json_fid, zipf_fig_html_fid = get_zipf_fids(
+            self.cache_path)
+        if self.use_cache:
+            # Zipf statistics
+            if exists(zipf_json_fid):
+                # Read Zipf statistics: Alpha, p-value, etc.
+                with open(zipf_json_fid, "r") as f:
+                    zipf_dict = json.load(f)
+                self.z = Zipf(None)
+                self.z.load(zipf_dict)
+            # Zipf figure
+            if exists(zipf_fig_json_fid):
+                self.zipf_fig = utils.read_plotly(zipf_fig_json_fid)
+            elif self.z:
+                # If the figure doesn't exist, but the object does, make the figure.
+                # (Happens if just the figure file got deleted).
+                self.zipf_fig = make_zipf_fig(self.vocab_counts_df, self.z)
+                # TODO: Save the figure
+            else:
+                # Cache files do not exist.
+                self.prepare_zipf(save)
         else:
-            self.z = Zipf(self.vocab_counts_df)
-            self.zipf_fig = make_zipf_fig(self.vocab_counts_df, self.z)
-            if save:
-                write_zipf_data(self.z, self.zipf_fid)
-                utils.write_plotly(self.zipf_fig, self.zipf_fig_fid)
+            self.prepare_zipf(save)
+
+    def prepare_zipf(self, save=True):
+        # Calculate zipf from scratch
+        # TODO: Does z even need to be self?
+        self.z = Zipf(self.vocab_counts_df)
+        self.z.calc_fit()
+        self.zipf_fig = make_zipf_fig(self.z)
+        if save:
+            zipf_dict = self.z.get_zipf_dict()
+            zipf_json_fid, zipf_fig_fid, zipf_fig_html_fid = get_zipf_fids(self.cache_path)
+            utils.write_json(zipf_dict, zipf_json_fid)
+            utils.write_plotly(self.zipf_fig, zipf_fig_fid)
+            self.zipf_fig.write_html(zipf_fig_html_fid)
 
 def _set_idx_col_names(input_vocab_df):
     if input_vocab_df.index.name != VOCAB and VOCAB in input_vocab_df.columns:
@@ -1091,7 +1100,6 @@ def filter_vocab(vocab_counts_df):
 
 ## Figures ##
 
-
 def make_fig_lengths(tokenized_df, length_field):
     fig_tok_length, axs = plt.subplots(figsize=(15, 6), dpi=150)
     sns.histplot(data=tokenized_df[length_field], kde=True, bins=100, ax=axs)
@@ -1104,17 +1112,6 @@ def make_fig_labels(label_df, label_names, label_field):
     label_sums = [len(label_df[label_df[label_field] == label]) for label in labels]
     fig_labels = px.pie(label_df, values=label_sums, names=label_names)
     return fig_labels
-
-
-def make_zipf_fig_ranked_word_list(vocab_df, unique_counts, unique_ranks):
-    ranked_words = {}
-    for count, rank in zip(unique_counts, unique_ranks):
-        vocab_df[vocab_df[CNT] == count]["rank"] = rank
-        ranked_words[rank] = ",".join(
-            vocab_df[vocab_df[CNT] == count].index.astype(str)
-        )  # Use the hovertext kw argument for hover text
-    ranked_words_list = [wrds for rank, wrds in sorted(ranked_words.items())]
-    return ranked_words_list
 
 
 def make_npmi_fig(paired_results, subgroup_pair):
@@ -1138,45 +1135,6 @@ def make_npmi_fig(paired_results, subgroup_pair):
     return UI_results.sort_values(by="npmi-bias", ascending=True)
 
 
-def make_zipf_fig(vocab_counts_df, z):
-    zipf_counts = z.calc_zipf_counts(vocab_counts_df)
-    unique_counts = z.uniq_counts
-    unique_ranks = z.uniq_ranks
-    ranked_words_list = make_zipf_fig_ranked_word_list(
-        vocab_counts_df, unique_counts, unique_ranks
-    )
-    zmin = z.get_xmin()
-    logs.info("zipf counts is")
-    logs.info(zipf_counts)
-    layout = go.Layout(xaxis=dict(range=[0, 100]))
-    fig = go.Figure(
-        data=[
-            go.Bar(
-                x=z.uniq_ranks,
-                y=z.uniq_counts,
-                hovertext=ranked_words_list,
-                name="Word Rank Frequency",
-            )
-        ],
-        layout=layout,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=z.uniq_ranks[zmin : len(z.uniq_ranks)],
-            y=zipf_counts[zmin : len(z.uniq_ranks)],
-            hovertext=ranked_words_list[zmin : len(z.uniq_ranks)],
-            line=go.scatter.Line(color="crimson", width=3),
-            name="Zipf Predicted Frequency",
-        )
-    )
-    # Customize aspect
-    # fig.update_traces(marker_color='limegreen',
-    #                  marker_line_width=1.5, opacity=0.6)
-    fig.update_layout(title_text="Word Counts, Observed and Predicted by Zipf")
-    fig.update_layout(xaxis_title="Word Rank")
-    fig.update_layout(yaxis_title="Frequency")
-    fig.update_layout(legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.10))
-    return fig
 
 
 ## Input/Output ###
@@ -1244,11 +1202,3 @@ def write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files):
         subgroup_cooc_df.to_csv(f)
 
 
-def write_zipf_data(z, zipf_fid):
-    zipf_dict = {"xmin": int(z.xmin), "xmax": int(z.xmax),
-                 "alpha": float(z.alpha), "ks_distance": float(z.distance),
-                 "p-value": float(z.ks_test.pvalue),
-                 "uniq_counts": [int(count) for count in z.uniq_counts],
-                 "uniq_ranks": [int(rank) for rank in z.uniq_ranks]}
-    with open(zipf_fid, "w+", encoding="utf-8") as f:
-        json.dump(zipf_dict, f)
