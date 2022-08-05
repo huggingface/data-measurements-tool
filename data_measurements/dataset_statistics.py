@@ -39,11 +39,12 @@ from utils.dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD,
                             TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
                             TOT_WORDS, VOCAB, WORD, extract_field,
                             load_truncated_dataset)
-from embeddings import Embeddings
+import utils.dataset_utils as utils
+from data_measurements.embeddings.embeddings import Embeddings
 # TODO(meg): Incorporate this from evaluate library.
 # import evaluate
-from zipf import Zipf
-from npmi import nPMI
+from data_measurements.zipf.zipf import Zipf
+from data_measurements.npmi.npmi import nPMI
 
 if Path(".env").is_file():
     load_dotenv(".env")
