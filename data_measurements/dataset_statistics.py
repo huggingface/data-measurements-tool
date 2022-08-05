@@ -34,16 +34,16 @@ from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 from huggingface_hub import Repository, list_datasets
 
+from utils import dataset_utils as utils
 from utils.dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD,
                             OUR_LABEL_FIELD, OUR_TEXT_FIELD, PERPLEXITY_FIELD, PROP,
                             TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
-                            TOT_WORDS, VOCAB, WORD, extract_field,
-                            load_truncated_dataset)
-from embeddings import Embeddings
+                            TOT_WORDS, VOCAB, WORD)
+from data_measurements.embeddings.embeddings import Embeddings
 # TODO(meg): Incorporate this from evaluate library.
 # import evaluate
-from zipf import Zipf, make_zipf_fig, get_zipf_fids
-from npmi import nPMI
+from data_measurements.zipf.zipf import Zipf, make_zipf_fig, get_zipf_fids
+from data_measurements.npmi.npmi import nPMI
 
 #if Path(".env").is_file():
 #    load_dotenv(".env")
