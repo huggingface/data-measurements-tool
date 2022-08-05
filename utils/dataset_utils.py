@@ -16,7 +16,8 @@ import json
 import os
 from dataclasses import asdict
 from os.path import exists
-
+import plotly
+import pyarrow.feather as feather
 import pandas as pd
 from datasets import Dataset, get_dataset_infos, load_dataset, load_from_disk, \
     NamedSplit
@@ -248,10 +249,6 @@ def dictionarize_info(dset_info):
     }
     return res
 
-
-# TODO: Is it okay to remove this cache? It creates a streamlit dependency
-# that we shouldn't have in this file, as it is not a UI file.
-# @st.cache
 def get_dataset_info_dicts(dataset_id=None):
     """
     Creates a dict from dataset configs.
@@ -304,3 +301,26 @@ def extract_field(examples, field_path, new_field_name=None):
 
 def make_cache_path(cache_path):
     os.makedirs(cache_path, exist_ok=True)
+
+
+def write_plotly(fig, fid):
+    write_json(plotly.io.to_json(fig), fid)
+
+
+def read_plotly(fid):
+    fig = plotly.io.from_json(json.load(open(fid, encoding="utf-8")))
+    return fig
+
+
+def read_df(df_fid):
+    df = feather.read_feather(df_fid)
+    return df
+
+
+def write_df(df, df_fid):
+    feather.write_feather(df, df_fid)
+
+
+def write_json(json_dict, json_fid):
+    with open(json_fid, "w", encoding="utf-8") as f:
+        json.dump(json_dict, f)
