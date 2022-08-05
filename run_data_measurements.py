@@ -65,8 +65,9 @@ def load_or_prepare_widgets(ds_args, show_embeddings=False, show_perplexities=Fa
     dstats.load_or_prepare_zipf()
 
 
-def load_or_prepare(dataset_args, do_html=False, use_cache=False):
+def load_or_prepare(dataset_args, use_cache=False):
     do_all = False
+    dataset_utils.make_cache_path(dataset_args["cache_dir"])
     dstats = dataset_statistics.DatasetStatisticsCacheClass(**dataset_args, use_cache=use_cache)
     print("Loading dataset.")
     dstats.load_or_prepare_dataset()
@@ -123,15 +124,12 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
 
     if do_all or dataset_args["calculation"] == "zipf":
         print("\n* Preparing Zipf.")
-        dstats.load_or_prepare_zipf()
+        z = dstats.load_or_prepare_zipf(save=True)
         print("Done!")
-        zipf_json_fid, zipf_fig_json_fid, zipf_fig_html_fid = zipf.get_zipf_fids(
-            dstats.cache_path)
-        print("Zipf results now available at %s." % zipf_json_fid)
-        print(
-            "Figure saved to %s, with corresponding json at %s."
-            % (zipf_fig_html_fid, zipf_fig_json_fid)
-        )
+        cache_filenames = z.get_cache_filenames()
+        print("Results are cached at : ")
+        for cache_file in cache_filenames:
+            print("- %s" % cache_file)
 
     # Don't do this one until someone specifically asks for it -- takes awhile.
     if dataset_args["calculation"] == "embeddings":
@@ -166,8 +164,7 @@ def get_text_label_df(
     text_field,
     label_field,
     calculation,
-    out_dir,
-    do_html=False,
+    cache_path,
     prepare_gui=False,
     use_cache=True,
 ):
@@ -191,7 +188,7 @@ def get_text_label_df(
         "label_field": label_field,
         "label_names": label_names,
         "calculation": calculation,
-        "cache_dir": out_dir,
+        "cache_dir": cache_path,
     }
     if prepare_gui:
         load_or_prepare_widgets(dataset_args, use_cache=use_cache)
@@ -269,13 +266,6 @@ def main():
         action="store_true",
         help="Whether to use cached files (Optional)",
     )
-    parser.add_argument(
-        "--do_html",
-        default=False,
-        required=False,
-        action="store_true",
-        help="Whether to write out corresponding HTML files (Optional)",
-    )
     parser.add_argument("--out_dir", default="cache_dir", help="Where to write out to.")
     parser.add_argument(
         "--overwrite_previous",
@@ -311,6 +301,7 @@ def main():
     # We combine them for the filename here.
     args.feature = ".".join(args.feature)
 
+    # TODO: This is redundant with what gets defined in dataset_statistics; fix.
     dataset_cache_dir = f"{args.dataset}_{args.config}_{args.split}_{args.feature}"
     cache_path = args.out_dir + "/" + dataset_cache_dir
     dataset_utils.make_cache_path(cache_path)
@@ -369,7 +360,6 @@ def main():
             args.label_field,
             args.calculation,
             args.out_dir,
-            do_html=args.do_html,
             prepare_gui=args.prepare_GUI_data,
             use_cache=args.cached,
         )

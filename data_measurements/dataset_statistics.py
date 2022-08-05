@@ -42,7 +42,7 @@ from utils.dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD,
 from data_measurements.embeddings.embeddings import Embeddings
 # TODO(meg): Incorporate this from evaluate library.
 # import evaluate
-from data_measurements.zipf.zipf import Zipf, make_zipf_fig, get_zipf_fids
+from data_measurements.zipf import zipf #make_zipf_fig, get_zipf_fids
 from data_measurements.npmi.npmi import nPMI
 
 #if Path(".env").is_file():
@@ -161,6 +161,7 @@ class DatasetStatisticsCacheClass:
         calculation=None,
         use_cache=False,
     ):
+        print("Cache dir is %s" % cache_dir)
         # This is only used for standalone runs for each kind of measurement.
         self.calculation = calculation
         self.our_text_field = OUR_TEXT_FIELD
@@ -171,7 +172,7 @@ class DatasetStatisticsCacheClass:
         self.cache_dir = cache_dir
         # path to the directory used for caching
         if isinstance(text_field, list):
-            text_field = "-".join(text_field)
+            text_field = ".".join(text_field)
         self.dataset_cache_dir = f"{dset_name}_{dset_config}_{split_name}_{text_field}"
         # TODO: Having "cache_dir" and "cache_path" is confusing.
         self.cache_path = pjoin(
@@ -253,19 +254,6 @@ class DatasetStatisticsCacheClass:
         # word-count-based calculations (currently just relevant to nPMI)
         self.min_vocab_count = _MIN_VOCAB_COUNT
         self.cvec = _CVEC
-        # File definitions
-        # path to the directory used for caching
-        if not isinstance(text_field, str):
-            text_field = ".".join(text_field)
-        # if isinstance(label_field, str):
-        #    label_field = label_field
-        # else:
-        #    label_field = "-".join(label_field)
-        self.dataset_cache_dir = f"{dset_name}_{dset_config}_{split_name}_{text_field}"
-        self.cache_path = pjoin(
-            self.cache_dir,
-            self.dataset_cache_dir,  # {label_field},
-        )
         # Things that get defined later.
         self.fig_tok_length_png = None
         self.length_stats_dict = None
@@ -755,42 +743,30 @@ class DatasetStatisticsCacheClass:
         self.npmi_stats.load_or_prepare_npmi_terms()
 
     def load_or_prepare_zipf(self, save=True):
-        zipf_json_fid, zipf_fig_json_fid, zipf_fig_html_fid = get_zipf_fids(
-            self.cache_path)
+        loaded = False
         if self.use_cache:
-            # Zipf statistics
-            if exists(zipf_json_fid):
-                # Read Zipf statistics: Alpha, p-value, etc.
-                with open(zipf_json_fid, "r") as f:
-                    zipf_dict = json.load(f)
-                self.z = Zipf(None)
-                self.z.load(zipf_dict)
-            # Zipf figure
-            if exists(zipf_fig_json_fid):
-                self.zipf_fig = utils.read_plotly(zipf_fig_json_fid)
-            elif self.z:
-                # If the figure doesn't exist, but the object does, make the figure.
-                # (Happens if just the figure file got deleted).
-                self.zipf_fig = make_zipf_fig(self.vocab_counts_df, self.z)
-                # TODO: Save the figure
-            else:
-                # Cache files do not exist.
-                self.prepare_zipf(save)
-        else:
-            self.prepare_zipf(save)
+            self.z = zipf.Zipf(cache_dir=self.cache_path)
+            if self.z.has_results_cache():
+                self.z.load_results_cache()
+                if self.z.has_fig_cache():
+                    self.zipf_fig = self.z.load_fig_cache()
+                else:
+                    self.zipf_fig = self.z.make_figure()
+                loaded = True
+        if not loaded:
+            self.z = self.prepare_zipf(save)
+        return self.z
 
     def prepare_zipf(self, save=True):
         # Calculate zipf from scratch
-        # TODO: Does z even need to be self?
-        self.z = Zipf(self.vocab_counts_df)
+        self.z = zipf.Zipf(self.vocab_counts_df, cache_dir=self.cache_path)
         self.z.calc_fit()
-        self.zipf_fig = make_zipf_fig(self.z)
+        self.zipf_fig = self.z.make_figure()
         if save:
-            zipf_dict = self.z.get_zipf_dict()
-            zipf_json_fid, zipf_fig_fid, zipf_fig_html_fid = get_zipf_fids(self.cache_path)
-            utils.write_json(zipf_dict, zipf_json_fid)
-            utils.write_plotly(self.zipf_fig, zipf_fig_fid)
-            self.zipf_fig.write_html(zipf_fig_html_fid)
+            print("Saving figure to %s" % self.cache_path)
+            self.z.save_fig(self.cache_path)
+            self.z.save_json(self.cache_path)
+        return self.z
 
 def _set_idx_col_names(input_vocab_df):
     if input_vocab_df.index.name != VOCAB and VOCAB in input_vocab_df.columns:

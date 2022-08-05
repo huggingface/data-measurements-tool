@@ -20,9 +20,11 @@ import pandas as pd
 import plotly.graph_objects as go
 import powerlaw
 from os.path import join as pjoin
+from os.path import exists
 from pathlib import Path
 from scipy.stats import ks_2samp
 from scipy.stats import zipf as zipf_lib
+import utils.dataset_utils as utils
 
 # treating inf values as NaN as well
 
@@ -51,8 +53,22 @@ if not logs.handlers:
     logs.addHandler(stream)
 
 
+def get_fig_cache_filenames(zipf_cache_dir):
+    zipf_fig_json_fid = pjoin(zipf_cache_dir, "zipf_fig.json")
+    fig_filenames = [zipf_fig_json_fid]
+    zipf_fig_html_fid = pjoin(zipf_cache_dir, "zipf_fig.html")
+    print(zipf_fig_html_fid)
+    fig_filenames += [zipf_fig_html_fid]
+    return fig_filenames
+
+
+def get_json_cache_filename(zipf_cache_dir):
+    zipf_json_fid = pjoin(zipf_cache_dir, "zipf_results.json")
+    return zipf_json_fid
+
+
 class Zipf:
-    def __init__(self, vocab_counts_df, count_str="count",
+    def __init__(self, vocab_counts_df=None, cache_dir=None, count_str="count",
                  proportion_str="prop"):
         self.vocab_counts_df = vocab_counts_df
         # Strings used in the input dictionary
@@ -77,6 +93,34 @@ class Zipf:
                           "word_counts_unique": self.word_counts_unique}
         self.fit = None
         self.predicted_counts = None
+        self.zipf_cache_dir = pjoin(cache_dir, "zipf")
+
+    def has_fig_cache(self):
+        fig_cache_filenames = get_fig_cache_filenames(self.zipf_cache_dir)
+        return exists(fig_cache_filenames)
+
+    def load_fig_cache(self):
+        fig_cache_filenames = get_fig_cache_filenames(self.zipf_cache_dir)
+        fig_json = fig_cache_filenames[0]
+        return utils.read_plotly(fig_json)
+
+    def has_results_cache(self):
+        results_cache_filename = \
+            get_json_cache_filename(self.zipf_cache_dir)
+        return exists(results_cache_filename)
+
+    def load_results_cache(self):
+        results_cache_filename = \
+            get_json_cache_filename(self.zipf_cache_dir)
+        zipf_dict = json.load(open(results_cache_filename, encoding="utf-8"))
+        self.load(zipf_dict)
+
+    def get_cache_filenames(self):
+        results_cache_filename = \
+            get_json_cache_filename(self.zipf_cache_dir)
+        results_fig_filenames = get_fig_cache_filenames(self.zipf_cache_dir)
+        return [results_cache_filename] + results_fig_filenames
+
 
     def load(self, zipf_dict):
         self.zipf_dict = zipf_dict
@@ -195,19 +239,33 @@ class Zipf:
         elif self.word_ranks_unique:
             self.xmax = int(len(self.word_ranks_unique))
 
+    def make_figure(self):
+        self.zipf_fig = make_zipf_fig(self)
+        return self.zipf_fig
 
-# TODO: This might fit better in its own file handling class?
-def get_zipf_fids(cache_path):
-    zipf_cache_dir = pjoin(cache_path, "zipf")
-    os.makedirs(zipf_cache_dir, exist_ok=True)
-    # Zipf cache files
-    zipf_fid = pjoin(zipf_cache_dir, "zipf_basic_stats.json")
-    zipf_fig_fid = pjoin(zipf_cache_dir, "zipf_fig.json")
-    zipf_fig_html_fid = pjoin(zipf_cache_dir, "zipf_fig.html")
-    return zipf_fid, zipf_fig_fid, zipf_fig_html_fid
+    def save_fig(self, cache_dir=None):
+        if cache_dir:
+            zipf_cache_dir = pjoin(cache_dir, "zipf")
+        else:
+            zipf_cache_dir = self.zipf_cache_dir
+        os.makedirs(zipf_cache_dir, exist_ok=True)
+        zipf_fig_json_fid, zipf_fig_html_fid = \
+            get_fig_cache_filenames(zipf_cache_dir)
+        utils.write_plotly(self.zipf_fig, zipf_fig_json_fid)
+        self.zipf_fig.write_html(zipf_fig_html_fid)
+
+    def save_json(self, cache_dir=None):
+        zipf_dict = self.get_zipf_dict()
+        if cache_dir:
+            zipf_cache_dir = pjoin(cache_dir, "zipf")
+        else:
+            zipf_cache_dir = self.zipf_cache_dir
+        zipf_json_fid = get_json_cache_filename(zipf_cache_dir)
+        utils.write_json(zipf_dict, zipf_json_fid)
 
 
-def make_unique_rank_word_list(z):
+# Figure handling
+def _make_unique_rank_word_list(z):
     """
     Function to help with the figure, creating strings for the hovertext.
     """
@@ -226,17 +284,13 @@ def make_unique_rank_word_list(z):
 
 
 def make_zipf_fig(z):
-    xmin = z.xmin
-    word_ranks_unique = z.word_ranks_unique
-    observed_counts = z.observed_counts
-    zipf_counts = z.predicted_counts  # "] #self.calc_zipf_counts()
-    ranked_words_list = make_unique_rank_word_list(z)
+    ranked_words_list = _make_unique_rank_word_list(z)
     layout = go.Layout(xaxis=dict(range=[0, 100]))
     fig = go.Figure(
         data=[
             go.Bar(
-                x=word_ranks_unique,
-                y=observed_counts,
+                x=z.word_ranks_unique,
+                y=z.observed_counts,
                 hovertext=ranked_words_list,
                 name="Word Rank Frequency",
             )
@@ -245,9 +299,9 @@ def make_zipf_fig(z):
     )
     fig.add_trace(
         go.Scatter(
-            x=word_ranks_unique[xmin: len(word_ranks_unique)],
-            y=zipf_counts[xmin: len(word_ranks_unique)],
-            hovertext=ranked_words_list[xmin: len(word_ranks_unique)],
+            x=z.word_ranks_unique[z.xmin: len(z.word_ranks_unique)],
+            y=z.predicted_counts[z.xmin: len(z.word_ranks_unique)],
+            hovertext=ranked_words_list[z.xmin: len(z.word_ranks_unique)],
             line=go.scatter.Line(color="crimson", width=3),
             name="Zipf Predicted Frequency",
         )
