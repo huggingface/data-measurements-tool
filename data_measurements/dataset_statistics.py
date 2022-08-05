@@ -247,7 +247,7 @@ class DatasetStatisticsCacheClass:
         # File definitions
         # path to the directory used for caching
         if not isinstance(text_field, str):
-            text_field = "-".join(text_field)
+            text_field = ".".join(text_field)
         # if isinstance(label_field, str):
         #    label_field = label_field
         # else:
@@ -266,10 +266,10 @@ class DatasetStatisticsCacheClass:
             if not isdir(self.cache_path) and self.dataset_cache_dir in [dataset_info.id.split("/")[-1] for dataset_info in list_datasets(author="datameasurements", use_auth_token=HF_TOKEN)]:
                 repo = Repository(local_dir=self.cache_path, clone_from="datameasurements/" + self.dataset_cache_dir, repo_type="dataset", use_auth_token=HF_TOKEN)
             else:
-                logs.warning("Cannot find cached repo.")
+                logs.warning("Cannot find cached repo on the hub.")
         except Exception as e:
             print(e)
-            logs.warning("Cannot find cached repo.")
+            logs.warning("Cannot load cached repo on the hub.")
 
         # Cache files not needed for UI
         self.dset_fid = pjoin(self.cache_path, "base_dset")
