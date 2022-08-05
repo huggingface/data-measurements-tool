@@ -169,6 +169,10 @@ def load_or_prepare_widgets(ds_args, show_embeddings, show_perplexities, live=Tr
         except:
             logs.warning("Missing a cache for dset peek")
         try:
+            dstats.load_or_prepare_vocab()
+        except:
+            logs.warning("Missing a cache for vocab.")
+        try:
             # General stats widget
             dstats.load_or_prepare_general_stats()
         except:
