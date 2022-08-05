@@ -413,6 +413,7 @@ def expander_zipf(z, zipf_fig, column_id):
             # st.markdown("Checking the goodness of fit of our observed distribution")
             # st.markdown("to the hypothesized power law distribution")
             # st.markdown("using a Kolmogorov–Smirnov (KS) test.")
+            st.write(zipf_fig)
             st.plotly_chart(zipf_fig, use_container_width=True)
             if z.alpha > 2:
                 st.markdown(alpha_warning)

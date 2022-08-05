@@ -19,8 +19,9 @@ from pathlib import Path
 
 import streamlit as st
 
-from data_measurements import dataset_statistics, dataset_utils
-from data_measurements import streamlit_utils as st_utils
+from data_measurements import dataset_statistics
+from utils import dataset_utils
+from utils import streamlit_utils as st_utils
 
 logs = logging.getLogger(__name__)
 logs.setLevel(logging.WARNING)

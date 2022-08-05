@@ -747,9 +747,6 @@ class DatasetStatisticsCacheClass:
         self.npmi_stats.load_or_prepare_npmi_terms()
 
     def load_or_prepare_zipf(self, save=True):
-        # TODO: Current UI only uses the fig, meaning the self.z here is irrelevant
-        # when only reading from cache. Either the UI should use it, or it should
-        # be removed when reading in cache
         if self.use_cache and exists(self.zipf_fig_fid) and exists(self.zipf_fid):
             with open(self.zipf_fid, "r") as f:
                 zipf_dict = json.load(f)
