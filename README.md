@@ -19,7 +19,7 @@ For more information, check out out [blog post](https://huggingface.co/blog/data
 
 # How to run:
 
-After cloning, (and potentially setting up your virtual environment) run:
+After cloning (and potentially setting up your virtual environment), run:
 
 `pip install -r requirements.txt`
 
