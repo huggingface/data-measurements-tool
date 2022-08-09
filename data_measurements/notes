@@ -1,0 +1,26 @@
+For zipf:
+    # TODO: Incorporate this function (not currently using)
+    def fit_others(self, fit):
+        st.markdown(
+            "_Checking log likelihood ratio to see if the data is better explained by other well-behaved distributions..._"
+        )
+        # The first value returned from distribution_compare is the log likelihood ratio
+        better_distro = False
+        trunc = fit.distribution_compare("power_law", "truncated_power_law")
+        if trunc[0] < 0:
+            st.markdown("Seems a truncated power law is a better fit.")
+            better_distro = True
+
+        lognormal = fit.distribution_compare("power_law", "lognormal")
+        if lognormal[0] < 0:
+            st.markdown("Seems a lognormal distribution is a better fit.")
+            st.markdown("But don't panic -- that happens sometimes with language.")
+            better_distro = True
+
+        exponential = fit.distribution_compare("power_law", "exponential")
+        if exponential[0] < 0:
+            st.markdown("Seems an exponential distribution is a better fit. Panic.")
+            better_distro = True
+
+        if not better_distro:
+            st.markdown("\nSeems your data is best fit by a power law. Celebrate!!")
