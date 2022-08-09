@@ -19,8 +19,9 @@ from pathlib import Path
 
 import streamlit as st
 
-from data_measurements import dataset_statistics, dataset_utils
-from data_measurements import streamlit_utils as st_utils
+from data_measurements import dataset_statistics
+from utils import dataset_utils
+from utils import streamlit_utils as st_utils
 
 logs = logging.getLogger(__name__)
 logs.setLevel(logging.WARNING)
@@ -168,6 +169,10 @@ def load_or_prepare_widgets(ds_args, show_embeddings, show_perplexities, live=Tr
         except:
             logs.warning("Missing a cache for dset peek")
         try:
+            dstats.load_or_prepare_vocab()
+        except:
+            logs.warning("Missing a cache for vocab.")
+        try:
             # General stats widget
             dstats.load_or_prepare_general_stats()
         except:
@@ -254,7 +259,7 @@ def main():
         "--live", default=False, required=False, action="store_true", help="Flag to specify that this is not running live.")
     arguments = parser.parse_args()
     live = arguments.live
-    """ Sidebar description and selection """
+    # Sidebar description and selection
     ds_name_to_dict = dataset_utils.get_dataset_info_dicts()
     st.title("Data Measurements Tool")
     # Get the sidebar details
