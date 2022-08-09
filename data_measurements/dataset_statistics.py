@@ -754,8 +754,7 @@ class DatasetStatisticsCacheClass:
                     self.zipf_fig = self.z.make_figure()
                 loaded = True
         if not loaded:
-            self.z = self.prepare_zipf(save)
-        return self.z
+            self.prepare_zipf(save)
 
     def prepare_zipf(self, save=True):
         # Calculate zipf from scratch
@@ -766,7 +765,6 @@ class DatasetStatisticsCacheClass:
             print("Saving figure to %s" % self.cache_path)
             self.z.save_fig(self.cache_path)
             self.z.save_json(self.cache_path)
-        return self.z
 
 def _set_idx_col_names(input_vocab_df):
     if input_vocab_df.index.name != VOCAB and VOCAB in input_vocab_df.columns:

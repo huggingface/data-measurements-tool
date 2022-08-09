@@ -124,9 +124,9 @@ def load_or_prepare(dataset_args, use_cache=False):
 
     if do_all or dataset_args["calculation"] == "zipf":
         print("\n* Preparing Zipf.")
-        z = dstats.load_or_prepare_zipf(save=True)
+        dstats.load_or_prepare_zipf(save=True)
         print("Done!")
-        cache_filenames = z.get_cache_filenames()
+        cache_filenames = dstats.z.get_cache_filenames()
         print("Results are cached at : ")
         for cache_file in cache_filenames:
             print("- %s" % cache_file)

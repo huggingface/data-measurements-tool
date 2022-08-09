@@ -121,7 +121,6 @@ class Zipf:
         results_fig_filenames = get_fig_cache_filenames(self.zipf_cache_dir)
         return [results_cache_filename] + results_fig_filenames
 
-
     def load(self, zipf_dict):
         self.zipf_dict = zipf_dict
         self.xmin = zipf_dict["xmin"]
