@@ -45,7 +45,7 @@ Example for getting *just* the nPMI measurement from hate_speech18:
 
 Example for IMDB dataset:
 
-` python3 run_data_measurements.py --dataset="imdb" --config="plain_text" --split="train" --label_field="label" --feature="text"`
+         `python3 run_data_measurements.py --dataset="imdb" --config="plain_text" --split="train" --label_field="label" --feature="text"`
 
 
 ## User Interface
