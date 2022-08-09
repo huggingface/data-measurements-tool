@@ -6,7 +6,8 @@ from os.path import join as pjoin
 from pathlib import Path
 # TODO(Tristan): Fix this dependency
 # from dotenv import load_dotenv
-from data_measurements import dataset_statistics
+#from data_measurements import dataset_statistics
+#from data_measurements.zipf import zipf
 from utils import dataset_utils
 from data_measurements import dataset_statistics, zipf
 from huggingface_hub import create_repo, Repository, hf_api

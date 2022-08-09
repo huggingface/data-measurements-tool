@@ -42,7 +42,7 @@ from utils.dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD,
 from data_measurements.embeddings.embeddings import Embeddings
 # TODO(meg): Incorporate this from evaluate library.
 # import evaluate
-from data_measurements.zipf import zipf #make_zipf_fig, get_zipf_fids
+from data_measurements.zipf import zipf
 from data_measurements.npmi.npmi import nPMI
 
 #if Path(".env").is_file():
@@ -254,6 +254,19 @@ class DatasetStatisticsCacheClass:
         # word-count-based calculations (currently just relevant to nPMI)
         self.min_vocab_count = _MIN_VOCAB_COUNT
         self.cvec = _CVEC
+        # File definitions
+        # path to the directory used for caching
+        if not isinstance(text_field, str):
+            text_field = ".".join(text_field)
+        # if isinstance(label_field, str):
+        #    label_field = label_field
+        # else:
+        #    label_field = "-".join(label_field)
+        self.dataset_cache_dir = f"{dset_name}_{dset_config}_{split_name}_{text_field}"
+        self.cache_path = pjoin(
+            self.cache_dir,
+            self.dataset_cache_dir,  # {label_field},
+        )
         # Things that get defined later.
         self.fig_tok_length_png = None
         self.length_stats_dict = None
