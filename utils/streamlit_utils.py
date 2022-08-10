@@ -364,7 +364,7 @@ def expander_zipf(z, zipf_fig, column_id):
                     "The optimal alpha based on this dataset is: **"
                     + str(round(z.alpha, 2))
                     + "**, with a KS distance of: **"
-                    + str(round(z.distance, 2))
+                    + str(round(z.ks_distance, 2))
             )
             zipf_summary += (
                     "**.  This was fit with a minimum rank value of: **"
@@ -377,7 +377,7 @@ def expander_zipf(z, zipf_fig, column_id):
             fit_results_table = pd.DataFrame.from_dict(
                 {
                     r"Alpha:": [str("%.2f" % z.alpha)],
-                    "KS distance:": [str("%.2f" % z.distance)],
+                    "KS distance:": [str("%.2f" % z.ks_distance)],
                     "Min rank:": [str("%s" % int(z.xmin))],
                 },
                 columns=["Results"],
