@@ -479,6 +479,10 @@ class DatasetStatisticsCacheClass:
         self.node_list = self.embeddings.node_list
         self.fig_tree = self.embeddings.fig_tree
 
+    def load_or_prepare_labels(self, save=True):
+        label_obj = Labels(self.dset, self.label_field, self.label_names, self.cache_path, self.use_cache, save)
+        self.fig_labels = label_obj.fig_labels
+
     # get vocab with word counts
     def load_or_prepare_vocab(self, save=True):
         """
@@ -699,57 +703,6 @@ class DatasetStatisticsCacheClass:
         )
         tokenized_df = pd.DataFrame(tokenized_dset)
         return tokenized_df
-
-    def set_label_field(self, label_field="label"):
-        """
-        Setter for label_field. Used in the CLI when a user asks for information
-         about labels, but does not specify the field;
-         'label' is assumed as a default.
-        """
-        self.label_field = label_field
-
-    def load_or_prepare_labels(self, save=True):
-        # TODO: This is in a transitory state for creating fig cache.
-        # Clean up to be caching and reading everything correctly.
-        """
-        Extracts labels from the Dataset
-        :return:
-        """
-        # extracted labels
-        if len(self.label_field) > 0:
-            if self.use_cache and exists(self.fig_labels_json_fid):
-                self.fig_labels = utils.read_plotly(self.fig_labels_json_fid)
-            elif self.use_cache and exists(self.label_dset_fid):
-                # load extracted labels
-                self.label_dset = load_from_disk(self.label_dset_fid)
-                self.label_df = self.label_dset.to_pandas()
-                self.fig_labels = make_fig_labels(
-                    self.label_df, self.label_names, OUR_LABEL_FIELD
-                )
-                if save:
-                    utils.write_plotly(self.fig_labels, self.fig_labels_json_fid)
-            else:
-                if not self.live:
-                    self.prepare_labels()
-                    if save:
-                        # save extracted label instances
-                        self.label_dset.save_to_disk(self.label_dset_fid)
-                        utils.write_plotly(self.fig_labels, self.fig_labels_json_fid)
-
-    def prepare_labels(self):
-        if not self.live:
-            self.get_base_dataset()
-            self.label_dset = self.dset.map(
-                lambda examples: extract_field(
-                    examples, self.label_field, OUR_LABEL_FIELD
-                ),
-                batched=True,
-                remove_columns=list(self.dset.features),
-            )
-            self.label_df = self.label_dset.to_pandas()
-            self.fig_labels = make_fig_labels(
-                self.label_df, self.label_names, OUR_LABEL_FIELD
-            )
 
     def load_or_prepare_npmi(self):
         self.npmi_stats = nPMIStatisticsCacheClass(self, use_cache=self.use_cache)
@@ -1118,12 +1071,6 @@ def make_fig_lengths(tokenized_df, length_field):
     sns.rugplot(data=tokenized_df[length_field], ax=axs)
     return fig_tok_length
 
-
-def make_fig_labels(label_df, label_names, label_field):
-    labels = label_df[label_field].unique()
-    label_sums = [len(label_df[label_df[label_field] == label]) for label in labels]
-    fig_labels = px.pie(label_df, values=label_sums, names=label_names)
-    return fig_labels
 
 
 def make_npmi_fig(paired_results, subgroup_pair):
