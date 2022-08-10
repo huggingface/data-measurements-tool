@@ -1,4 +1,4 @@
-from .dataset_utils import read_plotly
+from utils.dataset_utils import read_plotly
 
 
 class Labels:
