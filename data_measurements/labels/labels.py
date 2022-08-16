@@ -1,4 +1,5 @@
 import utils.dataset_utils as utils
+from os.path import join as pjoin
 import evaluate
 
 LABEL_FIELD = "labels"
@@ -6,10 +7,17 @@ LABEL_NAMES = "label_names"
 LABEL_LIST = "label_list"
 LABEL_JSON = "labels.json"
 LABEL_FIG_JSON = "labels_fig.json"
+LABEL_MEASUREMENT = "label_measurement"
 # Specific to the evaluate library
 EVAL_LABEL_MEASURE = "label_distribution"
 EVAL_LABEL_ID = "labels"
 EVAL_LABEL_FRAC = "fractions"
+
+
+def extract_label_names(label_field, ds_name, config_name):
+    ds_name_to_dict = dataset_utils.get_dataset_info_dicts(ds_name)
+    label_names = map_labels(label_field, ds_name_to_dict, ds_name, config_name)
+    return label_names
 
 
 class Labels:
@@ -32,17 +40,20 @@ class Labels:
             print(
                 "Name of the label field not provided; assuming %s " %
                 LABEL_FIELD)
+        # The set of label names (if known)
         self.label_names = label_names
         self.use_cache = use_cache
-        self.cache_path = pjoin(cache_path, LABELS)
+        self.cache_path = pjoin(cache_path, LABEL_FIELD)
+        # For measurement cache and metadata in the json file
+        self.label_results_dict = {}
         # Filename for the figure
         self.labels_fig_json_fid = pjoin(self.cache_path, LABEL_FIG_JSON)
         # Filename for the measurement cache
         self.labels_json_fid = pjoin(self.cache_path, LABEL_JSON)
         # Values in the Dataset label column
         self.label_list = []
-        # The names of the labels in the Dataset
-        self.label_names = []
+        # Distributional information -- what we actually report
+        self.label_measurement = {}
         # Label figure
         self.fig_labels = None
         # Whether to save results
@@ -59,65 +70,74 @@ class Labels:
         prepared_fig = False
         prepared_measurement = False
         if self.use_cache:
-            # Figure exists.
+            # Figure exists. It's all we need for the UI.
             if exists(self.labels_fig_json_fid):
                 self.fig_labels = utils.read_plotly(self.labels_fig_json_fid)
             # Measurements exist, just not the figure; make it
             elif exists(self.label_json_fid):
-                label_json = utils.read_json(self.labels_json_fid)
-                self.label_list = label_json[LABEL_LIST]
-                self.label_names = label_json[LABEL_NAMES]
-                self.fig_labels = make_label_fig(self.label_list,
-                                                 self.label_names, results)
-                # We have newly prepared this figure
+                # Loads the label list, names, and results
+                self.load_labels()
+                # Makes figure from the label list, names, results
+                self.fig_labels = make_label_fig(self.label_list, self.label_names, self.label_measurement)
+                # We have newly prepared this figure, huzzah!
                 prepared_fig = True
         # If we have not gotten the figure, calculate afresh.
-        # This happens either because the cache is not used,
-        # Or because the figure is not there.
-        if not self.fig_labels:
-            label_measurement = self.prepare_labels()
-            self.fig_labels = make_label_fig(self.label_list, self.label_names,
-                                             label_measurement)
-            prepared_measurement = True
-            prepared_fig = True
-
+        # This happens when the cache is not used.
+        if not prepared_fig:
+            self.prepare_labels()
+            # We've successfully calculated the distribution.
+            # This is empty when there is not a label field we can find in the data.
+            if self.label_measurement:
+                self.fig_labels = make_label_fig(self.label_list, self.label_names,
+                                                 self.label_measurement)
+                prepared_measurement = True
+                prepared_fig = True
         if self.save:
+            # TODO: Sould this be called from a utils file instead?
             # Create the cache path if it's not there.
             os.makedirs(self.cache_path, exist_ok=True)
-            # If the measurement is newly calculated, save it.
+            # If the measurement is newly cßalculated, save it.
             if prepared_measurement:
-                utils.write_json(results, self.labels_json_fid)
+                self.label_results_dict = make_label_results_dict(self.label_measurement, self.label_list, self.label_names)
+                utils.write_json(self.label_results_dict, self.labels_json_fid)
             # If the figure is newly created, save it
             if prepared_fig:
-                utils.write_plotly(results, self.labels_fig_json_fid)
+                utils.write_plotly(self.fig_labels, self.labels_fig_json_fid)
 
     def prepare_labels(self):
         """ Uses the evaluate library to return the label distribution. """
         # The input Dataset object
-        self.label_list = self.dset[self.label_field]
-        # Have to extract the label names from the Dataset object when the
-        # actual dataset columns are just ints representing the label names.
-        ds_name_to_dict = dataset_utils.get_dataset_info_dicts(self.ds_name)
-        self.label_names = self.get_label_names(LABEL_FIELD, ds_name_to_dict, self.ds_name, self.config_name)
-        label_distribution = evaluate.load(EVAL_LABEL_MEASURE)
-        label_measurement = label_distribution.compute(data=self.label_list)
-        return label_measurement
+        if self.label_field in self.dset.keys():
+            self.label_list = self.dset[self.label_field]
+            # Have to extract the label names from the Dataset object when the
+            # actual dataset columns are just ints representing the label names.
+            self.label_names = self.extract_label_names(self.label_field, self.ds_name, self.config_name)
+            # Get the evaluate library's measurement for label distro.
+            label_distribution = evaluate.load(EVAL_LABEL_MEASURE)
+            # Measure the label distro.
+            self.label_measurement = label_distribution.compute(data=self.label_list)
+        else:
+            print("Could not find label field %s " % self.label_field)
 
     def load_labels(self):
-        results = utils.read_json(self.labels_json_fid)
-        return results
+        self.label_results_dict = utils.read_json(self.labels_json_fid)
+        self.label_list = self.label_results_dict[LABEL_LIST]
+        self.label_names = self.label_results_dict[LABEL_NAMES]
+        self.label_measurement = self.label_results_dict[LABEL_MEASUREMENT]
 
-    def get_label_names(self, label_field, ds_name_to_dict, ds_name, config_name):
-        if label_field:
-            label_field, label_names = (
-                ds_name_to_dict[ds_name][config_name]["features"][label_field][
-                    0]
-                if len(ds_name_to_dict[ds_name][config_name]["features"][
-                           label_field]) > 0
-                else ((), [])
-            )
-        return label_names
 
+def map_labels(label_field, ds_name_to_dict, ds_name, config_name):
+    label_field, label_names = (
+        ds_name_to_dict[ds_name][config_name]["features"][label_field][0]
+        if len(ds_name_to_dict[ds_name][config_name]["features"][label_field]) > 0
+        else ((), [])
+    )
+    return label_names
+
+def make_label_results_dict(label_measurement, label_list, label_names):
+    label_dict = {LABEL_MEASUREMENT: copy(label_measurement),
+                  LABEL_LIST: label_list, LABEL_NAMES: label_names}
+    return label_dict
 
 def make_label_fig(label_list, label_names, results, chart_type="pie"):
     if chart_type == "bar":

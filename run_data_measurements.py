@@ -4,6 +4,7 @@ import textwrap
 from os import getenv
 from os.path import join as pjoin
 from pathlib import Path
+import sys
 
 # TODO(Tristan): Fix this dependency
 # from dotenv import load_dotenv
@@ -182,6 +183,7 @@ def get_text_label_df(
     else:
         label_field = ()
         label_names = []
+    print(label_names)
     dataset_args = {
         "dset_name": ds_name,
         "dset_config": config_name,
@@ -192,7 +194,6 @@ def get_text_label_df(
         "calculation": calculation,
         "cache_dir": out_dir,
     }
-    print(label_names)
     if prepare_gui:
         load_or_prepare_widgets(dataset_args, use_cache=use_cache)
     else:

@@ -45,6 +45,7 @@ from data_measurements.embeddings.embeddings import Embeddings
 # import evaluate
 from data_measurements.zipf import zipf
 from data_measurements.npmi.npmi import nPMI
+from data_measurements.labels.labels import Labels
 
 #if Path(".env").is_file():
 #    load_dotenv(".env")
@@ -163,6 +164,7 @@ class DatasetStatisticsCacheClass:
         use_cache=False,
     ):
         # This is only used for standalone runs for each kind of measurement.
+        self.label_results = None
         self.calculation = calculation
         self.our_text_field = OUR_TEXT_FIELD
         self.our_length_field = LENGTH_FIELD
