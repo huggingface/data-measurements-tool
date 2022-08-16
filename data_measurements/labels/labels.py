@@ -61,11 +61,6 @@ class Labels:
                 label_json = utils.read_json(self.labels_json_fid)
                 self.label_list = label_json[LABEL_LIST]
                 self.label_names = label_json[LABEL_NAMES]
-
-                results[EVAL_LABEL_MEASURE][EVAL_LABEL_ID],
-                results[EVAL_LABEL_MEASURE][EVAL_LABEL_FRAC]
-
-
                 self.fig_labels = make_label_fig(self.label_list,
                                                  self.label_names, results)
                 # We have newly prepared this figure
@@ -92,11 +87,12 @@ class Labels:
 
     def prepare_labels(self):
         """ Uses the evaluate library to return the label distribution. """
+        # The input Dataset object
         self.label_list = self.dset[self.label_field]
-        self.label_names = set(label_list)
+        self.label_names = utils.dataset_utils.
         label_distribution = evaluate.load(EVAL_LABEL_MEASURE)
-        results = label_distribution.compute(data=self.label_list)
-        return results
+        label_measurement = label_distribution.compute(data=self.label_list)
+        return label_measurement
 
     def load_labels(self):
         results = utils.read_json(self.labels_json_fid)

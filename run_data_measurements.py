@@ -44,11 +44,7 @@ def load_or_prepare_widgets(ds_args, show_embeddings=False, show_perplexities=Fa
     # General stats widget
     dstats.load_or_prepare_general_stats()
     # Labels widget
-    try:
-        dstats.set_label_field("label")
-        dstats.load_or_prepare_labels()
-    except:
-        pass
+    dstats.load_or_prepare_labels()
     # Text lengths widget
     dstats.load_or_prepare_text_lengths()
     if show_embeddings:
@@ -196,6 +192,7 @@ def get_text_label_df(
         "calculation": calculation,
         "cache_dir": out_dir,
     }
+    print(label_names)
     if prepare_gui:
         load_or_prepare_widgets(dataset_args, use_cache=use_cache)
     else:
