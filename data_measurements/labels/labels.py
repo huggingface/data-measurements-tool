@@ -17,10 +17,16 @@ class Labels:
     Uses the Dataset to extract the label column and compute label measurements.
     """
 
-    def __init__(self, dset, label_field=None, label_names=None,
+    def __init__(self, dset, ds_name=None, config_name=None, label_field=None, label_names=None,
                  cache_path=None, use_cache=False, save=False):
         # Input HuggingFace Dataset.
         self.dset = dset
+        # These are used to extract label names, when the label names
+        # are stored in the Dataset object but not in the "label" column
+        # we are working with, which may instead just be ints corresponding to
+        # the names
+        self.ds_name = ds_name
+        self.config_name = config_name
         if not label_field:
             self.label_field = LABEL_FIELD
             print(
@@ -89,7 +95,10 @@ class Labels:
         """ Uses the evaluate library to return the label distribution. """
         # The input Dataset object
         self.label_list = self.dset[self.label_field]
-        self.label_names = utils.dataset_utils.
+        # Have to extract the label names from the Dataset object when the
+        # actual dataset columns are just ints representing the label names.
+        ds_name_to_dict = dataset_utils.get_dataset_info_dicts(self.ds_name)
+        self.label_names = self.get_label_names(LABEL_FIELD, ds_name_to_dict, self.ds_name, self.config_name)
         label_distribution = evaluate.load(EVAL_LABEL_MEASURE)
         label_measurement = label_distribution.compute(data=self.label_list)
         return label_measurement
@@ -97,6 +106,17 @@ class Labels:
     def load_labels(self):
         results = utils.read_json(self.labels_json_fid)
         return results
+
+    def get_label_names(self, label_field, ds_name_to_dict, ds_name, config_name):
+        if label_field:
+            label_field, label_names = (
+                ds_name_to_dict[ds_name][config_name]["features"][label_field][
+                    0]
+                if len(ds_name_to_dict[ds_name][config_name]["features"][
+                           label_field]) > 0
+                else ((), [])
+            )
+        return label_names
 
 
 def make_label_fig(label_list, label_names, results, chart_type="pie"):

@@ -480,8 +480,8 @@ class DatasetStatisticsCacheClass:
         self.fig_tree = self.embeddings.fig_tree
 
     def load_or_prepare_labels(self, save=True):
-        label_obj = Labels(self.dset, self.label_field, self.label_names, self.cache_path, self.use_cache, save)
-        label_results = label_obj.results
+        label_obj = Labels(self.dset, self.dset_name, self.dset_config, self.label_field, self.label_names, self.cache_path, self.use_cache, save)
+        self.label_results = label_obj.results
         self.fig_labels = label_obj.fig_labels
 
     # get vocab with word counts
