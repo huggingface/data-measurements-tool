@@ -66,7 +66,11 @@ def load_or_prepare_widgets(ds_args, show_embeddings=False, show_perplexities=Fa
 
 
 def load_or_prepare(dataset_args, do_html=False, use_cache=False):
+    # TODO: Catch error exceptions for each measurement, so that an error
+    # for one measurement doesn't break the calculation of all of them.
+
     do_all = False
+    print(dataset_args)
     dstats = dataset_statistics.DatasetStatisticsCacheClass(**dataset_args, use_cache=use_cache)
     print("Loading dataset.")
     dstats.load_or_prepare_dataset()
@@ -97,14 +101,12 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
 
 
     if do_all or dataset_args["calculation"] == "labels":
-        if not dstats.label_field:
-            print("Warning: You asked for label calculation, but didn't provide "
-                  "the labels field name.  Assuming it is 'label'...")
-            dstats.set_label_field("label")
-        print("\n* Calculating label distribution.")
+        print("\n* Calculating label statistics.")
         dstats.load_or_prepare_labels()
-        print("Done!")
-        print("Label distribution now available at %s." % dstats.label_dset_fid)
+        print("If all went well, then:")
+        print("Label statistics at %s." % dstats.labels_json_fid)
+        print("Label figure available at %s." % dstats.labels_fig_json_fid)
+        print("Label HTML figure available at %s." % dstats.labels_fig_html_fid)
         print()
 
     if do_all or dataset_args["calculation"] == "npmi":
@@ -165,6 +167,7 @@ def get_text_label_df(
     split_name,
     text_field,
     label_field,
+    label_names,
     calculation,
     out_dir,
     do_html=False,
@@ -173,17 +176,7 @@ def get_text_label_df(
 ):
     if not use_cache:
         print("Not using any cache; starting afresh")
-    ds_name_to_dict = dataset_utils.get_dataset_info_dicts(ds_name)
-    if label_field:
-        label_field, label_names = (
-            ds_name_to_dict[ds_name][config_name]["features"][label_field][0]
-            if len(ds_name_to_dict[ds_name][config_name]["features"][label_field]) > 0
-            else ((), [])
-        )
-    else:
-        label_field = ()
-        label_names = []
-    print(label_names)
+
     dataset_args = {
         "dset_name": ds_name,
         "dset_config": config_name,
@@ -263,6 +256,7 @@ def main():
         default="",
         help="Field name for label column in dataset (Required if there is a label field that you want information about)",
     )
+    parser.add_argument('-n', '--label_names', nargs='+', default=[])
     parser.add_argument(
         "--cached",
         default=False,
@@ -316,7 +310,7 @@ def main():
     cache_path = args.out_dir + "/" + dataset_cache_dir
     dataset_utils.make_cache_path(cache_path)
 
-    dataset_arguments_message=f"dataset: {args.dataset}, config: {args.config}, split: {args.split}, feature: {args.feature}, label field: {args.label_field}"
+    dataset_arguments_message=f"dataset: {args.dataset}, config: {args.config}, split: {args.split}, feature: {args.feature}, label field: {args.label_field}, label names: {args.label_names}"
     # Prepare some of the messages we use in different if-else/try-except cases later.
     not_computing_message = "As you specified, not overwriting the previous dataset cache."
     # Initialize the repository
@@ -368,6 +362,7 @@ def main():
             args.split,
             args.feature,
             args.label_field,
+            args.label_names,
             args.calculation,
             args.out_dir,
             do_html=args.do_html,

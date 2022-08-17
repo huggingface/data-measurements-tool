@@ -45,7 +45,12 @@ from data_measurements.embeddings.embeddings import Embeddings
 # import evaluate
 from data_measurements.zipf import zipf
 from data_measurements.npmi.npmi import nPMI
-from data_measurements.labels.labels import Labels
+from data_measurements.labels import labels
+LABEL_JSON = "labels.json"
+LABEL_FIG_JSON = "labels_fig.json"
+LABEL_FIG_HTML = "labels_fig.html"
+LABEL_DIR = "labels"
+
 
 #if Path(".env").is_file():
 #    load_dotenv(".env")
@@ -273,6 +278,7 @@ class DatasetStatisticsCacheClass:
         self.fig_tok_length_png = None
         self.length_stats_dict = None
 
+
         # Try to pull from the hub to see if the cache already exists.
         try:
             if not isdir(self.cache_path) and self.dataset_cache_dir in [dataset_info.id.split("/")[-1] for dataset_info in list_datasets(author="datameasurements", use_auth_token=HF_TOKEN)]:
@@ -293,9 +299,6 @@ class DatasetStatisticsCacheClass:
         # Needed for UI
         self.dset_peek_json_fid = pjoin(self.cache_path, "dset_peek.json")
 
-        ## Label cache files.
-        # Needed for UI
-        self.fig_labels_json_fid = pjoin(self.cache_path, "fig_labels.json")
 
         ## Length cache files
         # Needed for UI
@@ -317,6 +320,12 @@ class DatasetStatisticsCacheClass:
         self.sorted_top_vocab_df_fid = pjoin(
             self.cache_path, "sorted_top_vocab.feather"
         )
+
+        ## Labels files
+        self.labels_fig_json_fid = pjoin(self.cache_path, LABEL_DIR, LABEL_FIG_JSON)
+        self.labels_fig_html_fid = pjoin(self.cache_path, LABEL_DIR, LABEL_FIG_HTML)
+        # Filename for the measurement cache
+        self.labels_json_fid = pjoin(self.cache_path, LABEL_DIR, LABEL_JSON)
 
 
         ## Embeddings cache files
@@ -476,17 +485,85 @@ class DatasetStatisticsCacheClass:
             self.fig_tok_length = make_fig_lengths(self.tokenized_df, LENGTH_FIELD)
 
     def load_or_prepare_embeddings(self):
+        """Uses an Embeddings class specific to this project,
+           which uses the attributes defined in this file directly"""
         self.embeddings = Embeddings(self, use_cache=self.use_cache)
         self.embeddings.make_hierarchical_clustering()
         self.node_list = self.embeddings.node_list
         self.fig_tree = self.embeddings.fig_tree
 
+    ## Labels functions
     def load_or_prepare_labels(self, save=True):
-        label_obj = Labels(self.dset, self.dset_name, self.dset_config, self.label_field, self.label_names, self.cache_path, self.use_cache, save)
-        self.label_results = label_obj.results
-        self.fig_labels = label_obj.fig_labels
+        """Uses a generic Labels class, with attributes specific to this
+        project as input.
+        Computes results for each label column,
+        or else uses what's available in the cache.
+        Currently supports Datasets with just one label column.
+        """
+        # First look to see what we can load from cache.
+        if self.use_cache:
+            self.fig_labels, self.label_results = self._load_label_cache()
+            if self.fig_labels:
+                print("Loaded cached label figure.")
+            if self.label_results:
+                print("Loaded cached label results.")
+        # If we do not have a figure loaded from cache...
+        # Compute label statistics.
+        if not self.label_results:
+            self.label_results = self._prepare_labels()
+        # Create figure
+        if not self.fig_labels:
+            self.fig_labels = \
+                labels.make_label_fig(self.label_results)
+        # Finish
+        if save:
+            self._write_label_cache()
 
-    # get vocab with word counts
+    def _write_label_cache(self):
+        utils.make_cache_path(pjoin(self.cache_path, LABEL_DIR))
+        if self.label_results:
+            utils.write_json(self.label_results, self.labels_json_fid)
+        if self.fig_labels:
+            utils.write_plotly(self.fig_labels, self.labels_fig_json_fid)
+            self.fig_labels.write_html(self.labels_fig_html_fid)
+
+    def _prepare_labels(self):
+        """Loads a Labels object and computes label statistics"""
+        # Label object for the dataset
+        label_obj = labels.Labels(dataset=self.dset,
+                                       dataset_name=self.dset_name,
+                                       config_name=self.dset_config)
+        if not self.label_field:
+            print(
+                "Label statistics requested, but no label column name given. Assuming it is 'label'.")
+            self.label_field = "label"
+        # TODO: Handle the case where there are multiple label columns.
+        # The logic throughout the code assumes only one.
+        if type(self.label_field) == tuple:
+            label_field = self.label_field[0]
+        elif type(self.label_field) == str:
+            label_field = self.label_field
+        else:
+            print("Unexpected format %s for label column name(s). "
+                  "Not computing label statistics." %
+                  type(self.label_field))
+            return {}
+        label_results = label_obj.prepare_labels(label_field, self.label_names)
+        return label_results
+
+    def _load_label_cache(self):
+        fig_labels = {}
+        label_results = {}
+        # Image exists. Load it.
+        if exists(self.labels_fig_json_fid):
+            fig_labels = utils.read_plotly(self.labels_fig_json_fid)
+        # Measurements exist. Load them.
+        if exists(self.labels_json_fid):
+            # Loads the label list, names, and results
+            label_results = utils.read_json(self.labels_json_fid)
+        return fig_labels, label_results
+
+    # Get vocab with word counts
     def load_or_prepare_vocab(self, save=True):
         """
         Calculates the vocabulary count from the tokenized text.
