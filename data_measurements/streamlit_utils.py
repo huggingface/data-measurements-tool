@@ -17,6 +17,9 @@ import statistics
 import pandas as pd
 import seaborn as sns
 import streamlit as st
+
+import streamlit.components.v1 as components
+import codecs
 from st_aggrid import AgGrid, GridOptionsBuilder
 
 from .dataset_utils import HF_DESC_FIELD, HF_FEATURE_FIELD, HF_LABEL_FIELD
@@ -31,69 +34,72 @@ def sidebar_header():
    #return 0
 
 
-def sidebar_selection(ds_name_to_dict, column_id):
-    ds_names = list(ds_name_to_dict.keys())
+
+
+def sidebar_selection(ds_name_to_dict,column_id):
+
+    ds_names = list(ds_name_to_dict.keys())             
+    
     #with st.sidebar.expander(f"Choose dataset and field {column_id}", expanded=True):
     # choose a dataset to analyze
+    i=1                                                 # Inorder to start numbering from 1 we initialize and declare i=1 
     expanded= True
-    with st.sidebar:
-        st.sidebar.subheader(f"Choose dataset and field {column_id}")
-   # with st.sidebar.subheader(f"Choose dataset and field {column_id}"):
-        ds_name = st.selectbox(
-            f"Select a dataset to explore{column_id}:",
-            ds_names,
-            index=ds_names.index("hate_speech18"),
-        )
-        # choose a config to analyze
-        ds_configs = ds_name_to_dict[ds_name]
-        if ds_name == "c4":
+    with st.sidebar:                                    
+        #st.sidebar.subheader(f"Choose dataset and field {column_id}")               
+        # with st.sidebar.subheader(f"Choose dataset and field {column_id}"):
+        st.markdown('<p class="question"><span><span class="number-label">'+str(i)+'</span></span>'+f"<span>Select a dataset to explore{column_id}:</span>"+'</p>',unsafe_allow_html=True)      # Creating markdown to add Question and unsafe_allow_html to True to make the tags displayed
+        ds_name = st.selectbox(f"Select a dataset to explore{column_id}:",ds_names,index=ds_names.index("hate_speech18"),)                      # Adding Question and options in the selectbox. NOTE: THIS QUESTION IS STYLED AND SET DISPLAYED TO NONE BECAUSE WE WANT TO USE MARKDOWN AS QUESTION
+    # choose a config to analyze
+        i+=1            # Increasing question number by 1 
+        ds_configs = ds_name_to_dict[ds_name]                   # Saving value of those keys in the ds_configs
+        if ds_name == "c4":                                     
             config_names = ['en','en.noblocklist','realnewslike']
-        else:
-            config_names = list(ds_configs.keys())
-        config_name = st.radio(
-            f"Choose a configuration from the selected dataset{column_id}:",
-            config_names,
-            index=0,
-        )
+        else:                                                      # else 
+            config_names = list(ds_configs.keys())                  # store all the keys of the selected option and convert it to a list 
+        st.markdown('<p class="question"><span><span class="number-label">'+str(i)+'</span></span>'+f"Choose a configuration from the selected dataset{column_id}:"+'</p>',unsafe_allow_html=True) 
+        config_name = st.radio(f"Choose a configuration from the selected dataset{column_id}:",config_names,index=0,)  # Adding Question and options in the selectbox. NOTE: THIS QUESTION IS STYLED AND SET DISPLAYED TO NONE BECAUSE WE WANT TO USE MARKDOWN AS QUESTION
         # choose a subset of num_examples
-        # TODO: Handling for multiple text features
+        i+=1            # Increasing question number by 1 
         ds_config = ds_configs[config_name]
         text_features = ds_config[HF_FEATURE_FIELD]["string"]
-        # TODO @yacine: Explain what this is doing and why eg tp[0] could = "id"
-        text_field = st.radio(
-            f"Choose a text feature from the{column_id} dataset would you like to analyze?",
-            [("text",)]
-            if ds_name == "c4"
-            else [tp for tp in text_features if tp[0] != "id"],
-        )
-        # Choose a split and dataset size
-        avail_splits = list(ds_config["splits"].keys())
-        # 12.Nov note: Removing "test" because those should not be examined
-        # without discussion of pros and cons, which we haven't done yet.
-        if "test" in avail_splits:
-            avail_splits.remove("test")
-        split = st.radio(
-            f"Choose a split from the{column_id} dataset would you like to analyze?",
-            avail_splits,
-            index=0,
-        )
-        label_field, label_names = (
-            ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][HF_LABEL_FIELD][0]
-            if len(
-                ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][HF_LABEL_FIELD]
-            )
-            > 0
-            else ((), [])
-        )
-        return {
-            "dset_name": ds_name,
-            "dset_config": config_name,
-            "split_name": split,
-            "text_field": text_field,
-            "label_field": label_field,
-            "label_names": label_names,
-        }
+        st.markdown('<p class="question"><span><span class="number-label">'+str(i)+'</span></span>'+f"Choose a text feature from the{column_id} dataset would you like to analyze?"+'</p>',unsafe_allow_html=True) 
 
+        text_field = st.radio(f"Choose a text feature from the{column_id} dataset would you like to analyze?",[("text",)]   
+        if ds_name == "c4"
+        else [tp for tp in text_features if tp[0] != "id"],   
+        )   # Adding Question and options in the selectbox. NOTE: THIS QUESTION IS STYLED AND SET DISPLAYED TO NONE BECAUSE WE WANT TO USE MARKDOWN AS QUESTION
+        # Choose a split and dataset size
+        avail_splits = list(ds_config["splits"].keys())   
+        i=i+1               # Next Number of the question 
+        if "test" in avail_splits:              # 
+            avail_splits.remove("test")
+        st.markdown('<p class="question"><span><span class="number-label">'+str(i)+'</span></span>'+f"Choose a split from the{column_id} dataset would you like to analyze?"+'</p>',unsafe_allow_html=True) 
+        
+        split = st.radio(f"Choose a split from the{column_id} dataset would you like to analyze?",avail_splits,index=0,) # Adding Question and options in the selectbox. NOTE: THIS QUESTION IS STYLED AND SET DISPLAYED TO NONE BECAUSE WE WANT TO USE MARKDOWN AS QUESTION
+        label_field, label_names = (ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][HF_LABEL_FIELD][0] if len(ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][HF_LABEL_FIELD])> 0 else ((), []))
+        # if len(ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][HF_LABEL_FIELD])> 0    --->  ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][HF_LABEL_FIELD][0]
+        # else ---> ((), [])
+
+        st.markdown('<p class="question"></p>',unsafe_allow_html=True) # This is just to cover the line on the frontend
+    st.sidebar.write('\n')
+    st.sidebar.write('\n')
+    #st.sidebar.write('\n')
+    st.sidebar.markdown(
+        """
+    
+    The tool is in development, and will keep growing in utility and functionality 🤗🚀
+    """,
+        unsafe_allow_html=True,
+    )
+
+    return {                            # Returning all the values that were taken as input
+    "dset_name": ds_name,
+    "dset_config": config_name,
+    "split_name": split,
+    "text_field": text_field,
+    "label_field": label_field,
+    "label_names": label_names,
+    }
 
 def expander_header(dstats, ds_name_to_dict, column_id):
     #st.header(f"Dataset Description{column_id}")

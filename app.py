@@ -16,11 +16,15 @@ import logging
 from os import mkdir
 from os.path import isdir
 from pathlib import Path
+import streamlit.components.v1 as components
 
 import streamlit as st
 
 from data_measurements import dataset_statistics, dataset_utils
 from data_measurements import streamlit_utils as st_utils
+
+
+
 
 #"""
 #Examples:
@@ -34,6 +38,19 @@ from data_measurements import streamlit_utils as st_utils
 logs = logging.getLogger(__name__)
 logs.setLevel(logging.WARNING)
 logs.propagate = False
+
+
+
+st.set_page_config(
+    page_title="Demo to showcase dataset metrics",
+    page_icon="https://huggingface.co/front/assets/huggingface_logo.svg",
+    layout="wide",
+    initial_sidebar_state="auto",
+)
+
+#with open("style.css") as f:                                                # Reading style.css file and opening it 
+ #   st.markdown(f'<style>{f.read()}</style>',unsafe_allow_html= True)       # Storing all styles in the streamlit markdown  &   unsafe_allow_html to true so that we can use html tags with the code  
+#----read and run html file
 
  #with open('style.css') as f:
   #      st.markdown(f'<style>{f.read()}</style>',unsafe_allow_html=True)
@@ -57,12 +74,7 @@ if not logs.handlers:
     logs.addHandler(file)
     logs.addHandler(stream)
 
-st.set_page_config(
-    page_title="Demo to showcase dataset metrics",
-    page_icon="https://huggingface.co/front/assets/huggingface_logo.svg",
-    layout="wide",
-    initial_sidebar_state="auto",
-)
+
 
 # colorblind-friendly colors
 colors = [
@@ -265,6 +277,9 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, column_id):
 
 
 def main():
+    with open("style.css") as f:                                                # Reading style.css file and opening it 
+        st.markdown(f'<style>{f.read()}</style>',unsafe_allow_html= True)       # Storing all styles in the streamlit markdown  &   unsafe_allow_html to true so that we can use html tags with the code  
+    #----read and run html file
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--live", default=False, required=False, action="store_true", help="Flag to specify that this is not running live.")
@@ -329,6 +344,8 @@ def main():
     else:
         st.markdown("### Missing pre-computed data measures!")
         st.write(dataset_args)
+
+    
 
 
 
