@@ -14,39 +14,41 @@
 
 import json
 import logging
-import statistics
-from os import mkdir, getenv
-from os.path import exists, isdir
-from os.path import join as pjoin
-from pathlib import Path
-# from dotenv import load_dotenv
-
-import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
 import nltk
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import seaborn as sns
-from datasets import load_from_disk, load_metric
-from nltk.corpus import stopwords
-from sklearn.feature_extraction.text import CountVectorizer
-from huggingface_hub import Repository, list_datasets
-
-from utils.dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD,
-                            OUR_LABEL_FIELD, OUR_TEXT_FIELD, PERPLEXITY_FIELD, PROP,
-                            TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
-                            TOT_WORDS, VOCAB, WORD, extract_field,
-                            load_truncated_dataset)
+import statistics
 import utils.dataset_utils as utils
 from data_measurements.embeddings.embeddings import Embeddings
+from data_measurements.labels import labels
+from data_measurements.npmi.npmi import nPMI
 # TODO(meg): Incorporate this from evaluate library.
 # import evaluate
 from data_measurements.zipf import zipf
-from data_measurements.npmi.npmi import nPMI
+from datasets import load_from_disk, load_metric
+from huggingface_hub import Repository, list_datasets
+from nltk.corpus import stopwords
+from os import mkdir, getenv
+from os.path import exists, isdir
+from os.path import join as pjoin
+from pathlib import Path
+from sklearn.feature_extraction.text import CountVectorizer
+from utils.dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD,
+                                 OUR_LABEL_FIELD, OUR_TEXT_FIELD,
+                                 PERPLEXITY_FIELD, PROP,
+                                 TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
+                                 TOT_WORDS, VOCAB, WORD, extract_field,
+                                 load_truncated_dataset)
 
-#if Path(".env").is_file():
+# from dotenv import load_dotenv
+
+
+# if Path(".env").is_file():
 #    load_dotenv(".env")
 
 HF_TOKEN = getenv("HF_TOKEN")
@@ -58,7 +60,6 @@ logs.setLevel(logging.WARNING)
 logs.propagate = False
 
 if not logs.handlers:
-
     # Logging info to log file
     file = logging.FileHandler("./log_files/dataset_statistics.log")
     fileformat = logging.Formatter("%(asctime)s:%(message)s")
@@ -74,41 +75,40 @@ if not logs.handlers:
     logs.addHandler(file)
     logs.addHandler(stream)
 
-
 # TODO: Read this in depending on chosen language / expand beyond english
 nltk.download("stopwords")
 _CLOSED_CLASS = (
-    stopwords.words("english")
-    + [
-        "t",
-        "n",
-        "ll",
-        "d",
-        "wasn",
-        "weren",
-        "won",
-        "aren",
-        "wouldn",
-        "shouldn",
-        "didn",
-        "don",
-        "hasn",
-        "ain",
-        "couldn",
-        "doesn",
-        "hadn",
-        "haven",
-        "isn",
-        "mightn",
-        "mustn",
-        "needn",
-        "shan",
-        "would",
-        "could",
-        "dont",
-        "u",
-    ]
-    + [str(i) for i in range(0, 21)]
+        stopwords.words("english")
+        + [
+            "t",
+            "n",
+            "ll",
+            "d",
+            "wasn",
+            "weren",
+            "won",
+            "aren",
+            "wouldn",
+            "shouldn",
+            "didn",
+            "don",
+            "hasn",
+            "ain",
+            "couldn",
+            "doesn",
+            "hadn",
+            "haven",
+            "isn",
+            "mightn",
+            "mustn",
+            "needn",
+            "shan",
+            "would",
+            "could",
+            "dont",
+            "u",
+        ]
+        + [str(i) for i in range(0, 21)]
 )
 _IDENTITY_TERMS = [
     "man",
@@ -151,18 +151,19 @@ _PERPLEXITY = load_metric("perplexity")
 class DatasetStatisticsCacheClass:
 
     def __init__(
-        self,
-        cache_dir,
-        dset_name,
-        dset_config,
-        split_name,
-        text_field,
-        label_field,
-        label_names,
-        calculation=None,
-        use_cache=False,
+            self,
+            cache_dir,
+            dset_name,
+            dset_config,
+            split_name,
+            text_field,
+            label_field,
+            label_names,
+            calculation=None,
+            use_cache=False,
     ):
         # This is only used for standalone runs for each kind of measurement.
+        self.label_results = None
         self.calculation = calculation
         self.our_text_field = OUR_TEXT_FIELD
         self.our_length_field = LENGTH_FIELD
@@ -203,6 +204,7 @@ class DatasetStatisticsCacheClass:
         # HF dataset with text embeddings in the same order as self.text_dset
         self.embeddings_dset = None
         # HF dataset with all of the self.label_field instances in self.dset
+        # TODO: Not being used anymore; make sure & remove.
         self.label_dset = None
         ## Data frames
         # Tokenized text
@@ -211,6 +213,7 @@ class DatasetStatisticsCacheClass:
         self.length_df = None
         self.fig_tok_length = None
         # Data Frame version of self.label_dset
+        # TODO: Not being used anymore. Make sure and remove
         self.label_df = None
         # save label pie chart in the class so it doesn't ge re-computed
         self.fig_labels = None
@@ -273,8 +276,13 @@ class DatasetStatisticsCacheClass:
 
         # Try to pull from the hub to see if the cache already exists.
         try:
-            if not isdir(self.cache_path) and self.dataset_cache_dir in [dataset_info.id.split("/")[-1] for dataset_info in list_datasets(author="datameasurements", use_auth_token=HF_TOKEN)]:
-                repo = Repository(local_dir=self.cache_path, clone_from="datameasurements/" + self.dataset_cache_dir, repo_type="dataset", use_auth_token=HF_TOKEN)
+            if not isdir(self.cache_path) and self.dataset_cache_dir in [
+                dataset_info.id.split("/")[-1] for dataset_info in
+                list_datasets(author="datameasurements",
+                              use_auth_token=HF_TOKEN)]:
+                repo = Repository(local_dir=self.cache_path,
+                                  clone_from="datameasurements/" + self.dataset_cache_dir,
+                                  repo_type="dataset", use_auth_token=HF_TOKEN)
             else:
                 logs.warning("Cannot find cached repo on the hub.")
         except Exception as e:
@@ -284,6 +292,7 @@ class DatasetStatisticsCacheClass:
         # Cache files not needed for UI
         self.dset_fid = pjoin(self.cache_path, "base_dset")
         self.tokenized_df_fid = pjoin(self.cache_path, "tokenized_df.feather")
+        # TODO: Not being used anymore. Check and remove.
         self.label_dset_fid = pjoin(self.cache_path, "label_dset")
 
         # Needed for UI -- embeddings
@@ -291,31 +300,31 @@ class DatasetStatisticsCacheClass:
         # Needed for UI
         self.dset_peek_json_fid = pjoin(self.cache_path, "dset_peek.json")
 
-        ## Label cache files.
-        # Needed for UI
-        self.fig_labels_json_fid = pjoin(self.cache_path, "fig_labels.json")
-
         ## Length cache files
         # Needed for UI
         self.length_df_fid = pjoin(self.cache_path, "length_df.feather")
         # Needed for UI
         self.length_stats_json_fid = pjoin(self.cache_path, "length_stats.json")
-        self.vocab_counts_df_fid = pjoin(self.cache_path, "vocab_counts.feather")
+        self.vocab_counts_df_fid = pjoin(self.cache_path,
+                                         "vocab_counts.feather")
         # Needed for UI
         self.dup_counts_df_fid = pjoin(self.cache_path, "dup_counts_df.feather")
         # Needed for UI
-        self.perplexities_df_fid = pjoin(self.cache_path, "perplexities_df.feather")
+        self.perplexities_df_fid = pjoin(self.cache_path,
+                                         "perplexities_df.feather")
         # Needed for UI
         self.fig_tok_length_fid = pjoin(self.cache_path, "fig_tok_length.png")
 
         ## General text stats
         # Needed for UI
-        self.general_stats_json_fid = pjoin(self.cache_path, "general_stats_dict.json")
+        self.general_stats_json_fid = pjoin(self.cache_path,
+                                            "general_stats_dict.json")
         # Needed for UI
         self.sorted_top_vocab_df_fid = pjoin(
             self.cache_path, "sorted_top_vocab.feather"
         )
 
+        self.label_files = {}
 
         ## Embeddings cache files
         # Needed for UI
@@ -351,7 +360,6 @@ class DatasetStatisticsCacheClass:
                 mkdir(self.cache_path)
             return isdir(self.cache_path)
 
-
     def get_base_dataset(self):
         """Gets a pointer to the truncated base dataset object."""
         if not self.dset:
@@ -376,10 +384,10 @@ class DatasetStatisticsCacheClass:
         """
         # General statistics
         if (
-            self.use_cache
-            and exists(self.general_stats_json_fid)
-            and exists(self.dup_counts_df_fid)
-            and exists(self.sorted_top_vocab_df_fid)
+                self.use_cache
+                and exists(self.general_stats_json_fid)
+                and exists(self.dup_counts_df_fid)
+                and exists(self.sorted_top_vocab_df_fid)
         ):
             logs.info("Loading cached general stats")
             self.load_general_stats()
@@ -388,9 +396,11 @@ class DatasetStatisticsCacheClass:
                 logs.info("Preparing general stats")
                 self.prepare_general_stats()
                 if save:
-                    utils.write_df(self.sorted_top_vocab_df, self.sorted_top_vocab_df_fid)
+                    utils.write_df(self.sorted_top_vocab_df,
+                                   self.sorted_top_vocab_df_fid)
                     utils.write_df(self.dup_counts_df, self.dup_counts_df_fid)
-                    utils.write_json(self.general_stats_dict, self.general_stats_json_fid)
+                    utils.write_json(self.general_stats_dict,
+                                     self.general_stats_json_fid)
 
     def load_or_prepare_text_lengths(self, save=True):
         """
@@ -430,13 +440,15 @@ class DatasetStatisticsCacheClass:
             if not self.live:
                 self.prepare_text_length_stats()
                 if save:
-                    utils.write_json(self.length_stats_dict, self.length_stats_json_fid)
+                    utils.write_json(self.length_stats_dict,
+                                     self.length_stats_json_fid)
 
     def prepare_length_df(self):
         if not self.live:
             if self.tokenized_df is None:
                 self.tokenized_df = self.do_tokenization()
-            self.tokenized_df[LENGTH_FIELD] = self.tokenized_df[TOKENIZED_FIELD].apply(
+            self.tokenized_df[LENGTH_FIELD] = self.tokenized_df[
+                TOKENIZED_FIELD].apply(
                 len
             )
             self.length_df = self.tokenized_df[
@@ -446,9 +458,9 @@ class DatasetStatisticsCacheClass:
     def prepare_text_length_stats(self):
         if not self.live:
             if (
-                self.tokenized_df is None
-                or LENGTH_FIELD not in self.tokenized_df.columns
-                or self.length_df is None
+                    self.tokenized_df is None
+                    or LENGTH_FIELD not in self.tokenized_df.columns
+                    or self.length_df is None
             ):
                 self.prepare_length_df()
             avg_length = sum(self.tokenized_df[LENGTH_FIELD]) / len(
@@ -467,19 +479,36 @@ class DatasetStatisticsCacheClass:
     def prepare_fig_text_lengths(self):
         if not self.live:
             if (
-                self.tokenized_df is None
-                or LENGTH_FIELD not in self.tokenized_df.columns
+                    self.tokenized_df is None
+                    or LENGTH_FIELD not in self.tokenized_df.columns
             ):
                 self.prepare_length_df()
-            self.fig_tok_length = make_fig_lengths(self.tokenized_df, LENGTH_FIELD)
+            self.fig_tok_length = make_fig_lengths(self.tokenized_df,
+                                                   LENGTH_FIELD)
 
     def load_or_prepare_embeddings(self):
+        """Uses an Embeddings class specific to this project,
+           which uses the attributes defined in this file directly"""
         self.embeddings = Embeddings(self, use_cache=self.use_cache)
         self.embeddings.make_hierarchical_clustering()
         self.node_list = self.embeddings.node_list
         self.fig_tree = self.embeddings.fig_tree
 
-    # get vocab with word counts
+    ## Labels functions
+    def load_or_prepare_labels(self, save=True):
+        """Uses a generic Labels class, with attributes specific to this
+        project as input.
+        Computes results for each label column,
+        or else uses what's available in the cache.
+        Currently supports Datasets with just one label column.
+        """
+        label_obj = labels.DMTHelper(self, save)
+        label_obj.run_DMT_processing()
+        self.fig_labels = label_obj.fig_labels
+        self.label_results = label_obj.label_results
+        self.label_files = label_obj.get_label_filenames()
+
+    # Get vocab with word counts
     def load_or_prepare_vocab(self, save=True):
         """
         Calculates the vocabulary count from the tokenized text.
@@ -541,11 +570,13 @@ class DatasetStatisticsCacheClass:
             if not self.live:
                 self.prepare_text_perplexities()
                 if save:
-                    utils.write_df(self.perplexities_df, self.perplexities_df_fid)
+                    utils.write_df(self.perplexities_df,
+                                   self.perplexities_df_fid)
         else:
             if not self.live:
                 if save:
-                    utils.write_df(self.perplexities_df, self.perplexities_df_fid)
+                    utils.write_df(self.perplexities_df,
+                                   self.perplexities_df_fid)
 
     def load_general_stats(self):
         self.general_stats_dict = json.load(
@@ -585,7 +616,8 @@ class DatasetStatisticsCacheClass:
         if not self.live:
             if self.tokenized_df is None:
                 self.load_or_prepare_tokenized_df()
-            dup_df = self.tokenized_df[self.tokenized_df.duplicated([OUR_TEXT_FIELD])]
+            dup_df = self.tokenized_df[
+                self.tokenized_df.duplicated([OUR_TEXT_FIELD])]
             self.dup_counts_df = pd.DataFrame(
                 dup_df.pivot_table(
                     columns=[OUR_TEXT_FIELD], aggfunc="size"
@@ -598,9 +630,12 @@ class DatasetStatisticsCacheClass:
         if not self.live:
             if self.text_dset is None:
                 self.load_or_prepare_text_dset()
-            results = _PERPLEXITY.compute(input_texts=self.text_dset[OUR_TEXT_FIELD], model_id='gpt2')
-            perplexities = {PERPLEXITY_FIELD: results["perplexities"], OUR_TEXT_FIELD: self.text_dset[OUR_TEXT_FIELD]}
-            self.perplexities_df = pd.DataFrame(perplexities).sort_values(by=PERPLEXITY_FIELD, ascending=False)
+            results = _PERPLEXITY.compute(
+                input_texts=self.text_dset[OUR_TEXT_FIELD], model_id='gpt2')
+            perplexities = {PERPLEXITY_FIELD: results["perplexities"],
+                            OUR_TEXT_FIELD: self.text_dset[OUR_TEXT_FIELD]}
+            self.perplexities_df = pd.DataFrame(perplexities).sort_values(
+                by=PERPLEXITY_FIELD, ascending=False)
 
     def load_or_prepare_dataset(self, save=True):
         """
@@ -616,8 +651,8 @@ class DatasetStatisticsCacheClass:
         """
         logs.info("Doing text dset.")
         self.load_or_prepare_text_dset(save)
-        #logs.info("Doing tokenized dataframe")
-        #self.load_or_prepare_tokenized_df(save)
+        # logs.info("Doing tokenized dataframe")
+        # self.load_or_prepare_tokenized_df(save)
         logs.info("Doing dataset peek")
         self.load_or_prepare_dset_peek(save)
 
@@ -631,7 +666,8 @@ class DatasetStatisticsCacheClass:
                     self.get_base_dataset()
                 self.dset_peek = self.dset[:100]
                 if save:
-                    utils.write_json({"dset peek": self.dset_peek}, self.dset_peek_json_fid)
+                    utils.write_json({"dset peek": self.dset_peek},
+                                     self.dset_peek_json_fid)
 
     def load_or_prepare_tokenized_df(self, save=True):
         if self.use_cache and exists(self.tokenized_df_fid):
@@ -689,7 +725,8 @@ class DatasetStatisticsCacheClass:
                     for text in examples[OUR_TEXT_FIELD]
                 ]
             }
-            res[LENGTH_FIELD] = [len(tok_text) for tok_text in res[TOKENIZED_FIELD]]
+            res[LENGTH_FIELD] = [len(tok_text) for tok_text in
+                                 res[TOKENIZED_FIELD]]
             return res
 
         tokenized_dset = self.text_dset.map(
@@ -700,59 +737,9 @@ class DatasetStatisticsCacheClass:
         tokenized_df = pd.DataFrame(tokenized_dset)
         return tokenized_df
 
-    def set_label_field(self, label_field="label"):
-        """
-        Setter for label_field. Used in the CLI when a user asks for information
-         about labels, but does not specify the field;
-         'label' is assumed as a default.
-        """
-        self.label_field = label_field
-
-    def load_or_prepare_labels(self, save=True):
-        # TODO: This is in a transitory state for creating fig cache.
-        # Clean up to be caching and reading everything correctly.
-        """
-        Extracts labels from the Dataset
-        :return:
-        """
-        # extracted labels
-        if len(self.label_field) > 0:
-            if self.use_cache and exists(self.fig_labels_json_fid):
-                self.fig_labels = utils.read_plotly(self.fig_labels_json_fid)
-            elif self.use_cache and exists(self.label_dset_fid):
-                # load extracted labels
-                self.label_dset = load_from_disk(self.label_dset_fid)
-                self.label_df = self.label_dset.to_pandas()
-                self.fig_labels = make_fig_labels(
-                    self.label_df, self.label_names, OUR_LABEL_FIELD
-                )
-                if save:
-                    utils.write_plotly(self.fig_labels, self.fig_labels_json_fid)
-            else:
-                if not self.live:
-                    self.prepare_labels()
-                    if save:
-                        # save extracted label instances
-                        self.label_dset.save_to_disk(self.label_dset_fid)
-                        utils.write_plotly(self.fig_labels, self.fig_labels_json_fid)
-
-    def prepare_labels(self):
-        if not self.live:
-            self.get_base_dataset()
-            self.label_dset = self.dset.map(
-                lambda examples: extract_field(
-                    examples, self.label_field, OUR_LABEL_FIELD
-                ),
-                batched=True,
-                remove_columns=list(self.dset.features),
-            )
-            self.label_df = self.label_dset.to_pandas()
-            self.fig_labels = make_fig_labels(
-                self.label_df, self.label_names, OUR_LABEL_FIELD
-            )
-
     def load_or_prepare_npmi(self):
-        self.npmi_stats = nPMIStatisticsCacheClass(self, use_cache=self.use_cache)
+        self.npmi_stats = nPMIStatisticsCacheClass(self,
+                                                   use_cache=self.use_cache)
         self.npmi_stats.load_or_prepare_npmi_terms()
 
     def load_or_prepare_zipf(self, save=True):
@@ -770,7 +757,8 @@ class DatasetStatisticsCacheClass:
                 if exists(zipf_fig_json_fid):
                     self.zipf_fig = utils.read_plotly(zipf_fig_json_fid)
                 else:
-                    self.zipf_fig = zipf.make_zipf_fig(self.vocab_counts_df, self.z)
+                    self.zipf_fig = zipf.make_zipf_fig(self.vocab_counts_df,
+                                                       self.z)
                     if save:
                         utils.write_plotly(self.zipf_fig)
             else:
@@ -787,16 +775,19 @@ class DatasetStatisticsCacheClass:
         self.zipf_fig = zipf.make_zipf_fig(self.z)
         if save:
             zipf_dict = self.z.get_zipf_dict()
-            zipf_json_fid, zipf_fig_fid, zipf_fig_html_fid = zipf.get_zipf_fids(self.cache_path)
+            zipf_json_fid, zipf_fig_fid, zipf_fig_html_fid = zipf.get_zipf_fids(
+                self.cache_path)
             utils.write_json(zipf_dict, zipf_json_fid)
             utils.write_plotly(self.zipf_fig, zipf_fig_fid)
             self.zipf_fig.write_html(zipf_fig_html_fid)
+
 
 def _set_idx_col_names(input_vocab_df):
     if input_vocab_df.index.name != VOCAB and VOCAB in input_vocab_df.columns:
         input_vocab_df = input_vocab_df.set_index([VOCAB])
         input_vocab_df[VOCAB] = input_vocab_df.index
     return input_vocab_df
+
 
 def _set_idx_cols_from_cache(csv_df, subgroup=None, calc_str=None):
     """
@@ -835,7 +826,8 @@ class nPMIStatisticsCacheClass:
         self.dstats = dataset_stats
         self.pmi_cache_path = pjoin(self.dstats.cache_path, "pmi_files")
         if not isdir(self.pmi_cache_path):
-            logs.warning("Creating pmi cache directory %s." % self.pmi_cache_path)
+            logs.warning(
+                "Creating pmi cache directory %s." % self.pmi_cache_path)
             # We need to preprocess everything.
             mkdir(self.pmi_cache_path)
         self.joint_npmi_df_dict = {}
@@ -860,18 +852,22 @@ class nPMIStatisticsCacheClass:
         # TODO: Add the user's ability to select subgroups.
         # TODO: Make min_vocab_count here value selectable by the user.
         if (
-            self.use_cache
-            and exists(self.npmi_terms_fid)
-            and json.load(open(self.npmi_terms_fid))["available terms"] != []
+                self.use_cache
+                and exists(self.npmi_terms_fid)
+                and json.load(open(self.npmi_terms_fid))[
+            "available terms"] != []
         ):
-            available_terms = json.load(open(self.npmi_terms_fid))["available terms"]
+            available_terms = json.load(open(self.npmi_terms_fid))[
+                "available terms"]
         else:
             true_false = [
-                term in self.dstats.vocab_counts_df.index for term in self.termlist
+                term in self.dstats.vocab_counts_df.index for term in
+                self.termlist
             ]
             word_list_tmp = [x for x, y in zip(self.termlist, true_false) if y]
             true_false_counts = [
-                self.dstats.vocab_counts_df.loc[word, CNT] >= self.min_vocab_count
+                self.dstats.vocab_counts_df.loc[
+                    word, CNT] >= self.min_vocab_count
                 for word in word_list_tmp
             ]
             available_terms = [
@@ -901,7 +897,8 @@ class nPMIStatisticsCacheClass:
             # This should eventually all go into a prepare_dataset CLI
             mkdir(self.pmi_cache_path)
         joint_npmi_fid = pjoin(self.pmi_cache_path, subgroups_str + "_npmi.csv")
-        subgroup_files = define_subgroup_files(subgroup_pair, self.pmi_cache_path)
+        subgroup_files = define_subgroup_files(subgroup_pair,
+                                               self.pmi_cache_path)
         # Defines the filenames for the cache files from the selected subgroups.
         # Get as much precomputed data as we can.
         if self.use_cache and exists(joint_npmi_fid):
@@ -926,7 +923,8 @@ class nPMIStatisticsCacheClass:
                 # Cache new results
                 logs.info("Writing out.")
                 for subgroup in subgroup_pair:
-                    write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files)
+                    write_subgroup_npmi_data(subgroup, subgroup_dict,
+                                             subgroup_files)
                 with open(joint_npmi_fid, "w+") as f:
                     joint_npmi_df.to_csv(f)
             else:
@@ -970,7 +968,8 @@ class nPMIStatisticsCacheClass:
                 # Holds the previous sessions' data for use in this session.
                 subgroup_dict[subgroup] = cached_results
         logs.info("Calculating for subgroup list")
-        joint_npmi_df, subgroup_dict = self.do_npmi(subgroup_pair, subgroup_dict)
+        joint_npmi_df, subgroup_dict = self.do_npmi(subgroup_pair,
+                                                    subgroup_dict)
         return joint_npmi_df.dropna(), subgroup_dict
 
     # TODO: Update pairwise assumption
@@ -998,7 +997,8 @@ class nPMIStatisticsCacheClass:
         # Pair the subgroups together, indexed by all words that
         # co-occur between them.
         logs.info("Computing pairwise npmi bias")
-        paired_results = npmi_obj.calc_paired_metrics(subgroup_pair, subgroup_dict)
+        paired_results = npmi_obj.calc_paired_metrics(subgroup_pair,
+                                                      subgroup_dict)
         UI_results = make_npmi_fig(paired_results, subgroup_pair)
         return UI_results, subgroup_dict
 
@@ -1022,9 +1022,9 @@ class nPMIStatisticsCacheClass:
         # TODO: Ordering of npmi, pmi, vocab triple should be consistent
         subgroup_npmi_fid, subgroup_pmi_fid, subgroup_cooc_fid = subgroup_fids
         if (
-            exists(subgroup_npmi_fid)
-            and exists(subgroup_pmi_fid)
-            and exists(subgroup_cooc_fid)
+                exists(subgroup_npmi_fid)
+                and exists(subgroup_pmi_fid)
+                and exists(subgroup_cooc_fid)
         ):
             logs.info("Reading in pmi data....")
             with open(subgroup_cooc_fid, "rb") as f:
@@ -1074,13 +1074,14 @@ def count_vocab_frequencies(tokenized_df):
     )
     cvec.fit(tokenized_df[TOKENIZED_FIELD])
     document_matrix = cvec.transform(tokenized_df[TOKENIZED_FIELD])
-    batches = np.linspace(0, tokenized_df.shape[0], _NUM_VOCAB_BATCHES).astype(int)
+    batches = np.linspace(0, tokenized_df.shape[0], _NUM_VOCAB_BATCHES).astype(
+        int)
     i = 0
     tf = []
     while i < len(batches) - 1:
         logs.info("%s of %s vocab batches" % (str(i), str(len(batches))))
         batch_result = np.sum(
-            document_matrix[batches[i] : batches[i + 1]].toarray(), axis=0
+            document_matrix[batches[i]: batches[i + 1]].toarray(), axis=0
         )
         tf.append(batch_result)
         i += 1
@@ -1096,14 +1097,16 @@ def count_vocab_frequencies(tokenized_df):
 def calc_p_word(word_count_df):
     # p(word)
     word_count_df[PROP] = word_count_df[CNT] / float(sum(word_count_df[CNT]))
-    vocab_counts_df = pd.DataFrame(word_count_df.sort_values(by=CNT, ascending=False))
+    vocab_counts_df = pd.DataFrame(
+        word_count_df.sort_values(by=CNT, ascending=False))
     vocab_counts_df[VOCAB] = vocab_counts_df.index
     return vocab_counts_df
 
 
 def filter_vocab(vocab_counts_df):
     # TODO: Add warnings (which words are missing) to log file?
-    filtered_vocab_counts_df = vocab_counts_df.drop(_CLOSED_CLASS, errors="ignore")
+    filtered_vocab_counts_df = vocab_counts_df.drop(_CLOSED_CLASS,
+                                                    errors="ignore")
     filtered_count = filtered_vocab_counts_df[CNT]
     filtered_count_denom = float(sum(filtered_vocab_counts_df[CNT]))
     filtered_vocab_counts_df[PROP] = filtered_count / filtered_count_denom
@@ -1119,13 +1122,6 @@ def make_fig_lengths(tokenized_df, length_field):
     return fig_tok_length
 
 
-def make_fig_labels(label_df, label_names, label_field):
-    labels = label_df[label_field].unique()
-    label_sums = [len(label_df[label_df[label_field] == label]) for label in labels]
-    fig_labels = px.pie(label_df, values=label_sums, names=label_names)
-    return fig_labels
-
-
 def make_npmi_fig(paired_results, subgroup_pair):
     subgroup1, subgroup2 = subgroup_pair
     UI_results = pd.DataFrame()
@@ -1133,20 +1129,18 @@ def make_npmi_fig(paired_results, subgroup_pair):
         UI_results["npmi-bias"] = paired_results["npmi-bias"].astype(float)
     UI_results[subgroup1 + "-npmi"] = paired_results["npmi"][
         subgroup1 + "-npmi"
-    ].astype(float)
+        ].astype(float)
     UI_results[subgroup1 + "-count"] = paired_results["count"][
         subgroup1 + "-count"
-    ].astype(int)
+        ].astype(int)
     if subgroup1 != subgroup2:
         UI_results[subgroup2 + "-npmi"] = paired_results["npmi"][
             subgroup2 + "-npmi"
-        ].astype(float)
+            ].astype(float)
         UI_results[subgroup2 + "-count"] = paired_results["count"][
             subgroup2 + "-count"
-        ].astype(int)
+            ].astype(int)
     return UI_results.sort_values(by="npmi-bias", ascending=True)
-
-
 
 
 ## Input/Output ###
@@ -1212,5 +1206,3 @@ def write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files):
         subgroup_pmi_df.to_csv(f)
     with open(subgroup_cooc_fid, "w+") as f:
         subgroup_cooc_df.to_csv(f)
-
-

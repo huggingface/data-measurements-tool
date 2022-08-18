@@ -324,3 +324,8 @@ def write_df(df, df_fid):
 def write_json(json_dict, json_fid):
     with open(json_fid, "w", encoding="utf-8") as f:
         json.dump(json_dict, f)
+
+
+def read_json(json_fid):
+    json_dict = json.load(open(json_fid, encoding="utf-8"))
+    return json_dict
