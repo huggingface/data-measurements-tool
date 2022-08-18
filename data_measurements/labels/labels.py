@@ -57,8 +57,102 @@ def extract_label_names(label_field, ds_name, config_name):
     label_names = map_labels(label_field, ds_name_to_dict, ds_name, config_name)
     return label_names
 
+class DMTHelper:
+        """Helper class for the Data Measurements Tool.
+        This allows us to keep all variables and functions related to labels in one file.
+        """
+
+        def __init__(self, dstats, save):
+            self.use_cache = dstats.use_cache
+            self.fig_labels = dstats.fig_labels
+            self.label_results = dstats.label_results
+            self.cache_path = dstats.cache_path
+            self.label_field = dstats.label_field
+            # TODO: Should this just be an attribute of dstats instead?
+            self.save = save
+            ## Labels files
+            LABEL_JSON = "labels.json"
+            LABEL_FIG_JSON = "labels_fig.json"
+            LABEL_FIG_HTML = "labels_fig.html"
+            LABEL_DIR = "labels"
+            self.labels_fig_json_fid = pjoin(self.cache_path, LABEL_DIR,
+                                             LABEL_FIG_JSON)
+            self.labels_fig_html_fid = pjoin(self.cache_path, LABEL_DIR,
+                                             LABEL_FIG_HTML)
+            # Filename for the measurement cache
+            self.labels_json_fid = pjoin(self.cache_path, LABEL_DIR, LABEL_JSON)
+
+        def run_DMT_processing(self):
+            # First look to see what we can load from cache.
+            if self.use_cache:
+                self.fig_labels, self.label_results = self._load_label_cache()
+                if self.fig_labels:
+                    print("Loaded cached label figure.")
+                if self.label_results:
+                    print("Loaded cached label results.")
+            # If we do not have a figure loaded from cache...
+            # Compute label statistics.
+            if not self.label_results:
+                self.label_results = self._prepare_labels()
+            # Create figure
+            if not self.fig_labels:
+                self.fig_labels = \
+                    make_label_fig(self.label_results)
+            # Finish
+            if self.save:
+                self._write_label_cache()
+
+        def _write_label_cache(self):
+            utils.make_cache_path(pjoin(self.cache_path, LABEL_DIR))
+            if self.label_results:
+                utils.write_json(self.label_results, self.labels_json_fid)
+            if self.fig_labels:
+                utils.write_plotly(self.fig_labels, self.labels_fig_json_fid)
+                self.fig_labels.write_html(self.labels_fig_html_fid)
+
+        def _prepare_labels(self):
+            """Loads a Labels object and computes label statistics"""
+            # Label object for the dataset
+            label_obj = Labels(dataset=self.dset,
+                                           dataset_name=self.dset_name,
+                                           config_name=self.dset_config)
+            if not self.label_field:
+                print(
+                    "Label statistics requested, but no label column name given. Assuming it is 'label'.")
+                self.label_field = "label"
+            # TODO: Handle the case where there are multiple label columns.
+            # The logic throughout the code assumes only one.
+            if type(self.label_field) == tuple:
+                label_field = self.label_field[0]
+            elif type(self.label_field) == str:
+                label_field = self.label_field
+            else:
+                print("Unexpected format %s for label column name(s). "
+                      "Not computing label statistics." %
+                      type(self.label_field))
+                return {}
+            label_results = label_obj.prepare_labels(label_field, self.label_names)
+            return label_results
+
+        def _load_label_cache(self):
+            fig_labels = {}
+            label_results = {}
+            # Image exists. Load it.
+            if exists(self.labels_fig_json_fid):
+                fig_labels = utils.read_plotly(self.labels_fig_json_fid)
+            # Measurements exist. Load them.
+            if exists(self.labels_json_fid):
+                # Loads the label list, names, and results
+                label_results = utils.read_json(self.labels_json_fid)
+            return fig_labels, label_results
+
+        def get_label_filenames(self):
+            label_fid_dict = {"statistics": self.labels_json_fid, "figure json": self.labels_fig_json_fid, "figure html": self.labels_fig_html_fid}
+            return label_fid_dict
+
 class Labels:
     """
+    Generic class for label processing.
     Uses the Dataset to extract the label column and compute label measurements.
     """
 

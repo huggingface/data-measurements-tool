@@ -103,10 +103,10 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
     if do_all or dataset_args["calculation"] == "labels":
         print("\n* Calculating label statistics.")
         dstats.load_or_prepare_labels()
-        print("If all went well, then:")
-        print("Label statistics at %s." % dstats.labels_json_fid)
-        print("Label figure available at %s." % dstats.labels_fig_json_fid)
-        print("Label HTML figure available at %s." % dstats.labels_fig_html_fid)
+        label_fid_dict = dstats.label_files
+        print("If all went well, then results are in the following files:")
+        for key, value in label_fid_dict.items():
+            print("%s: %s" % (key, value))
         print()
 
     if do_all or dataset_args["calculation"] == "npmi":
