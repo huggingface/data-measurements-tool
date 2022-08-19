@@ -294,7 +294,7 @@ def expander_text_duplicates(dstats, column_id):
             st.write("Here is the list of all the duplicated items and their counts in the dataset:")
             # TODO: Check if this is slow when the size is large -- should we store as dataframes?
             # Dataframes allow this to be interactive.
-            st.dataframe(dict_to_df(dstats.dups_dict))
+            st.dataframe(counter_dict_to_df(dstats.dups_dict))
 
 
 ### Then, show perplexities
