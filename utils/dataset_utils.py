@@ -302,10 +302,12 @@ def extract_field(examples, field_path, new_field_name=None):
 def make_cache_path(cache_path):
     os.makedirs(cache_path, exist_ok=True)
 
+def dict_to_df(dict_input):
+    df_output = pd.DataFrame(dict_input, index=[0]).reset_index
+    return df_output
 
 def write_plotly(fig, fid):
     write_json(plotly.io.to_json(fig), fid)
-
 
 def read_plotly(fid):
     fig = plotly.io.from_json(json.load(open(fid, encoding="utf-8")))
@@ -313,9 +315,10 @@ def read_plotly(fid):
 
 def write_html(input_json, html_fid):
     html_dict = json2html.convert(json=input_json)
-    with open(html_fid, "w", encoding="utf-8") as f:
+    print(html_dict)
+    with open(html_fid, "w+") as f:
         f.write(html_dict)
-    f.close()
+        f.close()
 
 def read_df(df_fid):
     df = feather.read_feather(df_fid)

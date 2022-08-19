@@ -26,7 +26,7 @@ import statistics
 import utils.dataset_utils as utils
 from data_measurements.embeddings.embeddings import Embeddings
 from data_measurements.labels import labels
-from data_measurements.text_duplicates import text_duplicates
+from data_measurements.text_duplicates import text_duplicates as td
 from data_measurements.npmi.npmi import nPMI
 # TODO(meg): Incorporate this from evaluate library.
 # import evaluate
@@ -44,6 +44,7 @@ from utils.dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD, 
                                  TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
                                  TOT_WORDS, VOCAB, WORD, extract_field,
                                  load_truncated_dataset)
+
 
 # from dotenv import load_dotenv
 
@@ -229,14 +230,13 @@ class DatasetStatisticsCacheClass:
         self.total_open_words = 0
         # Number of NaN values (NOT empty strings)
         self.text_nan_count = 0
-        # Number of text items that appear more than once in the dataset
-        self.dedup_total = 0
-        # Duplicated text items along with their number of occurences ("count")
-        self.dup_counts_df = None
+        # Text Duplicates module
+        self.dups_frac = 0
+        self.dups_dict = {}
         self.perplexities_df = None
         self.avg_length = None
         self.std_length = None
-        self.general_stats_dict = None
+        self.general_stats_dict = {}
         self.num_uniq_lengths = 0
         # clustering text by embeddings
         # the hierarchical clustering tree is represented as a list of nodes,
@@ -383,10 +383,16 @@ class DatasetStatisticsCacheClass:
 
         """
         # General statistics
+        # Text duplicates are not saved in their own files, but rather in the
+        # "general" file. We therefore set save=False in this case.
+        # Similarly, we don't get the full list of duplicates
+        # in general stats, so set list_duplicates to False
+        self.load_or_prepare_text_duplicates(save=False, list_duplicates=False)
+        self.general_stats_dict.update(self.duplicates_results)
+        # TODO: Tighten the rest of this similar to text_duplicates.
         if (
                 self.use_cache
                 and exists(self.general_stats_json_fid)
-                and exists(self.dup_counts_df_fid)
                 and exists(self.sorted_top_vocab_df_fid)
         ):
             logs.info("Loading cached general stats")
@@ -398,7 +404,6 @@ class DatasetStatisticsCacheClass:
                 if save:
                     utils.write_df(self.sorted_top_vocab_df,
                                    self.sorted_top_vocab_df_fid)
-                    utils.write_df(self.dup_counts_df, self.dup_counts_df_fid)
                     utils.write_json(self.general_stats_dict,
                                      self.general_stats_json_fid)
 
@@ -545,27 +550,19 @@ class DatasetStatisticsCacheClass:
         # Handling for changes in how the index is saved.
         self.vocab_counts_df = _set_idx_col_names(self.vocab_counts_df)
 
-    def load_or_prepare_text_duplicates(self, save=True):
-        """Uses a generic Duplicates class, with attributes specific to this
+    def load_or_prepare_text_duplicates(self, save=True, list_duplicates=True):
+        """Uses a Duplicates class, with attributes specific to this
         project as input.
-        Creates strings with their counts
+        Creates strings with their counts, fraction of data that is duplicated,
         or else uses what's available in the cache.
         """
-        print("a")
-
-        duplicates_obj = text_duplicates.DMTHelper(self, save)
-        print("b")
-
-        duplicates_obj.run_DMT_processing()
-        print("c")
-
-        # Will these be the same without this?
-        self.duplicates_results = duplicates_obj.duplicates_results
-        print("d")
-
-        self.duplicates_files = duplicates_obj.get_duplicates_filenames()
-        print("e")
-
+        dups_obj = td.DMTHelper(self, save=save)
+        dups_obj.run_DMT_processing(list_duplicates=list_duplicates)
+        self.duplicates_results = dups_obj.duplicates_results
+        self.dups_frac = self.duplicates_results[td.DUPS_FRAC]
+        if list_duplicates and td.DUPS_DICT in self.duplicates_results:
+            self.dups_dict = self.duplicates_results[td.DUPS_DICT]
+        self.duplicates_files = dups_obj.get_duplicates_filenames()
 
 
     def load_or_prepare_text_perplexities(self, save=True):
@@ -591,7 +588,7 @@ class DatasetStatisticsCacheClass:
         with open(self.sorted_top_vocab_df_fid, "rb") as f:
             self.sorted_top_vocab_df = utils.read_df(f)
         self.text_nan_count = self.general_stats_dict[TEXT_NAN_CNT]
-        self.dedup_total = self.general_stats_dict[DEDUP_TOT]
+        self.dups_frac = self.general_stats_dict[td.DUPS_FRAC]
         self.total_words = self.general_stats_dict[TOT_WORDS]
         self.total_open_words = self.general_stats_dict[TOT_OPEN_WORDS]
 
@@ -609,28 +606,12 @@ class DatasetStatisticsCacheClass:
             self.total_words = len(self.vocab_counts_df)
             self.total_open_words = len(self.vocab_counts_filtered_df)
             self.text_nan_count = int(self.tokenized_df.isnull().sum().sum())
-            self.load_or_prepare_text_duplicates()
-            self.dedup_total = sum(self.dup_counts_df[CNT])
             self.general_stats_dict = {
                 TOT_WORDS: self.total_words,
                 TOT_OPEN_WORDS: self.total_open_words,
                 TEXT_NAN_CNT: self.text_nan_count,
-                DEDUP_TOT: self.dedup_total,
+                td.DUPS_FRAC: self.dups_frac
             }
-
-    #def prepare_text_duplicates(self):
-    #    if not self.live:
-    #        if self.tokenized_df is None:
-    #            self.load_or_prepare_tokenized_df()
-    #        dup_df = self.tokenized_df[
-    #            self.tokenized_df.duplicated([OUR_TEXT_FIELD])]
-    #        self.dup_counts_df = pd.DataFrame(
-    #            dup_df.pivot_table(
-    #                columns=[OUR_TEXT_FIELD], aggfunc="size"
-    #            ).sort_values(ascending=False),
-    #            columns=[CNT],
-    #        )
-    #        self.dup_counts_df[OUR_TEXT_FIELD] = self.dup_counts_df.index.copy()
 
     def prepare_text_perplexities(self):
         if not self.live:

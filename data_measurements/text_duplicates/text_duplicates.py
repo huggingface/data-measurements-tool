@@ -9,8 +9,13 @@ from os.path import exists, isdir
 from os.path import join as pjoin
 
 TEXT = "text"
-EVAL_DUP_FRAC = "duplicate_fraction"
-EVAL_DUP_LIST = "duplicates_list"
+# These are string constants defined in the evaluate library.
+# They may need to be updated if the evaluate library changes these strings
+DUPS_FRAC = "duplicate_fraction"
+# Evaluate calls the dictionary a "list"
+DUPS_DICT = "duplicates_list"
+# This isn't in the evaluate measurement, but TODO to add that...
+# DUPS_SUM = "duplicate_sum"
 
 logs = logging.getLogger(__name__)
 logs.setLevel(logging.WARNING)
@@ -41,7 +46,6 @@ class DMTHelper:
     def __init__(self, dstats, save):
         # Input HuggingFace Dataset.
         self.dset = dstats.text_dset[TEXT]
-        print("1")
         if self.dset is None:
             dstats.load_or_prepare_text_dset()
             self.dset = dstats.text_dset
@@ -52,8 +56,6 @@ class DMTHelper:
         # TODO: Should this just be an attribute of dstats instead?
         self.save = save
         # Filenames
-        print("2")
-
         self.dups_dir = "text_duplicates"
         dups_json = "text_duplicates.json"
         dups_html = "text_duplicates.html"
@@ -62,27 +64,23 @@ class DMTHelper:
         self.dups_result_json_fid = pjoin(self.cache_path, self.dups_dir, dups_json)
         self.dups_result_html_fid = pjoin(self.cache_path, self.dups_dir, dups_html)
 
-    def run_DMT_processing(self):
-        # First look to see what we can load from cache.
-        print("3")
+    def run_DMT_processing(self, list_duplicates=True):
+        # DMT uses the full list in a widget, so it is set to default True.
 
+        # First look to see what we can load from cache.
         if self.use_cache:
             self.duplicates_results = self._load_duplicates_cache()
             if self.duplicates_results:
                 logs.info("Loaded cached text duplicate results.")
         if not self.duplicates_results:
-            self.duplicates_results = self._prepare_duplicates()
+            self.duplicates_results = self._prepare_duplicates(list_duplicates=list_duplicates)
             logs.info("Prepared duplicates.")
         if self.save:
             self._write_duplicates_cache()
 
-    def _prepare_duplicates(self):
-        print("4")
-
+    def _prepare_duplicates(self, list_duplicates=True):
         duplicates = evaluate.load("text_duplicates")
-        results = duplicates.compute(data=self.dset, list_duplicates=True)
-        print("5")
-
+        results = duplicates.compute(data=self.dset, list_duplicates=list_duplicates)
         return results
 
     def _load_duplicates_cache(self):
