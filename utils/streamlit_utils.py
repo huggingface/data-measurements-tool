@@ -20,7 +20,7 @@ import streamlit as st
 from st_aggrid import AgGrid, GridOptionsBuilder
 
 # TODO: Clean up
-from .dataset_utils import HF_DESC_FIELD, HF_FEATURE_FIELD, HF_LABEL_FIELD, dict_to_df
+from .dataset_utils import HF_DESC_FIELD, HF_FEATURE_FIELD, HF_LABEL_FIELD, counter_dict_to_df
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
 def sidebar_header():

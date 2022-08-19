@@ -302,7 +302,7 @@ def extract_field(examples, field_path, new_field_name=None):
 def make_cache_path(cache_path):
     os.makedirs(cache_path, exist_ok=True)
 
-def dict_to_df(dict_input):
+def counter_dict_to_df(dict_input):
     df_output = pd.DataFrame(dict_input, index=[0]).T
     df_output.columns = ["count"]
     return df_output

@@ -382,8 +382,10 @@ class DatasetStatisticsCacheClass:
 
         """
         # General statistics
-        # Text duplicates are not saved in their own files, but rather in the
-        # "general" file. We therefore set save=False in this case.
+        # For the general statistics, text duplicates are not saved in their
+        # own files, but rather just the text duplicate fraction is saved in the
+        # "general" file. We therefore set save=False for
+        # the text duplicate filesin this case.
         # Similarly, we don't get the full list of duplicates
         # in general stats, so set list_duplicates to False
         self.load_or_prepare_text_duplicates(save=False, list_duplicates=False)
