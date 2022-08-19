@@ -68,7 +68,6 @@ colors = [
 CACHE_DIR = dataset_utils.CACHE_DIR
 # String names we are using (not coming from the stored dataset).
 OUR_TEXT_FIELD = dataset_utils.OUR_TEXT_FIELD
-OUR_LABEL_FIELD = dataset_utils.OUR_LABEL_FIELD
 TOKENIZED_FIELD = dataset_utils.TOKENIZED_FIELD
 EMBEDDING_FIELD = dataset_utils.EMBEDDING_FIELD
 LENGTH_FIELD = dataset_utils.LENGTH_FIELD

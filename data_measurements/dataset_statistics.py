@@ -39,11 +39,9 @@ from os.path import join as pjoin
 from pathlib import Path
 from sklearn.feature_extraction.text import CountVectorizer
 from utils.dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD,
-                                 OUR_LABEL_FIELD, OUR_TEXT_FIELD,
-                                 PERPLEXITY_FIELD, PROP,
+                                 OUR_TEXT_FIELD, PERPLEXITY_FIELD, PROP,
                                  TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
-                                 TOT_WORDS, VOCAB, WORD, extract_field,
-                                 load_truncated_dataset)
+                                 TOT_WORDS, VOCAB, WORD, load_truncated_dataset)
 
 # from dotenv import load_dotenv
 
@@ -167,7 +165,6 @@ class DatasetStatisticsCacheClass:
         self.calculation = calculation
         self.our_text_field = OUR_TEXT_FIELD
         self.our_length_field = LENGTH_FIELD
-        self.our_label_field = OUR_LABEL_FIELD
         self.our_tokenized_field = TOKENIZED_FIELD
         self.our_embedding_field = EMBEDDING_FIELD
         self.cache_dir = cache_dir
