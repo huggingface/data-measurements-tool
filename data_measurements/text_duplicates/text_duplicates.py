@@ -93,7 +93,10 @@ class DMTHelper:
         utils.make_cache_path(pjoin(self.cache_path, self.dups_dir))
         if self.duplicates_results:
             utils.write_json(self.duplicates_results, self.dups_result_json_fid)
-            utils.write_html(self.duplicates_results, self.dups_result_html_fid)
+            # TODO: Use df_to_html rather than write_json_as_html;
+            # this will make it possible to order the results.
+            # But they must first be turned into a dataframe.
+            utils.write_json_as_html(self.duplicates_results, self.dups_result_html_fid)
 
     def get_duplicates_filenames(self):
         dups_fid_dict = {"statistics": self.dups_result_json_fid, "html":self.dups_result_html_fid}

@@ -314,12 +314,14 @@ def read_plotly(fid):
     fig = plotly.io.from_json(json.load(open(fid, encoding="utf-8")))
     return fig
 
-def write_html(input_json, html_fid):
+def write_json_as_html(input_json, html_fid):
     html_dict = json2html.convert(json=input_json)
-    print(html_dict)
     with open(html_fid, "w+") as f:
         f.write(html_dict)
-        f.close()
+
+def df_to_write_html(input_df, html_fid):
+    """Writes a dataframe to an HTML file"""
+    input_df.to_HTML(html_fid)
 
 def read_df(df_fid):
     df = feather.read_feather(df_fid)
