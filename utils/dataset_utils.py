@@ -303,7 +303,8 @@ def make_cache_path(cache_path):
     os.makedirs(cache_path, exist_ok=True)
 
 def dict_to_df(dict_input):
-    df_output = pd.DataFrame(dict_input, index=[0]).reset_index
+    df_output = pd.DataFrame(dict_input, index=[0]).T
+    df_output.columns = ["count"]
     return df_output
 
 def write_plotly(fig, fid):

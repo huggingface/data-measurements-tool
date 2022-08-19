@@ -290,7 +290,7 @@ def expander_text_duplicates(dstats, column_id):
             st.write("There are no duplicates in this dataset! 🥳")
         else:
             st.write("The fraction of the data that is a duplicate is:")
-            st.write("%s" % round(dstats.dups_frac * 100, 2))
+            st.write("%s%" % round(dstats.dups_frac * 100, 2))
             st.write("Here is the list of all the duplicated items and their counts in the dataset:")
             # TODO: Check if this is slow when the size is large -- should we store as dataframes?
             # Dataframes allow this to be interactive.
