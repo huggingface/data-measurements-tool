@@ -36,7 +36,6 @@ CACHE_DIR = "cache_dir"
 # but rather used as identifiers in our dicts and dataframes.
 OUR_TEXT_FIELD = "text"
 PERPLEXITY_FIELD = "perplexity"
-OUR_LABEL_FIELD = "label"
 TOKENIZED_FIELD = "tokenized_text"
 EMBEDDING_FIELD = "embedding"
 LENGTH_FIELD = "length"
