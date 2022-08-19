@@ -285,10 +285,14 @@ def expander_text_duplicates(dstats, column_id):
         st.write(
             "### Here is the list of all the duplicated items and their counts in your dataset:"
         )
-        if dstats.dup_counts_df is None or dstats.dup_counts_df.empty:
+        if not dstats.duplicates_resuts:
             st.write("There are no duplicates in this dataset! 🥳")
         else:
-            st.dataframe(dstats.dup_counts_df.reset_index(drop=True))
+            st.write("The fraction of your data that is duplicated is:")
+            st.write(dstats.duplicates_resuts[EVAL_DUP_FRAC])
+            st.write("Here is the list of all the duplicated items and their counts in your dataset:")
+            st.json(dstats.duplicates_results[EVAL_DUP_LIST])
+            #st.dataframe(dstats.dup_counts_df.reset_index(drop=True))
 
 
 ### Then, show perplexities

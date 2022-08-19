@@ -21,6 +21,7 @@ import pyarrow.feather as feather
 import pandas as pd
 from datasets import Dataset, get_dataset_infos, load_dataset, load_from_disk, \
     NamedSplit
+from json2html import *
 
 # treating inf values as NaN as well
 pd.set_option("use_inf_as_na", True)
@@ -34,9 +35,7 @@ CACHE_DIR = "cache_dir"
 ## String names we are using within this code.
 # These are not coming from the stored dataset nor HF config,
 # but rather used as identifiers in our dicts and dataframes.
-OUR_TEXT_FIELD = "text"
 PERPLEXITY_FIELD = "perplexity"
-OUR_LABEL_FIELD = "label"
 TOKENIZED_FIELD = "tokenized_text"
 EMBEDDING_FIELD = "embedding"
 LENGTH_FIELD = "length"
@@ -311,6 +310,11 @@ def read_plotly(fid):
     fig = plotly.io.from_json(json.load(open(fid, encoding="utf-8")))
     return fig
 
+def write_html(input_json, html_fid):
+    html_dict = json2html.convert(json=input_json)
+    with open(html_fid, "w", encoding="utf-8") as f:
+        f.write(html_dict)
+    f.close()
 
 def read_df(df_fid):
     df = feather.read_feather(df_fid)

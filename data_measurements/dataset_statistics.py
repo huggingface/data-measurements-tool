@@ -26,6 +26,7 @@ import statistics
 import utils.dataset_utils as utils
 from data_measurements.embeddings.embeddings import Embeddings
 from data_measurements.labels import labels
+from data_measurements.text_duplicates import text_duplicates
 from data_measurements.npmi.npmi import nPMI
 # TODO(meg): Incorporate this from evaluate library.
 # import evaluate
@@ -162,8 +163,8 @@ class DatasetStatisticsCacheClass:
             calculation=None,
             use_cache=False,
     ):
-        # This is only used for standalone runs for each kind of measurement.
         self.label_results = None
+        self.duplicates_results = None
         self.calculation = calculation
         self.our_text_field = OUR_TEXT_FIELD
         self.our_length_field = LENGTH_FIELD
@@ -372,6 +373,7 @@ class DatasetStatisticsCacheClass:
                 use_streaming=True,
             )
 
+
     def load_or_prepare_general_stats(self, save=True):
         """
         Content for expander_general_stats widget.
@@ -546,21 +548,16 @@ class DatasetStatisticsCacheClass:
         self.vocab_counts_df = _set_idx_col_names(self.vocab_counts_df)
 
     def load_or_prepare_text_duplicates(self, save=True):
-        if self.use_cache and exists(self.dup_counts_df_fid):
-            with open(self.dup_counts_df_fid, "rb") as f:
-                self.dup_counts_df = utils.read_df(f)
-        elif self.dup_counts_df is None:
-            if not self.live:
-                self.prepare_text_duplicates()
-                if save:
-                    utils.write_df(self.dup_counts_df, self.dup_counts_df_fid)
-        else:
-            if not self.live:
-                # This happens when self.dup_counts_df is already defined;
-                # This happens when general_statistics were calculated first,
-                # since general statistics requires the number of duplicates
-                if save:
-                    utils.write_df(self.dup_counts_df, self.dup_counts_df_fid)
+        """Uses a generic Duplicates class, with attributes specific to this
+        project as input.
+        Creates strings with their counts
+        or else uses what's available in the cache.
+        """
+        duplicates_obj = text_duplicates.DMTHelper(self, save)
+        duplicates_obj.run_DMT_processing()
+        self.duplicates_results = duplicates_obj.duplicates_results
+        self.duplicates_files = duplicates_obj.get_duplicates_filenames()
+
 
     def load_or_prepare_text_perplexities(self, save=True):
         if self.use_cache and exists(self.perplexities_df_fid):
