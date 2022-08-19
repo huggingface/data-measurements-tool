@@ -35,6 +35,7 @@ CACHE_DIR = "cache_dir"
 ## String names we are using within this code.
 # These are not coming from the stored dataset nor HF config,
 # but rather used as identifiers in our dicts and dataframes.
+OUR_TEXT_FIELD = "text"
 PERPLEXITY_FIELD = "perplexity"
 TOKENIZED_FIELD = "tokenized_text"
 EMBEDDING_FIELD = "embedding"

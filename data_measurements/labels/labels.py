@@ -96,6 +96,7 @@ class DMTHelper:
         self.label_results = dstats.label_results
         self.cache_path = dstats.cache_path
         self.label_field = dstats.label_field
+        self.dset = dstats.text_dset
         # TODO: Should this just be an attribute of dstats instead?
         self.save = save
         # Filenames

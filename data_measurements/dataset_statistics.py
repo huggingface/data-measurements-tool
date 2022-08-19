@@ -39,8 +39,7 @@ from os.path import exists, isdir
 from os.path import join as pjoin
 from pathlib import Path
 from sklearn.feature_extraction.text import CountVectorizer
-from utils.dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD,
-                                 OUR_LABEL_FIELD, OUR_TEXT_FIELD,
+from utils.dataset_utils import (CNT, DEDUP_TOT, EMBEDDING_FIELD, LENGTH_FIELD, OUR_TEXT_FIELD,
                                  PERPLEXITY_FIELD, PROP,
                                  TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
                                  TOT_WORDS, VOCAB, WORD, extract_field,
@@ -166,9 +165,7 @@ class DatasetStatisticsCacheClass:
         self.label_results = None
         self.duplicates_results = None
         self.calculation = calculation
-        self.our_text_field = OUR_TEXT_FIELD
         self.our_length_field = LENGTH_FIELD
-        self.our_label_field = OUR_LABEL_FIELD
         self.our_tokenized_field = TOKENIZED_FIELD
         self.our_embedding_field = EMBEDDING_FIELD
         self.cache_dir = cache_dir
@@ -326,6 +323,7 @@ class DatasetStatisticsCacheClass:
         )
 
         self.label_files = {}
+        self.duplicates_files = {}
 
         ## Embeddings cache files
         # Needed for UI
@@ -553,10 +551,21 @@ class DatasetStatisticsCacheClass:
         Creates strings with their counts
         or else uses what's available in the cache.
         """
+        print("a")
+
         duplicates_obj = text_duplicates.DMTHelper(self, save)
+        print("b")
+
         duplicates_obj.run_DMT_processing()
+        print("c")
+
+        # Will these be the same without this?
         self.duplicates_results = duplicates_obj.duplicates_results
+        print("d")
+
         self.duplicates_files = duplicates_obj.get_duplicates_filenames()
+        print("e")
+
 
 
     def load_or_prepare_text_perplexities(self, save=True):
@@ -600,7 +609,7 @@ class DatasetStatisticsCacheClass:
             self.total_words = len(self.vocab_counts_df)
             self.total_open_words = len(self.vocab_counts_filtered_df)
             self.text_nan_count = int(self.tokenized_df.isnull().sum().sum())
-            self.prepare_text_duplicates()
+            self.load_or_prepare_text_duplicates()
             self.dedup_total = sum(self.dup_counts_df[CNT])
             self.general_stats_dict = {
                 TOT_WORDS: self.total_words,
@@ -609,19 +618,19 @@ class DatasetStatisticsCacheClass:
                 DEDUP_TOT: self.dedup_total,
             }
 
-    def prepare_text_duplicates(self):
-        if not self.live:
-            if self.tokenized_df is None:
-                self.load_or_prepare_tokenized_df()
-            dup_df = self.tokenized_df[
-                self.tokenized_df.duplicated([OUR_TEXT_FIELD])]
-            self.dup_counts_df = pd.DataFrame(
-                dup_df.pivot_table(
-                    columns=[OUR_TEXT_FIELD], aggfunc="size"
-                ).sort_values(ascending=False),
-                columns=[CNT],
-            )
-            self.dup_counts_df[OUR_TEXT_FIELD] = self.dup_counts_df.index.copy()
+    #def prepare_text_duplicates(self):
+    #    if not self.live:
+    #        if self.tokenized_df is None:
+    #            self.load_or_prepare_tokenized_df()
+    #        dup_df = self.tokenized_df[
+    #            self.tokenized_df.duplicated([OUR_TEXT_FIELD])]
+    #        self.dup_counts_df = pd.DataFrame(
+    #            dup_df.pivot_table(
+    #                columns=[OUR_TEXT_FIELD], aggfunc="size"
+    #            ).sort_values(ascending=False),
+    #            columns=[CNT],
+    #        )
+    #        self.dup_counts_df[OUR_TEXT_FIELD] = self.dup_counts_df.index.copy()
 
     def prepare_text_perplexities(self):
         if not self.live:
