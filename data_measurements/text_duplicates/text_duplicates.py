@@ -59,13 +59,14 @@ class DMTHelper:
         self.dups_dir = "text_duplicates"
         dups_json = "text_duplicates.json"
         dups_html = "text_duplicates.html"
-        #label_fig_json = "labels_fig.json"
-        #label_fig_html = "labels_fig.html"
         self.dups_result_json_fid = pjoin(self.cache_path, self.dups_dir, dups_json)
         self.dups_result_html_fid = pjoin(self.cache_path, self.dups_dir, dups_html)
 
     def run_DMT_processing(self, list_duplicates=True):
-        # DMT uses the full list in a widget, so it is set to default True.
+        """Calls functions to do the main work.
+        DMT uses the full duplicates list in a widget,
+        so it is set to default True.
+        """
 
         # First look to see what we can load from cache.
         if self.use_cache:
@@ -79,17 +80,20 @@ class DMTHelper:
             self._write_duplicates_cache()
 
     def _prepare_duplicates(self, list_duplicates=True):
+        """Wraps the evaluate library."""
         duplicates = evaluate.load("text_duplicates")
         results = duplicates.compute(data=self.dset, list_duplicates=list_duplicates)
         return results
 
     def _load_duplicates_cache(self):
+        """Loads previously computed results from cache."""
         results = {}
         if exists(self.dups_result_json_fid):
             results = utils.read_json(self.dups_result_json_fid)
         return results
     
     def _write_duplicates_cache(self):
+        """Writes newly computer results to cache."""
         utils.make_cache_path(pjoin(self.cache_path, self.dups_dir))
         if self.duplicates_results:
             utils.write_json(self.duplicates_results, self.dups_result_json_fid)
