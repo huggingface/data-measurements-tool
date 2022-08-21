@@ -46,7 +46,6 @@ CNT = "count"
 PROP = "proportion"
 TEXT_NAN_CNT = "text_nan_count"
 TXT_LEN = "text lengths"
-DEDUP_TOT = "dedup_total"
 TOT_WORDS = "total words"
 TOT_OPEN_WORDS = "total open words"
 
