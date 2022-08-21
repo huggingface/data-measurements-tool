@@ -41,6 +41,7 @@ class DMTHelper:
     """Helper class for the Data Measurements Tool.
     This allows us to keep all variables and functions related to labels
     in one file.
+    Does caching and using the evaluate library for computation.
     """
 
     def __init__(self, dstats, save):

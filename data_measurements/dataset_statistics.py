@@ -552,9 +552,8 @@ class DatasetStatisticsCacheClass:
         self.vocab_counts_df = _set_idx_col_names(self.vocab_counts_df)
 
     def load_or_prepare_text_duplicates(self, save=True, list_duplicates=True):
-        """Uses a Duplicates class, with attributes specific to this
-        project as input.
-        Creates strings with their counts, fraction of data that is duplicated,
+        """Uses a text duplicates library, which
+        returns strings with their counts, fraction of data that is duplicated,
         or else uses what's available in the cache.
         """
         dups_obj = td.DMTHelper(self, save=save)
