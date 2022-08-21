@@ -21,6 +21,7 @@ import pyarrow.feather as feather
 import pandas as pd
 from datasets import Dataset, get_dataset_infos, load_dataset, load_from_disk, \
     NamedSplit
+from json2html import *
 
 # treating inf values as NaN as well
 pd.set_option("use_inf_as_na", True)
@@ -45,8 +46,6 @@ CNT = "count"
 PROP = "proportion"
 TEXT_NAN_CNT = "text_nan_count"
 TXT_LEN = "text lengths"
-TXT_LEN = "text lengths"
-DEDUP_TOT = "dedup_total"
 TOT_WORDS = "total words"
 TOT_OPEN_WORDS = "total open words"
 
@@ -302,15 +301,26 @@ def extract_field(examples, field_path, new_field_name=None):
 def make_path(input_path):
     os.makedirs(input_path, exist_ok=True)
 
+def counter_dict_to_df(dict_input):
+    df_output = pd.DataFrame(dict_input, index=[0]).T
+    df_output.columns = ["count"]
+    return df_output
 
 def write_plotly(fig, fid):
     write_json(plotly.io.to_json(fig), fid)
-
 
 def read_plotly(fid):
     fig = plotly.io.from_json(json.load(open(fid, encoding="utf-8")))
     return fig
 
+def write_json_as_html(input_json, html_fid):
+    html_dict = json2html.convert(json=input_json)
+    with open(html_fid, "w+") as f:
+        f.write(html_dict)
+
+def df_to_write_html(input_df, html_fid):
+    """Writes a dataframe to an HTML file"""
+    input_df.to_HTML(html_fid)
 
 def read_df(df_fid):
     df = feather.read_feather(df_fid)
