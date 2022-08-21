@@ -24,6 +24,9 @@ from plotly.io import read_json
 from tqdm import tqdm
 
 from utils.dataset_utils import EMBEDDING_FIELD
+import utils
+from pathlib import Path
+logs = utils.prepare_logging(Path(__file__).stem)
 
 
 def sentence_mean_pooling(model_output, attention_mask):

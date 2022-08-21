@@ -45,6 +45,8 @@ CNT = "count"
 PROP = "proportion"
 TEXT_NAN_CNT = "text_nan_count"
 TXT_LEN = "text lengths"
+TXT_LEN = "text lengths"
+DEDUP_TOT = "dedup_total"
 TOT_WORDS = "total words"
 TOT_OPEN_WORDS = "total open words"
 
@@ -297,8 +299,8 @@ def extract_field(examples, field_path, new_field_name=None):
     ]
     return {new_field_name: field_list}
 
-def make_cache_path(cache_path):
-    os.makedirs(cache_path, exist_ok=True)
+def make_path(input_path):
+    os.makedirs(input_path, exist_ok=True)
 
 
 def write_plotly(fig, fid):

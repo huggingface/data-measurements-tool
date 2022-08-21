@@ -20,31 +20,12 @@ from pathlib import Path
 import streamlit as st
 
 from data_measurements import dataset_statistics
-from utils import dataset_utils
+import utils
+from utils import ds_utils as ds_utils
 from utils import streamlit_utils as st_utils
 
-logs = logging.getLogger(__name__)
-logs.setLevel(logging.WARNING)
-logs.propagate = False
-
-if not logs.handlers:
-
-    Path('./log_files').mkdir(exist_ok=True)
-
-    # Logging info to log file
-    file = logging.FileHandler("./log_files/app.log")
-    fileformat = logging.Formatter("%(asctime)s:%(message)s")
-    file.setLevel(logging.INFO)
-    file.setFormatter(fileformat)
-
-    # Logging debug messages to stream
-    stream = logging.StreamHandler()
-    streamformat = logging.Formatter("[data_measurements_tool] %(message)s")
-    stream.setLevel(logging.WARNING)
-    stream.setFormatter(streamformat)
-
-    logs.addHandler(file)
-    logs.addHandler(stream)
+from pathlib import Path
+logs = utils.prepare_logging(Path(__file__).stem)
 
 st.set_page_config(
     page_title="Demo to showcase dataset metrics",
@@ -65,12 +46,12 @@ colors = [
     "#88CCEE",
 ]
 
-CACHE_DIR = dataset_utils.CACHE_DIR
+CACHE_DIR = ds_utils.CACHE_DIR
 # String names we are using (not coming from the stored dataset).
-OUR_TEXT_FIELD = dataset_utils.OUR_TEXT_FIELD
-TOKENIZED_FIELD = dataset_utils.TOKENIZED_FIELD
-EMBEDDING_FIELD = dataset_utils.EMBEDDING_FIELD
-LENGTH_FIELD = dataset_utils.LENGTH_FIELD
+OUR_TEXT_FIELD = ds_utils.OUR_TEXT_FIELD
+TOKENIZED_FIELD = ds_utils.TOKENIZED_FIELD
+EMBEDDING_FIELD = ds_utils.EMBEDDING_FIELD
+LENGTH_FIELD = ds_utils.LENGTH_FIELD
 # TODO: Allow users to specify this.
 _MIN_VOCAB_COUNT = 10
 _SHOW_TOP_N_WORDS = 10
@@ -259,7 +240,7 @@ def main():
     arguments = parser.parse_args()
     live = arguments.live
     # Sidebar description and selection
-    ds_name_to_dict = dataset_utils.get_dataset_info_dicts()
+    ds_name_to_dict = ds_utils.get_dataset_info_dicts()
     st.title("Data Measurements Tool")
     # Get the sidebar details
     st_utils.sidebar_header()

@@ -14,6 +14,7 @@
 
 import logging
 import warnings
+import utils
 from pathlib import Path
 
 import numpy as np
@@ -28,28 +29,9 @@ np.seterr(divide="ignore")
 # treating inf values as NaN as well
 pd.set_option("use_inf_as_na", True)
 
-logs = logging.getLogger(__name__)
-logs.setLevel(logging.INFO)
-logs.propagate = False
+from pathlib import Path
+logs = utils.prepare_logging(Path(__file__).stem)
 
-if not logs.handlers:
-
-    Path("./log_files").mkdir(exist_ok=True)
-
-    # Logging info to log file
-    file = logging.FileHandler("./log_files/npmi.log")
-    fileformat = logging.Formatter("%(asctime)s:%(message)s")
-    file.setLevel(logging.INFO)
-    file.setFormatter(fileformat)
-
-    # Logging debug messages to stream
-    stream = logging.StreamHandler()
-    streamformat = logging.Formatter("[data_measurements_tool] %(message)s")
-    stream.setLevel(logging.WARNING)
-    stream.setFormatter(streamformat)
-
-    logs.addHandler(file)
-    logs.addHandler(stream)
 
 _NUM_BATCHES = 500
 

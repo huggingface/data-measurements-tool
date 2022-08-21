@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import json
-import logging
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import nltk
@@ -23,25 +22,25 @@ import plotly.express as px
 import plotly.graph_objects as go
 import seaborn as sns
 import statistics
-import utils.dataset_utils as utils
+import utils
+import utils.dataset_utils as ds_utils
 from data_measurements.embeddings.embeddings import Embeddings
 from data_measurements.labels import labels
 from data_measurements.npmi.npmi import nPMI
-# TODO(meg): Incorporate this from evaluate library.
-# import evaluate
 from data_measurements.zipf import zipf
 from datasets import load_from_disk, load_metric
 from huggingface_hub import Repository, list_datasets
 from nltk.corpus import stopwords
 from os import mkdir, getenv
-from os.path import exists, isdir
+from os.path import exists, isdir, basename
 from os.path import join as pjoin
 from pathlib import Path
 from sklearn.feature_extraction.text import CountVectorizer
-from utils.dataset_utils import (CNT, EMBEDDING_FIELD, LENGTH_FIELD,
+from utils.dataset_utils import (CNT, EMBEDDING_FIELD, LENGTH_FIELD, DEDUP_TOT,
                                  OUR_TEXT_FIELD, PERPLEXITY_FIELD, PROP,
                                  TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
                                  TOT_WORDS, VOCAB, WORD)
+from pathlib import Path
 
 # from dotenv import load_dotenv
 
@@ -53,25 +52,7 @@ HF_TOKEN = getenv("HF_TOKEN")
 
 pd.options.display.float_format = "{:,.3f}".format
 
-logs = logging.getLogger(__name__)
-logs.setLevel(logging.WARNING)
-logs.propagate = False
-
-if not logs.handlers:
-    # Logging info to log file
-    file = logging.FileHandler("./log_files/dataset_statistics.log")
-    fileformat = logging.Formatter("%(asctime)s:%(message)s")
-    file.setLevel(logging.INFO)
-    file.setFormatter(fileformat)
-
-    # Logging debug messages to stream
-    stream = logging.StreamHandler()
-    streamformat = logging.Formatter("[data_measurements_tool] %(message)s")
-    stream.setLevel(logging.WARNING)
-    stream.setFormatter(streamformat)
-
-    logs.addHandler(file)
-    logs.addHandler(stream)
+logs = utils.prepare_logging(Path(__file__).stem)
 
 # TODO: Read this in depending on chosen language / expand beyond english
 nltk.download("stopwords")
@@ -360,7 +341,7 @@ class DatasetStatisticsCacheClass:
     def get_base_dataset(self):
         """Gets a pointer to the truncated base dataset object."""
         if not self.dset:
-            self.dset = utils.load_truncated_dataset(
+            self.dset = ds_utils.load_truncated_dataset(
                 self.dset_name,
                 self.dset_config,
                 self.split_name,
@@ -393,10 +374,10 @@ class DatasetStatisticsCacheClass:
                 logs.info("Preparing general stats")
                 self.prepare_general_stats()
                 if save:
-                    utils.write_df(self.sorted_top_vocab_df,
+                    ds_utils.write_df(self.sorted_top_vocab_df,
                                    self.sorted_top_vocab_df_fid)
-                    utils.write_df(self.dup_counts_df, self.dup_counts_df_fid)
-                    utils.write_json(self.general_stats_dict,
+                    ds_utils.write_df(self.dup_counts_df, self.dup_counts_df_fid)
+                    ds_utils.write_json(self.general_stats_dict,
                                      self.general_stats_json_fid)
 
     def load_or_prepare_text_lengths(self, save=True):
@@ -419,12 +400,12 @@ class DatasetStatisticsCacheClass:
                     self.fig_tok_length.savefig(self.fig_tok_length_fid)
         # Text length dataframe
         if self.use_cache and exists(self.length_df_fid):
-            self.length_df = utils.read_df(self.length_df_fid)
+            self.length_df = ds_utils.read_df(self.length_df_fid)
         else:
             if not self.live:
                 self.prepare_length_df()
                 if save:
-                    utils.write_df(self.length_df, self.length_df_fid)
+                    ds_utils.write_df(self.length_df, self.length_df_fid)
 
         # Text length stats.
         if self.use_cache and exists(self.length_stats_json_fid):
@@ -437,7 +418,7 @@ class DatasetStatisticsCacheClass:
             if not self.live:
                 self.prepare_text_length_stats()
                 if save:
-                    utils.write_json(self.length_stats_dict,
+                    ds_utils.write_json(self.length_stats_dict,
                                      self.length_stats_json_fid)
 
     def prepare_length_df(self):
@@ -523,14 +504,14 @@ class DatasetStatisticsCacheClass:
                 self.tokenized_df = self.do_tokenization()
                 if save:
                     logs.info("Writing out.")
-                    utils.write_df(self.tokenized_df, self.tokenized_df_fid)
+                    ds_utils.write_df(self.tokenized_df, self.tokenized_df_fid)
             word_count_df = count_vocab_frequencies(self.tokenized_df)
             logs.info("Making dfs with proportion.")
             self.vocab_counts_df = calc_p_word(word_count_df)
             self.vocab_counts_filtered_df = filter_vocab(self.vocab_counts_df)
             if save:
                 logs.info("Writing out.")
-                utils.write_df(self.vocab_counts_df, self.vocab_counts_df_fid)
+                ds_utils.write_df(self.vocab_counts_df, self.vocab_counts_df_fid)
         logs.info("unfiltered vocab")
         logs.info(self.vocab_counts_df)
         logs.info("filtered vocab")
@@ -538,41 +519,41 @@ class DatasetStatisticsCacheClass:
 
     def load_vocab(self):
         with open(self.vocab_counts_df_fid, "rb") as f:
-            self.vocab_counts_df = utils.read_df(f)
+            self.vocab_counts_df = ds_utils.read_df(f)
         # Handling for changes in how the index is saved.
         self.vocab_counts_df = _set_idx_col_names(self.vocab_counts_df)
 
     def load_or_prepare_text_duplicates(self, save=True):
         if self.use_cache and exists(self.dup_counts_df_fid):
             with open(self.dup_counts_df_fid, "rb") as f:
-                self.dup_counts_df = utils.read_df(f)
+                self.dup_counts_df = ds_utils.read_df(f)
         elif self.dup_counts_df is None:
             if not self.live:
                 self.prepare_text_duplicates()
                 if save:
-                    utils.write_df(self.dup_counts_df, self.dup_counts_df_fid)
+                    ds_utils.write_df(self.dup_counts_df, self.dup_counts_df_fid)
         else:
             if not self.live:
                 # This happens when self.dup_counts_df is already defined;
                 # This happens when general_statistics were calculated first,
                 # since general statistics requires the number of duplicates
                 if save:
-                    utils.write_df(self.dup_counts_df, self.dup_counts_df_fid)
+                    ds_utils.write_df(self.dup_counts_df, self.dup_counts_df_fid)
 
     def load_or_prepare_text_perplexities(self, save=True):
         if self.use_cache and exists(self.perplexities_df_fid):
             with open(self.perplexities_df_fid, "rb") as f:
-                self.perplexities_df = utils.read_df(f)
+                self.perplexities_df = ds_utils.read_df(f)
         elif self.perplexities_df is None:
             if not self.live:
                 self.prepare_text_perplexities()
                 if save:
-                    utils.write_df(self.perplexities_df,
+                    ds_utils.write_df(self.perplexities_df,
                                    self.perplexities_df_fid)
         else:
             if not self.live:
                 if save:
-                    utils.write_df(self.perplexities_df,
+                    ds_utils.write_df(self.perplexities_df,
                                    self.perplexities_df_fid)
 
     def load_general_stats(self):
@@ -580,7 +561,7 @@ class DatasetStatisticsCacheClass:
             open(self.general_stats_json_fid, encoding="utf-8")
         )
         with open(self.sorted_top_vocab_df_fid, "rb") as f:
-            self.sorted_top_vocab_df = utils.read_df(f)
+            self.sorted_top_vocab_df = ds_utils.read_df(f)
         self.text_nan_count = self.general_stats_dict[TEXT_NAN_CNT]
         self.dedup_total = self.general_stats_dict[DEDUP_TOT]
         self.total_words = self.general_stats_dict[TOT_WORDS]
@@ -663,12 +644,12 @@ class DatasetStatisticsCacheClass:
                     self.get_base_dataset()
                 self.dset_peek = self.dset[:100]
                 if save:
-                    utils.write_json({"dset peek": self.dset_peek},
+                    ds_utils.write_json({"dset peek": self.dset_peek},
                                      self.dset_peek_json_fid)
 
     def load_or_prepare_tokenized_df(self, save=True):
         if self.use_cache and exists(self.tokenized_df_fid):
-            self.tokenized_df = utils.read_df(self.tokenized_df_fid)
+            self.tokenized_df = ds_utils.read_df(self.tokenized_df_fid)
         else:
             if not self.live:
                 # tokenize all text instances
@@ -676,7 +657,7 @@ class DatasetStatisticsCacheClass:
                 if save:
                     logs.warning("Saving tokenized dataset to disk")
                     # save tokenized text
-                    utils.write_df(self.tokenized_df, self.tokenized_df_fid)
+                    ds_utils.write_df(self.tokenized_df, self.tokenized_df_fid)
 
     def load_or_prepare_text_dset(self, save=True):
         if self.use_cache and exists(self.text_dset_fid):
@@ -698,7 +679,7 @@ class DatasetStatisticsCacheClass:
             self.get_base_dataset()
             # extract all text instances
             self.text_dset = self.dset.map(
-                lambda examples: utils.extract_field(
+                lambda examples: ds_utils.extract_field(
                     examples, self.text_field, OUR_TEXT_FIELD
                 ),
                 batched=True,
@@ -752,12 +733,12 @@ class DatasetStatisticsCacheClass:
                 self.z.load(zipf_dict)
                 # Zipf figure
                 if exists(zipf_fig_json_fid):
-                    self.zipf_fig = utils.read_plotly(zipf_fig_json_fid)
+                    self.zipf_fig = ds_utils.read_plotly(zipf_fig_json_fid)
                 else:
                     self.zipf_fig = zipf.make_zipf_fig(self.vocab_counts_df,
                                                        self.z)
                     if save:
-                        utils.write_plotly(self.zipf_fig)
+                        ds_utils.write_plotly(self.zipf_fig)
             else:
                 # Cache files do not exist.
                 self.prepare_zipf(save)
@@ -774,8 +755,8 @@ class DatasetStatisticsCacheClass:
             zipf_dict = self.z.get_zipf_dict()
             zipf_json_fid, zipf_fig_fid, zipf_fig_html_fid = zipf.get_zipf_fids(
                 self.cache_path)
-            utils.write_json(zipf_dict, zipf_json_fid)
-            utils.write_plotly(self.zipf_fig, zipf_fig_fid)
+            ds_utils.write_json(zipf_dict, zipf_json_fid)
+            ds_utils.write_plotly(self.zipf_fig, zipf_fig_fid)
             self.zipf_fig.write_html(zipf_fig_html_fid)
 
 
