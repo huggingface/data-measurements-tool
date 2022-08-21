@@ -35,7 +35,7 @@ CACHE_DIR = "cache_dir"
 ## String names we are using within this code.
 # These are not coming from the stored dataset nor HF config,
 # but rather used as identifiers in our dicts and dataframes.
-OUR_TEXT_FIELD = "text"
+TEXT_FIELD = "text"
 PERPLEXITY_FIELD = "perplexity"
 TOKENIZED_FIELD = "tokenized_text"
 EMBEDDING_FIELD = "embedding"
@@ -75,7 +75,6 @@ def load_truncated_dataset(
     split_name,
     num_rows=_MAX_ROWS,
     cache_name=None,
-    use_cache=True,
     use_streaming=True,
 ):
     """
@@ -102,8 +101,6 @@ def load_truncated_dataset(
             number of rows to truncate the dataset to
         cache_name (string):
             name of the cache directory
-        use_cache (bool):
-            whether to load form the cache if it exists
         use_streaming (bool):
             whether to use streaming when the dataset supports it
     Returns:
@@ -303,7 +300,7 @@ def make_path(input_path):
 
 def counter_dict_to_df(dict_input):
     df_output = pd.DataFrame(dict_input, index=[0]).T
-    df_output.columns = ["count"]
+    df_output.columns = [CNT]
     return df_output
 
 def write_plotly(fig, fid):

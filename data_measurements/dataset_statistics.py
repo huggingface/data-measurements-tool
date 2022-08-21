@@ -27,7 +27,7 @@ import utils.dataset_utils as ds_utils
 from data_measurements.embeddings.embeddings import Embeddings
 from data_measurements.labels import labels
 from data_measurements.text_duplicates import text_duplicates as td
-from data_measurements.npmi.npmi import nPMI
+from data_measurements.npmi import nPMI
 from data_measurements.zipf import zipf
 from datasets import load_from_disk, load_metric
 from huggingface_hub import Repository, list_datasets
@@ -38,21 +38,13 @@ from os.path import join as pjoin
 from pathlib import Path
 from sklearn.feature_extraction.text import CountVectorizer
 from utils.dataset_utils import (CNT, EMBEDDING_FIELD, LENGTH_FIELD,
-                                 OUR_TEXT_FIELD, PERPLEXITY_FIELD, PROP,
+                                 TEXT_FIELD, PERPLEXITY_FIELD, PROP,
                                  TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
                                  TOT_WORDS, VOCAB, WORD)
 from pathlib import Path
 
 
-# from dotenv import load_dotenv
-
-
-# if Path(".env").is_file():
-#    load_dotenv(".env")
-
 HF_TOKEN = getenv("HF_TOKEN")
-
-pd.options.display.float_format = "{:,.3f}".format
 
 logs = utils.prepare_logging(Path(__file__).stem)
 
@@ -347,7 +339,6 @@ class DatasetStatisticsCacheClass:
                 self.dset_config,
                 self.split_name,
                 cache_name=self.dset_fid,
-                use_cache=True,
                 use_streaming=True,
             )
 
@@ -385,8 +376,7 @@ class DatasetStatisticsCacheClass:
                 self.prepare_general_stats()
                 if save:
                     ds_utils.write_df(self.sorted_top_vocab_df,
-                                   self.sorted_top_vocab_df_fid)
-                    ds_utils.write_df(self.dup_counts_df, self.dup_counts_df_fid)
+                                   self.sorted_top_vocab_df_fid),
                     ds_utils.write_json(self.general_stats_dict,
                                      self.general_stats_json_fid)
 
@@ -440,7 +430,7 @@ class DatasetStatisticsCacheClass:
                 len
             )
             self.length_df = self.tokenized_df[
-                [LENGTH_FIELD, OUR_TEXT_FIELD]
+                [LENGTH_FIELD, TEXT_FIELD]
             ].sort_values(by=[LENGTH_FIELD], ascending=True)
 
     def prepare_text_length_stats(self):
@@ -599,9 +589,9 @@ class DatasetStatisticsCacheClass:
             if self.text_dset is None:
                 self.load_or_prepare_text_dset()
             results = _PERPLEXITY.compute(
-                input_texts=self.text_dset[OUR_TEXT_FIELD], model_id='gpt2')
+                input_texts=self.text_dset[TEXT_FIELD], model_id='gpt2')
             perplexities = {PERPLEXITY_FIELD: results["perplexities"],
-                            OUR_TEXT_FIELD: self.text_dset[OUR_TEXT_FIELD]}
+                            TEXT_FIELD: self.text_dset[TEXT_FIELD]}
             self.perplexities_df = pd.DataFrame(perplexities).sort_values(
                 by=PERPLEXITY_FIELD, ascending=False)
 
@@ -670,7 +660,7 @@ class DatasetStatisticsCacheClass:
             # extract all text instances
             self.text_dset = self.dset.map(
                 lambda examples: ds_utils.extract_field(
-                    examples, self.text_field, OUR_TEXT_FIELD
+                    examples, self.text_field, TEXT_FIELD
                 ),
                 batched=True,
                 remove_columns=list(self.dset.features),
@@ -690,7 +680,7 @@ class DatasetStatisticsCacheClass:
             res = {
                 TOKENIZED_FIELD: [
                     tuple(sent_tokenizer(text.lower()))
-                    for text in examples[OUR_TEXT_FIELD]
+                    for text in examples[TEXT_FIELD]
                 ]
             }
             res[LENGTH_FIELD] = [len(tok_text) for tok_text in
@@ -700,7 +690,7 @@ class DatasetStatisticsCacheClass:
         tokenized_dset = self.text_dset.map(
             tokenize_batch,
             batched=True,
-            # remove_columns=[OUR_TEXT_FIELD], keep around to print
+            # remove_columns=[TEXT_FIELD], keep around to print
         )
         tokenized_df = pd.DataFrame(tokenized_dset)
         return tokenized_df

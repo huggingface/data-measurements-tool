@@ -21,6 +21,9 @@ from st_aggrid import AgGrid, GridOptionsBuilder
 
 # TODO: Clean up
 from .dataset_utils import HF_DESC_FIELD, HF_FEATURE_FIELD, HF_LABEL_FIELD, counter_dict_to_df
+
+# Setting relevant to UI
+pd.options.display.float_format = "{:,.3f}".format
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
 def sidebar_header():
