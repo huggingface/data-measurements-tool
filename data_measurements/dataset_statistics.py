@@ -26,9 +26,8 @@ import statistics
 import utils.dataset_utils as utils
 from data_measurements.embeddings.embeddings import Embeddings
 from data_measurements.labels import labels
+from data_measurements.lengths import lengths
 from data_measurements.npmi.npmi import nPMI
-# TODO(meg): Incorporate this from evaluate library.
-# import evaluate
 from data_measurements.zipf import zipf
 from datasets import load_from_disk, load_metric
 from huggingface_hub import Repository, list_datasets
@@ -165,7 +164,6 @@ class DatasetStatisticsCacheClass:
         self.length_results = None
         self.calculation = calculation
         self.our_text_field = OUR_TEXT_FIELD
-        self.our_length_field = LENGTH_FIELD
         self.our_tokenized_field = TOKENIZED_FIELD
         self.our_embedding_field = EMBEDDING_FIELD
         self.cache_dir = cache_dir
@@ -409,10 +407,17 @@ class DatasetStatisticsCacheClass:
         Returns:
 
         """
+        # We work with the already tokenized dataset
+        print("3")
+        self.load_or_prepare_tokenized_df()
+        print("4")
         length_obj = lengths.DMTHelper(self, save)
+        print("5")
+        length_obj.run_DMT_processing()
+        print("6")
         self.fig_lengths = length_obj.fig_lengths
         self.length_results = length_obj.length_results
-        self.length_files = length_obj.get_label_filenames()
+        self.length_files = length_obj.get_length_filenames()
 
 
     def load_or_prepare_embeddings(self):
@@ -598,10 +603,11 @@ class DatasetStatisticsCacheClass:
                                      self.dset_peek_json_fid)
 
     def load_or_prepare_tokenized_df(self, save=True):
-        if self.use_cache and exists(self.tokenized_df_fid):
-            self.tokenized_df = utils.read_df(self.tokenized_df_fid)
-        else:
-            if not self.live:
+        # If we don't have a tokenized dataframe already, get it.
+        if not isinstance(self.tokenized_df, pd.DataFrame):
+            if self.use_cache and exists(self.tokenized_df_fid):
+                self.tokenized_df = utils.read_df(self.tokenized_df_fid)
+            else:
                 # tokenize all text instances
                 self.tokenized_df = self.do_tokenization()
                 if save:
