@@ -162,6 +162,7 @@ class DatasetStatisticsCacheClass:
     ):
         # This is only used for standalone runs for each kind of measurement.
         self.label_results = None
+        self.length_results = None
         self.calculation = calculation
         self.our_text_field = OUR_TEXT_FIELD
         self.our_length_field = LENGTH_FIELD
@@ -206,9 +207,7 @@ class DatasetStatisticsCacheClass:
         ## Data frames
         # Tokenized text
         self.tokenized_df = None
-        # save sentence length histogram in the class so it doesn't ge re-computed
-        self.length_df = None
-        self.fig_tok_length = None
+        self.fig_lengths = None
         # Data Frame version of self.label_dset
         # TODO: Not being used anymore. Make sure and remove
         self.label_df = None
@@ -322,6 +321,7 @@ class DatasetStatisticsCacheClass:
         )
 
         self.label_files = {}
+        self.length_files = {}
 
         ## Embeddings cache files
         # Needed for UI
@@ -409,79 +409,11 @@ class DatasetStatisticsCacheClass:
         Returns:
 
         """
-        # Text length figure
-        if self.use_cache and exists(self.fig_tok_length_fid):
-            self.fig_tok_length_png = mpimg.imread(self.fig_tok_length_fid)
-        else:
-            if not self.live:
-                self.prepare_fig_text_lengths()
-                if save:
-                    self.fig_tok_length.savefig(self.fig_tok_length_fid)
-        # Text length dataframe
-        if self.use_cache and exists(self.length_df_fid):
-            self.length_df = utils.read_df(self.length_df_fid)
-        else:
-            if not self.live:
-                self.prepare_length_df()
-                if save:
-                    utils.write_df(self.length_df, self.length_df_fid)
+        length_obj = lengths.DMTHelper(self, save)
+        self.fig_lengths = length_obj.fig_lengths
+        self.length_results = length_obj.length_results
+        self.length_files = length_obj.get_label_filenames()
 
-        # Text length stats.
-        if self.use_cache and exists(self.length_stats_json_fid):
-            with open(self.length_stats_json_fid, "r") as f:
-                self.length_stats_dict = json.load(f)
-            self.avg_length = self.length_stats_dict["avg length"]
-            self.std_length = self.length_stats_dict["std length"]
-            self.num_uniq_lengths = self.length_stats_dict["num lengths"]
-        else:
-            if not self.live:
-                self.prepare_text_length_stats()
-                if save:
-                    utils.write_json(self.length_stats_dict,
-                                     self.length_stats_json_fid)
-
-    def prepare_length_df(self):
-        if not self.live:
-            if self.tokenized_df is None:
-                self.tokenized_df = self.do_tokenization()
-            self.tokenized_df[LENGTH_FIELD] = self.tokenized_df[
-                TOKENIZED_FIELD].apply(
-                len
-            )
-            self.length_df = self.tokenized_df[
-                [LENGTH_FIELD, OUR_TEXT_FIELD]
-            ].sort_values(by=[LENGTH_FIELD], ascending=True)
-
-    def prepare_text_length_stats(self):
-        if not self.live:
-            if (
-                    self.tokenized_df is None
-                    or LENGTH_FIELD not in self.tokenized_df.columns
-                    or self.length_df is None
-            ):
-                self.prepare_length_df()
-            avg_length = sum(self.tokenized_df[LENGTH_FIELD]) / len(
-                self.tokenized_df[LENGTH_FIELD]
-            )
-            self.avg_length = round(avg_length, 1)
-            std_length = statistics.stdev(self.tokenized_df[LENGTH_FIELD])
-            self.std_length = round(std_length, 1)
-            self.num_uniq_lengths = len(self.length_df["length"].unique())
-            self.length_stats_dict = {
-                "avg length": self.avg_length,
-                "std length": self.std_length,
-                "num lengths": self.num_uniq_lengths,
-            }
-
-    def prepare_fig_text_lengths(self):
-        if not self.live:
-            if (
-                    self.tokenized_df is None
-                    or LENGTH_FIELD not in self.tokenized_df.columns
-            ):
-                self.prepare_length_df()
-            self.fig_tok_length = make_fig_lengths(self.tokenized_df,
-                                                   LENGTH_FIELD)
 
     def load_or_prepare_embeddings(self):
         """Uses an Embeddings class specific to this project,
@@ -587,27 +519,26 @@ class DatasetStatisticsCacheClass:
         self.total_open_words = self.general_stats_dict[TOT_OPEN_WORDS]
 
     def prepare_general_stats(self):
-        if not self.live:
-            if self.tokenized_df is None:
-                logs.warning("Tokenized dataset not yet loaded; doing so.")
-                self.load_or_prepare_tokenized_df()
-            if self.vocab_counts_df is None:
-                logs.warning("Vocab not yet loaded; doing so.")
-                self.load_or_prepare_vocab()
-            self.sorted_top_vocab_df = self.vocab_counts_filtered_df.sort_values(
-                "count", ascending=False
-            ).head(_TOP_N)
-            self.total_words = len(self.vocab_counts_df)
-            self.total_open_words = len(self.vocab_counts_filtered_df)
-            self.text_nan_count = int(self.tokenized_df.isnull().sum().sum())
-            self.prepare_text_duplicates()
-            self.dedup_total = sum(self.dup_counts_df[CNT])
-            self.general_stats_dict = {
-                TOT_WORDS: self.total_words,
-                TOT_OPEN_WORDS: self.total_open_words,
-                TEXT_NAN_CNT: self.text_nan_count,
-                DEDUP_TOT: self.dedup_total,
-            }
+        if self.tokenized_df is None:
+            logs.warning("Tokenized dataset not yet loaded; doing so.")
+            self.load_or_prepare_tokenized_df()
+        if self.vocab_counts_df is None:
+            logs.warning("Vocab not yet loaded; doing so.")
+            self.load_or_prepare_vocab()
+        self.sorted_top_vocab_df = self.vocab_counts_filtered_df.sort_values(
+            "count", ascending=False
+        ).head(_TOP_N)
+        self.total_words = len(self.vocab_counts_df)
+        self.total_open_words = len(self.vocab_counts_filtered_df)
+        self.text_nan_count = int(self.tokenized_df.isnull().sum().sum())
+        self.prepare_text_duplicates()
+        self.dedup_total = sum(self.dup_counts_df[CNT])
+        self.general_stats_dict = {
+            TOT_WORDS: self.total_words,
+            TOT_OPEN_WORDS: self.total_open_words,
+            TEXT_NAN_CNT: self.text_nan_count,
+            DEDUP_TOT: self.dedup_total,
+        }
 
     def prepare_text_duplicates(self):
         if not self.live:
@@ -694,16 +625,15 @@ class DatasetStatisticsCacheClass:
                     self.text_dset.save_to_disk(self.text_dset_fid)
 
     def prepare_text_dset(self):
-        if not self.live:
-            self.get_base_dataset()
-            # extract all text instances
-            self.text_dset = self.dset.map(
-                lambda examples: utils.extract_field(
-                    examples, self.text_field, OUR_TEXT_FIELD
-                ),
-                batched=True,
-                remove_columns=list(self.dset.features),
-            )
+        self.get_base_dataset()
+        # extract all text instances
+        self.text_dset = self.dset.map(
+            lambda examples: utils.extract_field(
+                examples, self.text_field, OUR_TEXT_FIELD
+            ),
+            batched=True,
+            remove_columns=list(self.dset.features),
+        )
 
     def do_tokenization(self):
         """
@@ -722,14 +652,11 @@ class DatasetStatisticsCacheClass:
                     for text in examples[OUR_TEXT_FIELD]
                 ]
             }
-            res[LENGTH_FIELD] = [len(tok_text) for tok_text in
-                                 res[TOKENIZED_FIELD]]
             return res
 
         tokenized_dset = self.text_dset.map(
             tokenize_batch,
-            batched=True,
-            # remove_columns=[OUR_TEXT_FIELD], keep around to print
+            batched=True
         )
         tokenized_df = pd.DataFrame(tokenized_dset)
         return tokenized_df
@@ -1112,11 +1039,6 @@ def filter_vocab(vocab_counts_df):
 
 ## Figures ##
 
-def make_fig_lengths(tokenized_df, length_field):
-    fig_tok_length, axs = plt.subplots(figsize=(15, 6), dpi=150)
-    sns.histplot(data=tokenized_df[length_field], kde=True, bins=100, ax=axs)
-    sns.rugplot(data=tokenized_df[length_field], ax=axs)
-    return fig_tok_length
 
 
 def make_npmi_fig(paired_results, subgroup_pair):
