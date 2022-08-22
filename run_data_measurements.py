@@ -92,9 +92,15 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
         print("Done!")
         print(
             "Basic text statistics now available at %s." % dstats.general_stats_json_fid)
-        print(
-            "Text duplicates now available at %s." % dstats.dup_counts_df_fid
-        )
+
+    if do_all or dataset_args["calculation"] == "duplicates":
+        print("\n* Calculating text duplicates.")
+        dstats.load_or_prepare_text_duplicates()
+        duplicates_fid_dict = dstats.duplicates_files
+        print("If all went well, then results are in the following files:")
+        for key, value in duplicates_fid_dict.items():
+            print("%s: %s" % (key, value))
+        print()
 
     if do_all or dataset_args["calculation"] == "lengths":
         print("\n* Calculating text lengths.")
@@ -112,6 +118,8 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
         for key, value in label_fid_dict.items():
             print("%s: %s" % (key, value))
         print()
+
+
 
     if do_all or dataset_args["calculation"] == "npmi":
         print("\n* Preparing nPMI.")
@@ -241,6 +249,8 @@ def main():
 
                                                     - `general` (for duplicate counts, missing values, length statistics.)\n
 
+                                                    - `duplicates` for duplicate counts\n
+
                                                     - `lengths` for text length distribution\n
 
                                                     - `labels` for label distribution\n
@@ -307,7 +317,7 @@ def main():
     args = parser.parse_args()
     print("Proceeding with the following arguments:")
     print(args)
-    # run_data_measurements.py -n hate_speech18 -c default -s train -f text -w npmi
+    # run_data_measurements.py -d hate_speech18 -c default -s train -f text -w npmi
     if args.email is not None:
         context = ssl.create_default_context()
         server = smtplib.SMTP_SSL("smtp.gmail.com", port, context=context)
