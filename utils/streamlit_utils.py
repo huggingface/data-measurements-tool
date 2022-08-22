@@ -19,7 +19,8 @@ import seaborn as sns
 import streamlit as st
 from st_aggrid import AgGrid, GridOptionsBuilder
 
-from .dataset_utils import HF_DESC_FIELD, HF_FEATURE_FIELD, HF_LABEL_FIELD
+# TODO: Clean up
+from .dataset_utils import HF_DESC_FIELD, HF_FEATURE_FIELD, HF_LABEL_FIELD, counter_dict_to_df
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
 def sidebar_header():
@@ -127,11 +128,11 @@ def expander_general_stats(dstats, column_id):
                 str(dstats.text_nan_count)
             )
         )
-        if dstats.dedup_total > 0:
+        if dstats.dups_frac > 0:
             st.markdown(
-                "There are {0} duplicate items in the dataset. "
+                "The dataset is {0}% duplicates. "
                 "For more information about the duplicates, "
-                "click the 'Duplicates' tab below.".format(str(dstats.dedup_total))
+                "click the 'Duplicates' tab below.".format(str(round(dstats.dups_frac * 100, 2)))
             )
         else:
             st.markdown("There are 0 duplicate items in the dataset. ")
@@ -283,12 +284,17 @@ def expander_text_duplicates(dstats, column_id):
         )
         st.markdown("------")
         st.write(
-            "### Here is the list of all the duplicated items and their counts in your dataset:"
+            "### Here is the list of all the duplicated items and their counts in the dataset:"
         )
-        if dstats.dup_counts_df is None or dstats.dup_counts_df.empty:
+        if not dstats.duplicates_results:
             st.write("There are no duplicates in this dataset! 🥳")
         else:
-            st.dataframe(dstats.dup_counts_df.reset_index(drop=True))
+            st.write("The fraction of the data that is a duplicate is:")
+            st.write(str(round(dstats.dups_frac, 4)))
+            st.write("Here is the list of all the duplicated items and their counts in the dataset:")
+            # TODO: Check if this is slow when the size is large -- should we store as dataframes?
+            # Dataframes allow this to be interactive.
+            st.dataframe(counter_dict_to_df(dstats.dups_dict))
 
 
 ### Then, show perplexities
