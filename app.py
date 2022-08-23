@@ -48,9 +48,7 @@ st.set_page_config(
     initial_sidebar_state="auto",
 )
 
-#with open("style.css") as f:                                                # Reading style.css file and opening it 
- #   st.markdown(f'<style>{f.read()}</style>',unsafe_allow_html= True)       # Storing all styles in the streamlit markdown  &   unsafe_allow_html to true so that we can use html tags with the code  
-#----read and run html file
+
 
  #with open('style.css') as f:
   #      st.markdown(f'<style>{f.read()}</style>',unsafe_allow_html=True)
@@ -280,6 +278,7 @@ def main():
     with open("style.css") as f:                                                # Reading style.css file and opening it 
         st.markdown(f'<style>{f.read()}</style>',unsafe_allow_html= True)       # Storing all styles in the streamlit markdown  &   unsafe_allow_html to true so that we can use html tags with the code  
     #----read and run html file
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--live", default=False, required=False, action="store_true", help="Flag to specify that this is not running live.")
@@ -290,6 +289,7 @@ def main():
     st.title("Data Measurements Tool")
     st.markdown("""
     This demo showcases the [dataset metrics as we develop them](https://huggingface.co/blog/data-measurements-tool).
+    
     With this tool, you can:
     
     ✓ Dynamic loading of datasets in the lib

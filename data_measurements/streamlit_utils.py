@@ -43,12 +43,17 @@ def sidebar_selection(ds_name_to_dict,column_id):
     #with st.sidebar.expander(f"Choose dataset and field {column_id}", expanded=True):
     # choose a dataset to analyze
     i=1                                                 # Inorder to start numbering from 1 we initialize and declare i=1 
+    #x = 1
     expanded= True
     with st.sidebar:                                    
         #st.sidebar.subheader(f"Choose dataset and field {column_id}")               
         # with st.sidebar.subheader(f"Choose dataset and field {column_id}"):
         st.markdown('<p class="question"><span><span class="number-label">'+str(i)+'</span></span>'+f"<span>Select a dataset to explore{column_id}:</span>"+'</p>',unsafe_allow_html=True)      # Creating markdown to add Question and unsafe_allow_html to True to make the tags displayed
-        ds_name = st.selectbox(f"Select a dataset to explore{column_id}:",ds_names,index=ds_names.index("hate_speech18"),)                      # Adding Question and options in the selectbox. NOTE: THIS QUESTION IS STYLED AND SET DISPLAYED TO NONE BECAUSE WE WANT TO USE MARKDOWN AS QUESTION
+        ds_name = st.selectbox(
+            f"Choose dataset to explore{column_id}:",
+            ds_names,
+            index=ds_names.index("hate_speech18"),#key =x,
+        )                      # Adding Question and options in the selectbox. NOTE: THIS QUESTION IS STYLED AND SET DISPLAYED TO NONE BECAUSE WE WANT TO USE MARKDOWN AS QUESTION
     # choose a config to analyze
         i+=1            # Increasing question number by 1 
         ds_configs = ds_name_to_dict[ds_name]                   # Saving value of those keys in the ds_configs
