@@ -50,6 +50,7 @@ def sidebar_selection(ds_name_to_dict,column_id):
         #st.sidebar.subheader(f"Choose dataset and field {column_id}")               
         # with st.sidebar.subheader(f"Choose dataset and field {column_id}"):
         st.markdown('<p class="question"><span><span class="number-label">'+str(i)+'</span></span>'+f"<span>Select a dataset to explore{column_id}:</span>"+'</p>',unsafe_allow_html=True)      # Creating markdown to add Question and unsafe_allow_html to True to make the tags displayed
+        # TODO: Error is "There are  multiple identical `st.selectbox` widget with the same generated key" -- FIX
         ds_name = st.selectbox(
             f"Choose dataset to explore{column_id}:",
             ds_names,
@@ -137,9 +138,9 @@ def expander_general_stats(dstats, column_id):
             str(dstats.text_nan_count)
         )
     )
-    if dstats.dedup_total > 0:
+    if dstats.dups_frac > 0:
         st.markdown(
-            "There are {0} duplicate items in the dataset. "
+            "The dataset is {0} duplicate items "
             "For more information about the duplicates, "
             "click the 'Duplicates' tab below.".format(str(dstats.dedup_total))
         )

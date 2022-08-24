@@ -158,7 +158,7 @@ def load_or_prepare(ds_args, show_embeddings, show_perplexities, use_cache=False
     },
     allow_output_mutation=True,
 )
-def load_or_prepare_widgets(ds_args, show_embeddings, show_perplexities, live=True, use_cache=False):
+def load_or_prepare_widgets(ds_args, show_embeddings, show_perplexities, live=False, use_cache=False):
     """
     Loader specifically for the widgets used in the app.
     Args:
@@ -361,9 +361,9 @@ def main():
   
     logs.warning("Using Single Dataset Mode")
     dataset_args = st_utils.sidebar_selection(ds_name_to_dict, "")
-    dstats, cache_exists = load_or_prepare_widgets(dataset_args, show_embeddings,show_perplexities, use_cache=use_cache)
+    dstats, cache_exists = load_or_prepare_widgets(dataset_args, show_embeddings,show_perplexities, live=live, use_cache=use_cache)
     if cache_exists:
-        show_column(dstats, ds_name_to_dict, show_embeddings, "")
+        show_column(dstats, ds_name_to_dict, show_embeddings, show_perplexities, "")
     else:
 
         st.markdown("### Missing pre-computed data measures!")
@@ -385,9 +385,9 @@ def main():
 
     logs.warning("Using Single Dataset Mode")
     dataset_args = st_utils.sidebar_selection(ds_name_to_dict, "")
-    dstats, cache_exists = load_or_prepare_widgets(dataset_args, show_embeddings, live=live, use_cache=use_cache)
+    dstats, cache_exists = load_or_prepare_widgets(dataset_args, show_embeddings, show_perplexities, live=live, use_cache=use_cache)
     if cache_exists:
-        show_column(dstats, ds_name_to_dict, show_embeddings, "")
+        show_column(dstats, ds_name_to_dict, show_embeddings, show_perplexities, "")
     else:
         st.markdown("### Missing pre-computed data measures!")
         st.write(dataset_args)
@@ -403,7 +403,7 @@ def main():
         dataset_args_right = st_utils.sidebar_selection(ds_name_to_dict, " B")
         left_col, _, right_col = st.columns([10, 1, 10])
         dstats_left, cache_exists_left = load_or_prepare_widgets(
-            dataset_args_left, show_embeddings, show_perplexities, use_cache=use_cache
+            dataset_args_left, show_embeddings, show_perplexities, live=live, use_cache=use_cache
         )
         with left_col:
             if cache_exists_left:
@@ -412,7 +412,7 @@ def main():
                 st.markdown("### Missing pre-computed data measures!")
                 st.write(dataset_args_left)
         dstats_right, cache_exists_right = load_or_prepare_widgets(
-            dataset_args_right, show_embeddings, show_perplexities, use_cache=use_cache
+            dataset_args_right, show_embeddings, show_perplexities, live=live, use_cache=use_cache
         )
         with right_col:
             if cache_exists_right:
@@ -425,7 +425,7 @@ def main():
         dataset_args = st_utils.sidebar_selection(ds_name_to_dict, "")
         dstats, cache_exists = load_or_prepare_widgets(dataset_args, show_embeddings, show_perplexities, live=live, use_cache=use_cache)
         if cache_exists:
-            show_column(dstats, ds_name_to_dict, show_embeddings, show_perplexities, "")
+            show_column(dstats, ds_name_to_dict, show_embeddings, show_perplexities, " A")
         else:
             st.markdown("### Missing pre-computed data measures!")
             st.write(dataset_args)
