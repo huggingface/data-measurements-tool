@@ -72,6 +72,22 @@ _STREAMABLE_DATASET_LIST = [
 
 _MAX_ROWS = 200000
 
+def _load_dotenv_for_cache_on_hub():
+    """
+    This function loads and returns the organization name that you've set up on the
+    hub for storing your data measurements cache on the hub. It also loads the associated
+    access token. It expects you to have HUB_CACHE_ORGANIZATION=<the organization you've set up on the hub to store your cache>
+    and HF_TOKEN=<your hf token> on separate lines in a file named .env at the root of this repo.
+
+    Returns:
+        tuple of strings: hub_cache_organization, hf_token
+    """
+    if Path(".env").is_file():
+        load_dotenv(".env")
+    hf_token = getenv("HF_TOKEN")
+    hub_cache_organization = getenv("HUB_CACHE_ORGANIZATION")
+    return hub_cache_organization, hf_token
+
 def initialize_cache_hub_repo(cache_path, dataset_cache_dir):
     """
     This function tries to initialize a dataset cache on the huggingface hub. The
@@ -85,13 +101,11 @@ def initialize_cache_hub_repo(cache_path, dataset_cache_dir):
             The name of the dataset repo on the huggingface hub that you want.
     """
 
-    if Path(".env").is_file():
-        load_dotenv(".env")
-    HF_TOKEN = getenv("HF_TOKEN")
-    HUB_CACHE_ORGANIZATION = getenv("HUB_CACHE_ORGANIZATION")
+    hub_cache_organization, hf_token = _load_dotenv_for_cache_on_hub()
+    clone_source = pjoin(hub_cache_organization, dataset_cache_dir)
     repo = Repository(local_dir=cache_path,
-                      clone_from=HUB_CACHE_ORGANIZATION + "/" + dataset_cache_dir,
-                      repo_type="dataset", use_auth_token=HF_TOKEN)
+                      clone_from=clone_source,
+                      repo_type="dataset", use_auth_token=hf_token)
     repo.lfs_track(["*.feather"])
     return repo
 
@@ -112,21 +126,19 @@ def pull_cache_from_hub(cache_path, dataset_cache_dir):
         string: a log about whether the cache was pulled or not
     """
 
-    if Path(".env").is_file():
-        load_dotenv(".env")
-
-    HF_TOKEN = getenv("HF_TOKEN")
-    HUB_CACHE_ORGANIZATION = getenv("HUB_CACHE_ORGANIZATION")
+    hub_cache_organization, hf_token = _load_dotenv_for_cache_on_hub()
+    clone_source = pjoin(hub_cache_organization, dataset_cache_dir)
 
     log = "Pulled cache from hub!"
     if not isdir(cache_path):
+        # Here, dataset_info.id is of the form: <hub cache organization>/<dataset cache dir>
         if dataset_cache_dir in [
             dataset_info.id.split("/")[-1] for dataset_info in
-            list_datasets(author=HUB_CACHE_ORGANIZATION,
-                          use_auth_token=HF_TOKEN)]:
+            list_datasets(author=hub_cache_organization,
+                          use_auth_token=hf_token)]:
             repo = Repository(local_dir=cache_path,
-                              clone_from=HUB_CACHE_ORGANIZATION + "/" + dataset_cache_dir,
-                              repo_type="dataset", use_auth_token=HF_TOKEN)
+                              clone_from=clone_source,
+                              repo_type="dataset", use_auth_token=hf_token)
         else:
             log = "Asking to pull cache from hub but cannot find cached repo on the hub."
     else:
