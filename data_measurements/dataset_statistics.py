@@ -420,13 +420,9 @@ class DatasetStatisticsCacheClass:
 
         """
         # We work with the already tokenized dataset
-        print("3")
         self.load_or_prepare_tokenized_df()
-        print("4")
         length_obj = lengths.DMTHelper(self, save)
-        print("5")
         length_obj.run_DMT_processing()
-        print("6")
         self.fig_lengths = length_obj.fig_lengths
         self.length_results = length_obj.length_results
         self.length_files = length_obj.get_length_filenames()
