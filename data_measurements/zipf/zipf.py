@@ -30,7 +30,7 @@ import utils
 pd.set_option("use_inf_as_na", True)
 
 from pathlib import Path
-logs = utils.prepare_logging(Path(__file__).stem)
+logs = utils.prepare_logging(__file__)
 
 
 class Zipf:

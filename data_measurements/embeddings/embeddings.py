@@ -25,8 +25,8 @@ from tqdm import tqdm
 
 from utils.dataset_utils import EMBEDDING_FIELD
 import utils
-from pathlib import Path
-logs = utils.prepare_logging(Path(__file__).stem)
+
+logs = utils.prepare_logging(__file__)
 
 
 def sentence_mean_pooling(model_output, attention_mask):

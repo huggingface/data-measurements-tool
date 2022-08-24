@@ -304,6 +304,7 @@ def counter_dict_to_df(dict_input):
     return df_output
 
 def write_plotly(fig, fid):
+    make_path(fid)
     write_json(plotly.io.to_json(fig), fid)
 
 def read_plotly(fid):
@@ -311,12 +312,14 @@ def read_plotly(fid):
     return fig
 
 def write_json_as_html(input_json, html_fid):
+    make_path(html_fid)
     html_dict = json2html.convert(json=input_json)
     with open(html_fid, "w+") as f:
         f.write(html_dict)
 
 def df_to_write_html(input_df, html_fid):
     """Writes a dataframe to an HTML file"""
+    make_path(html_fid)
     input_df.to_HTML(html_fid)
 
 def read_df(df_fid):
@@ -325,10 +328,12 @@ def read_df(df_fid):
 
 
 def write_df(df, df_fid):
+    make_path(df_fid)
     feather.write_feather(df, df_fid)
 
 
 def write_json(json_dict, json_fid):
+    make_path(json_fid)
     with open(json_fid, "w", encoding="utf-8") as f:
         json.dump(json_dict, f)
 
@@ -336,3 +341,33 @@ def write_json(json_dict, json_fid):
 def read_json(json_fid):
     json_dict = json.load(open(json_fid, encoding="utf-8"))
     return json_dict
+
+
+class FileHandler:
+    """Ensures a standardized naming scheme for cache files for
+    different modules."""
+
+    def __init__(self, module, name):
+        module_dir = name
+        module_json = name + ".json"
+        module_fig_json = name + "_fig.json"
+        module_html = name + ".html"
+        module_png = name + ".png"
+        self.module_result_json_fid = pjoin(module.cache_path, module_dir,
+                                       module_json)
+        self.module_result_fig_json_fid = pjoin(module.cache_path, module_dir,
+                                       module_fig_json)
+        self.module_result_html_fid = pjoin(module.cache_path, module_dir,
+                                       module_html)
+        self.module_result_png_fid = pjoin(module.cache_path, module_dir,
+                                       module_png)
+
+    def get_filenames(self, has_HTML=False, has_png=False, has_fig_json=False):
+        filenames = {"statistics": self.module_result_json_fid}
+        if has_HTML:
+            filenames["html"] = self.module_result_html_fid
+        if has_png:
+            filenames["png"] = self.module_result_png_fid
+        if has_fig_json:
+            filenames["fig json"] = self.module_result_fig_json_fid
+        return filenames

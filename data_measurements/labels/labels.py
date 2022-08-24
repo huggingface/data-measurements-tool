@@ -8,12 +8,13 @@ import utils.dataset_utils as ds_utils
 from collections import Counter
 from os.path import exists, isdir
 from os.path import join as pjoin
-from pathlib import Path
 
 LABEL_FIELD = "labels"
 LABEL_NAMES = "label_names"
 LABEL_LIST = "label_list"
 LABEL_MEASUREMENT = "label_measurement"
+# Specific to HuggingFace library
+FEAT = "features"
 # Specific to the evaluate library
 EVAL_LABEL_MEASURE = "label_distribution"
 EVAL_LABEL_ID = "labels"
@@ -21,14 +22,13 @@ EVAL_LABEL_FRAC = "fractions"
 # TODO: This should ideally be in what's returned from the evaluate library
 EVAL_LABEL_SUM = "sums"
 
-logs = utils.prepare_logging(Path(__file__).stem)
-
+logs = utils.prepare_logging(__file__)
 
 def map_labels(label_field, ds_name_to_dict, ds_name, config_name):
     label_field, label_names = (
-        ds_name_to_dict[ds_name][config_name]["features"][label_field][0]
+        ds_name_to_dict[ds_name][config_name][FEAT][label_field][0]
         if len(
-            ds_name_to_dict[ds_name][config_name]["features"][label_field]) > 0
+            ds_name_to_dict[ds_name][config_name][FEAT][label_field]) > 0
         else ((), [])
     )
     return label_names
@@ -75,28 +75,20 @@ class DMTHelper:
     """
 
     def __init__(self, dstats, save):
-        self.use_cache = dstats.use_cache
-        self.fig_labels = dstats.fig_labels
-        self.label_results = dstats.label_results
-        self.cache_path = dstats.cache_path
-        self.label_field = dstats.label_field
         self.dset = dstats.dset
         self.dset_name = dstats.dset_name
         self.dset_config = dstats.dset_config
+        self.label_field = dstats.label_field
+        self.label_results = dstats.label_results
+        self.use_cache = dstats.use_cache
+        self.cache_path = dstats.cache_path
+        self.fig_labels = dstats.fig_labels
         self.label_names = dstats.label_names
         # TODO: Should this just be an attribute of dstats instead?
         self.save = save
         # Filenames
-        self.label_dir = "labels"
-        label_json = "labels.json"
-        label_fig_json = "labels_fig.json"
-        label_fig_html = "labels_fig.html"
-        self.labels_json_fid = pjoin(self.cache_path, self.label_dir,
-                                     label_json)
-        self.labels_fig_json_fid = pjoin(self.cache_path, self.label_dir,
-                                         label_fig_json)
-        self.labels_fig_html_fid = pjoin(self.cache_path, self.label_dir,
-                                         label_fig_html)
+        module = Path(fid).stem
+        self.file_info = ds_utils.FileHandler(self, module)
 
     def run_DMT_processing(self):
         # First look to see what we can load from cache.
@@ -120,7 +112,6 @@ class DMTHelper:
             self._write_label_cache()
 
     def _write_label_cache(self):
-        ds_utils.make_path(pjoin(self.cache_path, self.label_dir))
         if self.label_results:
             ds_utils.write_json(self.label_results, self.labels_json_fid)
         if self.fig_labels:
@@ -164,9 +155,7 @@ class DMTHelper:
         return fig_labels, label_results
 
     def get_label_filenames(self):
-        label_fid_dict = {"statistics": self.labels_json_fid,
-                          "figure json": self.labels_fig_json_fid,
-                          "figure html": self.labels_fig_html_fid}
+        label_fid_dict = self.file_info.get_filenames(has_fig_json=True, has_html=True)
         return label_fid_dict
 
 
@@ -199,7 +188,7 @@ class Labels:
         # TODO: Incorporate this summation into what the evaluate library returns.
         label_sum_dict = Counter(label_list)
         label_sums = [label_sum_dict[key] for key in sorted(label_sum_dict)]
-        label_measurement["sums"] = label_sums
+        label_measurement[EVAL_LABEL_SUM] = label_sums
         if not label_names:
             # Have to extract the label names from the Dataset object when the
             # actual dataset columns are just ints representing the label names.

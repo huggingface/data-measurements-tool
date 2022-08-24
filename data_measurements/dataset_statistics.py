@@ -18,8 +18,6 @@ import matplotlib.pyplot as plt
 import nltk
 import numpy as np
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 import seaborn as sns
 import statistics
 import utils
@@ -27,26 +25,24 @@ import utils.dataset_utils as ds_utils
 from data_measurements.embeddings.embeddings import Embeddings
 from data_measurements.labels import labels
 from data_measurements.text_duplicates import text_duplicates as td
-from data_measurements.npmi import nPMI
+from data_measurements.npmi import npmi
 from data_measurements.zipf import zipf
 from datasets import load_from_disk, load_metric
 from huggingface_hub import Repository, list_datasets
 from nltk.corpus import stopwords
-from os import mkdir, getenv
-from os.path import exists, isdir, basename
+from os import getenv
+from os.path import exists, isdir
 from os.path import join as pjoin
-from pathlib import Path
 from sklearn.feature_extraction.text import CountVectorizer
 from utils.dataset_utils import (CNT, EMBEDDING_FIELD, LENGTH_FIELD,
                                  TEXT_FIELD, PERPLEXITY_FIELD, PROP,
                                  TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
                                  TOT_WORDS, VOCAB, WORD)
-from pathlib import Path
 
 
 HF_TOKEN = getenv("HF_TOKEN")
 
-logs = utils.prepare_logging(Path(__file__).stem)
+logs = utils.prepare_logging(__file__)
 
 # TODO: Read this in depending on chosen language / expand beyond english
 nltk.download("stopwords")
@@ -318,18 +314,12 @@ class DatasetStatisticsCacheClass:
     def check_cache_dir(self):
         """
         First function to call to create the cache directory.
-        If in deployment mode and cache directory does not already exist,
+        If in deployment mode ("live") and cache directory does not already exist,
         return False.
         """
-        if self.live:
-            return isdir(self.cache_path)
-        else:
-            if not isdir(self.cache_path):
-                logs.warning("Creating cache directory %s." % self.cache_path)
-                if not isdir(self.cache_dir):
-                    mkdir(self.cache_dir)
-                mkdir(self.cache_path)
-            return isdir(self.cache_path)
+        if not self.live:
+            ds_utils.make_path(self.cache_path)
+        return isdir(self.cache_path)
 
     def get_base_dataset(self):
         """Gets a pointer to the truncated base dataset object."""
@@ -783,11 +773,6 @@ class nPMIStatisticsCacheClass:
         self.live = dataset_stats.live
         self.dstats = dataset_stats
         self.pmi_cache_path = pjoin(self.dstats.cache_path, "pmi_files")
-        if not isdir(self.pmi_cache_path):
-            logs.warning(
-                "Creating pmi cache directory %s." % self.pmi_cache_path)
-            # We need to preprocess everything.
-            mkdir(self.pmi_cache_path)
         self.joint_npmi_df_dict = {}
         # TODO: Users ideally can type in whatever words they want.
         self.termlist = _IDENTITY_TERMS
@@ -849,11 +834,7 @@ class nPMIStatisticsCacheClass:
         subgroup1 = subgroup_pair[0]
         subgroup2 = subgroup_pair[1]
         subgroups_str = "-".join(subgroup_pair)
-        if not isdir(self.pmi_cache_path):
-            logs.warning("Creating cache")
-            # We need to preprocess everything.
-            # This should eventually all go into a prepare_dataset CLI
-            mkdir(self.pmi_cache_path)
+        ds_utils.make_path(self.pmi_cache_path)
         joint_npmi_fid = pjoin(self.pmi_cache_path, subgroups_str + "_npmi.csv")
         subgroup_files = define_subgroup_files(subgroup_pair,
                                                self.pmi_cache_path)
