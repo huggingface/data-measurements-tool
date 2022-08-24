@@ -15,13 +15,17 @@
 import json
 import os
 from dataclasses import asdict
-from os.path import exists
+from os.path import exists, isdir
 import plotly
 import pyarrow.feather as feather
 import pandas as pd
 from datasets import Dataset, get_dataset_infos, load_dataset, load_from_disk, \
     NamedSplit
+from huggingface_hub import Repository, list_datasets
 from json2html import *
+from dotenv import load_dotenv
+from pathlib import Path
+from os import getenv
 
 # treating inf values as NaN as well
 pd.set_option("use_inf_as_na", True)
@@ -67,6 +71,67 @@ _STREAMABLE_DATASET_LIST = [
 ]
 
 _MAX_ROWS = 200000
+
+def initialize_cache_hub_repo(cache_path, dataset_cache_dir):
+    """
+    This function tries to initialize a dataset cache on the huggingface hub. The
+    function expects you to have HUB_CACHE_ORGANIZATION=<the organization you've set up on the hub to store your cache>
+    and HF_TOKEN=<your hf token> on separate lines in a file named .env at the root of this repo.
+
+    Args:
+        cache_path (string):
+            The path to the local dataset cache.
+        dataset_cache_dir (string):
+            The name of the dataset repo on the huggingface hub that you want.
+    """
+
+    if Path(".env").is_file():
+        load_dotenv(".env")
+    HF_TOKEN = getenv("HF_TOKEN")
+    HUB_CACHE_ORGANIZATION = getenv("HUB_CACHE_ORGANIZATION")
+    repo = Repository(local_dir=cache_path,
+                      clone_from=HUB_CACHE_ORGANIZATION + "/" + dataset_cache_dir,
+                      repo_type="dataset", use_auth_token=HF_TOKEN)
+    repo.lfs_track(["*.feather"])
+    return repo
+
+def pull_cache_from_hub(cache_path, dataset_cache_dir):
+    """
+    This function tries to pull a datasets cache from the huggingface hub if a
+    cache for the dataset does not already exist locally. The function expects you
+    to have you HUB_CACHE_ORGANIZATION=<the organization you've set up on the hub to store your cache>
+    and HF_TOKEN=<your hf token> on separate lines in a file named .env at the root of this repo.
+
+    Args:
+        cache_path (string):
+            The path to the local dataset cache that you want.
+        dataset_cache_dir (string):
+            The name of the dataset repo on the huggingface hub.
+
+    Returns:
+        string: a log about whether the cache was pulled or not
+    """
+
+    if Path(".env").is_file():
+        load_dotenv(".env")
+
+    HF_TOKEN = getenv("HF_TOKEN")
+    HUB_CACHE_ORGANIZATION = getenv("HUB_CACHE_ORGANIZATION")
+
+    log = "Pulled cache from hub!"
+    if not isdir(cache_path):
+        if dataset_cache_dir in [
+            dataset_info.id.split("/")[-1] for dataset_info in
+            list_datasets(author=HUB_CACHE_ORGANIZATION,
+                          use_auth_token=HF_TOKEN)]:
+            repo = Repository(local_dir=cache_path,
+                              clone_from=HUB_CACHE_ORGANIZATION + "/" + dataset_cache_dir,
+                              repo_type="dataset", use_auth_token=HF_TOKEN)
+        else:
+            log = "Asking to pull cache from hub but cannot find cached repo on the hub."
+    else:
+        log = "Already a local cache for the dataset, so not pulling from the hub."
+    return log
 
 
 def load_truncated_dataset(
