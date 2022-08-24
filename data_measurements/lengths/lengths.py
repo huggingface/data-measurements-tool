@@ -41,6 +41,7 @@ def make_fig_lengths(length_df):
 class DMTHelper:
     def __init__(self, dstats, save):
         self.tokenized_df = dstats.tokenized_df
+        self.length_obj = None
         self.use_cache = dstats.use_cache
         self.fig_lengths = dstats.fig_lengths
         self.length_results = dstats.length_results
@@ -67,10 +68,8 @@ class DMTHelper:
         if not self.length_results:
             logs.info("Preparing length results")
             self.length_results = self._prepare_lengths()
-        # Create figure
-        if not self.fig_lengths:
             logs.info("Creating length figure.")
-            self.fig_lengths = make_fig_lengths(self.length_results)
+            self.fig_lengths = make_fig_lengths(self.length_obj.length_df)
         # Finish
         if self.save:
             self._write_length_cache()
@@ -85,11 +84,11 @@ class DMTHelper:
     def _prepare_lengths(self):
         """Loads a Lengths object and computes length statistics"""
         # Length object for the dataset
-        length_obj = Lengths(dataset=self.tokenized_df[TOKENIZED_FIELD])
+        self.length_obj = Lengths(dataset=self.tokenized_df[TOKENIZED_FIELD])
         # TODO(?): DataFrame is a faster data structure to use (I think),
         # but no one appears to be using it, so move it to be a
         # non-default option?
-        length_results = length_obj.prepare_lengths()
+        length_results = self.length_obj.prepare_lengths()
         return length_results
 
     def _load_length_cache(self):
@@ -118,14 +117,14 @@ class Lengths:
 
     def __init__(self, dataset):
         # TODO: Implement the option of an input tokenizer
-        self.length_df = dataset
+        self.dset_df = dataset
         self.avg_length = None
         self.std_length = None
         self.num_uniq_lengths = None
         self.length_stats_dict = {}
 
     def prepare_lengths(self):
-        self.length_df = pd.DataFrame(self.length_df.apply(len))
+        self.length_df = pd.DataFrame(self.dset_df.apply(len))
         length_array = self.length_df.iloc[:, 0]
         self.avg_length = statistics.mean(length_array)
         self.std_length = statistics.stdev(length_array)
