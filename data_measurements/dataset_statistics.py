@@ -225,19 +225,6 @@ class DatasetStatisticsCacheClass:
         # word-count-based calculations (currently just relevant to nPMI)
         self.min_vocab_count = _MIN_VOCAB_COUNT
         self.cvec = _CVEC
-        # File definitions
-        # path to the directory used for caching
-        if not isinstance(text_field, str):
-            text_field = ".".join(text_field)
-        # if isinstance(label_field, str):
-        #    label_field = label_field
-        # else:
-        #    label_field = "-".join(label_field)
-        self.dataset_cache_dir = f"{dset_name}_{dset_config}_{split_name}_{text_field}"
-        self.cache_path = pjoin(
-            self.cache_dir,
-            self.dataset_cache_dir,  # {label_field},
-        )
         # Things that get defined later.
         self.fig_tok_length_png = None
         self.length_stats_dict = None
@@ -313,16 +300,6 @@ class DatasetStatisticsCacheClass:
         written out/recalculated, but instead that part of the UI can be punted.
         """
         self.live = live
-
-    def check_cache_dir(self):
-        """
-        First function to call to create the cache directory.
-        If in deployment mode ("live") and cache directory does not already exist,
-        return False.
-        """
-        if not self.live:
-            ds_utils.make_path(self.cache_path)
-        return isdir(self.cache_path)
 
     def get_base_dataset(self):
         """Gets a pointer to the truncated base dataset object."""
@@ -428,7 +405,7 @@ class DatasetStatisticsCacheClass:
         else:
             logs.info("Calculating vocab afresh")
             if self.tokenized_df is None:
-                self.tokenized_df = self.do_tokenization()
+                self.do_tokenization()
                 if save:
                     logs.info("Writing out.")
                     ds_utils.write_df(self.tokenized_df, self.tokenized_df_fid)
@@ -558,12 +535,12 @@ class DatasetStatisticsCacheClass:
 
     def load_or_prepare_tokenized_df(self, save=True):
         # If we don't have a tokenized dataframe already, get it.
-        if not isinstance(self.tokenized_df, pd.DataFrame):
+        if self.tokenized_df is None:
             if self.use_cache and exists(self.tokenized_df_fid):
                 self.tokenized_df = utils.read_df(self.tokenized_df_fid)
             else:
                 # tokenize all text instances
-                self.tokenized_df = self.do_tokenization()
+                self.do_tokenization()
                 if save:
                     logs.warning("Saving tokenized dataset to disk")
                     # save tokenized text
@@ -577,12 +554,11 @@ class DatasetStatisticsCacheClass:
             logs.info(self.text_dset)
         # ...Or load it from the server and store it anew
         else:
-            if not self.live:
-                self.prepare_text_dset()
-                if save:
-                    # save extracted text instances
-                    logs.warning("Saving dataset to disk")
-                    self.text_dset.save_to_disk(self.text_dset_fid)
+            self.prepare_text_dset()
+            if save:
+                # save extracted text instances
+                logs.warning("Saving dataset to disk")
+                self.text_dset.save_to_disk(self.text_dset_fid)
 
     def prepare_text_dset(self):
         self.get_base_dataset()
@@ -614,12 +590,11 @@ class DatasetStatisticsCacheClass:
             }
             return res
 
-        tokenized_dset = self.text_dset.map(
+        self.tokenized_dset = self.text_dset.map(
             tokenize_batch,
             batched=True
         )
-        tokenized_df = pd.DataFrame(tokenized_dset)
-        return tokenized_df
+        self.tokenized_df = pd.DataFrame(tokenized_dset)
 
     def load_or_prepare_npmi(self):
         self.npmi_stats = nPMIStatisticsCacheClass(self,

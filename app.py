@@ -136,8 +136,7 @@ def load_or_prepare_widgets(ds_args, show_embeddings, show_perplexities, live=Tr
     dstats.set_deployment(live)
     # checks whether the cache_dir exists in deployment mode
     # creates cache_dir if not and if in development mode
-    cache_dir_exists = dstats.check_cache_dir()
-    if cache_dir_exists:
+    if isdir(dstats.cache_path):
         try:
             # We need to have the text_dset loaded for further load_or_prepare
             dstats.load_or_prepare_dataset()
