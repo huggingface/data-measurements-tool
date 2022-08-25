@@ -83,6 +83,9 @@ def load_or_prepare(ds_args, show_embeddings, show_perplexities, use_cache=False
     if use_cache:
         logs.warning("Using cache")
     dstats = dataset_statistics.DatasetStatisticsCacheClass(CACHE_DIR, **ds_args, use_cache=use_cache)
+    if pull_cache_from_hub:
+        logs.warning(dataset_utils.pull_cache_from_hub(dstats.cache_path, dstats.dataset_cache_dir))
+
     logs.warning("Loading dataset")
     dstats.load_or_prepare_dataset()
     logs.warning("Loading labels")
@@ -116,7 +119,7 @@ def load_or_prepare(ds_args, show_embeddings, show_perplexities, use_cache=False
     },
     allow_output_mutation=True,
 )
-def load_or_prepare_widgets(ds_args, show_embeddings, show_perplexities, live=True, use_cache=False):
+def load_or_prepare_widgets(ds_args, show_embeddings, show_perplexities, live=True, pull_cache_from_hub=False, use_cache=False):
     """
     Loader specifically for the widgets used in the app.
     Args:
@@ -134,6 +137,10 @@ def load_or_prepare_widgets(ds_args, show_embeddings, show_perplexities, live=Tr
     dstats = dataset_statistics.DatasetStatisticsCacheClass(CACHE_DIR, **ds_args, use_cache=use_cache)
     # Don't recalculate when we're live
     dstats.set_deployment(live)
+
+    if pull_cache_from_hub:
+        logs.warning(dataset_utils.pull_cache_from_hub(dstats.cache_path, dstats.dataset_cache_dir))
+
     # checks whether the cache_dir exists in deployment mode
     # creates cache_dir if not and if in development mode
     if isdir(dstats.cache_path):
@@ -236,8 +243,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--live", default=False, required=False, action="store_true", help="Flag to specify that this is not running live.")
+    parser.add_argument(
+        "--pull_cache_from_hub", default=False, required=False, action="store_true", help="Flag to specify whether to look in the hub for measurements caches. If you are using this option, you must have HUB_CACHE_ORGANIZATION=<the organization you've set up on the hub to store your cache> and HF_TOKEN=<your hf token> on separate lines in a file named .env at the root of this repo.")
     arguments = parser.parse_args()
     live = arguments.live
+    pull_cache_from_hub = arguments.pull_cache_from_hub
     # Sidebar description and selection
     ds_name_to_dict = ds_utils.get_dataset_info_dicts()
     st.title("Data Measurements Tool")
@@ -258,7 +268,7 @@ def main():
         dataset_args_right = st_utils.sidebar_selection(ds_name_to_dict, " B")
         left_col, _, right_col = st.columns([10, 1, 10])
         dstats_left, cache_exists_left = load_or_prepare_widgets(
-            dataset_args_left, show_embeddings, show_perplexities, use_cache=use_cache
+            dataset_args_left, show_embeddings, show_perplexities, pull_cache_from_hub=pull_cache_from_hub, use_cache=use_cache
         )
         with left_col:
             if cache_exists_left:
@@ -267,7 +277,7 @@ def main():
                 st.markdown("### Missing pre-computed data measures!")
                 st.write(dataset_args_left)
         dstats_right, cache_exists_right = load_or_prepare_widgets(
-            dataset_args_right, show_embeddings, show_perplexities, use_cache=use_cache
+            dataset_args_right, show_embeddings, show_perplexities, pull_cache_from_hub=pull_cache_from_hub, use_cache=use_cache
         )
         with right_col:
             if cache_exists_right:
@@ -278,7 +288,7 @@ def main():
     else:
         logs.warning("Using Single Dataset Mode")
         dataset_args = st_utils.sidebar_selection(ds_name_to_dict, "")
-        dstats, cache_exists = load_or_prepare_widgets(dataset_args, show_embeddings, show_perplexities, live=live, use_cache=use_cache)
+        dstats, cache_exists = load_or_prepare_widgets(dataset_args, show_embeddings, show_perplexities, live=live, pull_cache_from_hub=pull_cache_from_hub, use_cache=use_cache)
         if cache_exists:
             show_column(dstats, ds_name_to_dict, show_embeddings, show_perplexities, "")
         else:

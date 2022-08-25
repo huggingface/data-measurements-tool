@@ -29,7 +29,6 @@ from data_measurements.text_duplicates import text_duplicates as td
 from data_measurements.npmi import npmi
 from data_measurements.zipf import zipf
 from datasets import load_from_disk, load_metric
-from huggingface_hub import Repository, list_datasets
 from nltk.corpus import stopwords
 from os import getenv
 from os.path import exists, isdir
@@ -40,8 +39,6 @@ from utils.dataset_utils import (CNT, EMBEDDING_FIELD, LENGTH_FIELD,
                                  TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
                                  TOT_WORDS, VOCAB, WORD)
 
-
-HF_TOKEN = getenv("HF_TOKEN")
 
 logs = utils.prepare_logging(__file__)
 
@@ -228,21 +225,6 @@ class DatasetStatisticsCacheClass:
         # Things that get defined later.
         self.fig_tok_length_png = None
         self.length_stats_dict = None
-
-        # Try to pull from the hub to see if the cache already exists.
-        try:
-            if not isdir(self.cache_path) and self.dataset_cache_dir in [
-                dataset_info.id.split("/")[-1] for dataset_info in
-                list_datasets(author="datameasurements",
-                              use_auth_token=HF_TOKEN)]:
-                repo = Repository(local_dir=self.cache_path,
-                                  clone_from="datameasurements/" + self.dataset_cache_dir,
-                                  repo_type="dataset", use_auth_token=HF_TOKEN)
-            else:
-                logs.warning("Cannot find cached repo on the hub.")
-        except Exception as e:
-            print(e)
-            logs.warning("Cannot load cached repo on the hub.")
 
         # Cache files not needed for UI
         self.dset_fid = pjoin(self.cache_path, "base_dset")
