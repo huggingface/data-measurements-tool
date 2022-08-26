@@ -3,7 +3,8 @@ import logging
 import os
 import pandas as pd
 import plotly.express as px
-import utils.dataset_utils as utils
+import utils
+import utils.dataset_utils as ds_utils
 from collections import Counter
 from os.path import exists, isdir
 from os.path import join as pjoin
@@ -19,25 +20,7 @@ EVAL_LABEL_FRAC = "fractions"
 # TODO: This should ideally be in what's returned from the evaluate library
 EVAL_LABEL_SUM = "sums"
 
-logs = logging.getLogger(__name__)
-logs.setLevel(logging.WARNING)
-logs.propagate = False
-
-if not logs.handlers:
-    # Logging info to log file
-    file = logging.FileHandler("./log_files/labels.log")
-    fileformat = logging.Formatter("%(asctime)s:%(message)s")
-    file.setLevel(logging.INFO)
-    file.setFormatter(fileformat)
-
-    # Logging debug messages to stream
-    stream = logging.StreamHandler()
-    streamformat = logging.Formatter("[data_measurements_tool] %(message)s")
-    stream.setLevel(logging.WARNING)
-    stream.setFormatter(streamformat)
-
-    logs.addHandler(file)
-    logs.addHandler(stream)
+logs = utils.prepare_logging(__file__)
 
 
 def map_labels(label_field, ds_name_to_dict, ds_name, config_name):

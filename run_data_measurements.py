@@ -330,7 +330,7 @@ def main():
             shutil.rmtree(cache_path)
         else:
             raise OSError("Cache for this dataset already exists. Delete it or use the --overwrite_previous argument.")
-    dataset_utils.make_cache_path(cache_path)
+    dataset_utils.make_path(cache_path)
 
     dataset_arguments_message = f"dataset: {args.dataset}, config: {args.config}, split: {args.split}, feature: {args.feature}, label field: {args.label_field}, label names: {args.label_names}"
 
