@@ -39,15 +39,15 @@ def make_fig_lengths(length_df):
 
 
 class DMTHelper:
-    def __init__(self, dstats, save):
+    def __init__(self, dstats, load_only=False, save=True):
         self.tokenized_df = dstats.tokenized_df
         self.length_obj = None
         self.use_cache = dstats.use_cache
         self.fig_lengths = dstats.fig_lengths
         self.length_results = dstats.length_results
         self.cache_path = dstats.cache_path
-        # TODO: Should this just be an attribute of dstats instead?
         self.save = save
+        self.load_only = load_only
         # Filenames
         self.length_dir = "lengths"
         length_json = "lengths.json"
@@ -65,14 +65,14 @@ class DMTHelper:
                 logs.info("Loaded cached length results.")
         # If we do not have a figure loaded from cache...
         # Compute length statistics.
-        if not self.length_results:
+        if not self.length_results and not self.load_only:
             logs.info("Preparing length results")
             self.length_results = self._prepare_lengths()
             logs.info("Creating length figure.")
             self.fig_lengths = make_fig_lengths(self.length_obj.length_df)
-        # Finish
-        if self.save:
-            self._write_length_cache()
+            # Finish
+            if self.save:
+                self._write_length_cache()
 
     def _write_length_cache(self):
         ds_utils.make_cache_path(pjoin(self.cache_path, self.length_dir))
