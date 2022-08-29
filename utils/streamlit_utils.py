@@ -15,6 +15,7 @@
 import statistics
 
 import pandas as pd
+import numpy as np
 import seaborn as sns
 import streamlit as st
 from st_aggrid import AgGrid, GridOptionsBuilder
@@ -139,13 +140,13 @@ def expander_general_stats(dstats, column_id):
 
 
 ### Show the label distribution from the datasets
-def expander_label_distribution(fig_labels, column_id):
+def expander_label_distribution(dstats, column_id):
     with st.expander(f"Label Distribution{column_id}", expanded=False):
         st.caption(
             "Use this widget to see how balanced the labels in your dataset are."
         )
-        if fig_labels is not None:
-            st.plotly_chart(fig_labels, use_container_width=True)
+        if dstats.fig_labels:
+            st.plotly_chart(dstats.fig_labels, use_container_width=True)
         else:
             st.markdown("No labels were found in the dataset")
 
@@ -181,7 +182,7 @@ def expander_text_lengths(dstats, column_id):
         if dstats.length_df is not None:
             start_id_show_lengths = st.selectbox(
                 "Show examples of length:",
-                sorted(dstats.length_df["length"].unique().tolist()),
+                np.sort(dstats.length_df["length"].unique())[::-1].tolist(),
                 key=f"select_show_length_{column_id}",
             )
             st.table(
@@ -284,14 +285,13 @@ def expander_text_duplicates(dstats, column_id):
         )
         st.markdown("------")
         st.write(
-            "### Here is the list of all the duplicated items and their counts in the dataset:"
+            "### Here is the list of all the duplicated items and their counts in the dataset."
         )
         if not dstats.duplicates_results:
             st.write("There are no duplicates in this dataset! 🥳")
         else:
             st.write("The fraction of the data that is a duplicate is:")
             st.write(str(round(dstats.dups_frac, 4)))
-            st.write("Here is the list of all the duplicated items and their counts in the dataset:")
             # TODO: Check if this is slow when the size is large -- should we store as dataframes?
             # Dataframes allow this to be interactive.
             st.dataframe(counter_dict_to_df(dstats.dups_dict))
@@ -356,7 +356,9 @@ def expander_npmi_description(min_vocab):
 
 
 ### Finally, show Zipf stuff
-def expander_zipf(z, zipf_fig, column_id):
+def expander_zipf(dstats, column_id):
+    z = dstats.z
+    zipf_fig = dstats.zipf_fig
     with st.expander(
         f"Vocabulary Distribution{column_id}: Zipf's Law Fit", expanded=False
     ):
@@ -429,7 +431,7 @@ def expander_zipf(z, zipf_fig, column_id):
 
 
 ### Finally finally finally, show nPMI stuff.
-def npmi_widget(npmi_stats, min_vocab, column_id):
+def npmi_widget(dstats, column_id):
     """
     Part of the main app, but uses a user interaction so pulled out as its own f'n.
     :param use_cache:
@@ -438,8 +440,10 @@ def npmi_widget(npmi_stats, min_vocab, column_id):
     :param min_vocab:
     :return:
     """
+    min_vocab = dstats.min_vocab_count
+    npmi_stats = dstats.npmi_stats
     with st.expander(f"Word Association{column_id}: nPMI", expanded=False):
-        if len(npmi_stats.available_terms) > 0:
+        if npmi_stats and len(npmi_stats.available_terms) > 0:
             expander_npmi_description(min_vocab)
             st.markdown("-----")
             term1 = st.selectbox(
