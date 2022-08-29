@@ -157,57 +157,57 @@ def load_or_prepare_widgets(ds_args, show_embeddings, show_perplexities, live=Tr
     if live:
         # checks whether the cache_dir exists in deployment mode
         if isdir(dstats.cache_path):
+            try:
+                # Header widget
+                dstats.load_or_prepare_dset_peek(load_only=True)
+            except:
+                logs.warning("Issue with %s." % "dataset peek")
+            try:
+                dstats.load_or_prepare_vocab(load_only=True)
+            except:
+                logs.warning("Issue with %s." % "vocabulary statistics")
+            try:
+                # General stats widget
+                dstats.load_or_prepare_general_stats(load_only=True)
+            except:
+                logs.warning("Issue with %s." % "general statistics")
+            try:
+                # Labels widget
+                dstats.load_or_prepare_labels(load_only=True)
+            except:
+                logs.warning("Issue with %s." % "label statistics")
+            try:
+                # Text lengths widget
+                dstats.load_or_prepare_text_lengths(load_only=True)
+            except:
+                logs.warning("Issue with %s." % "text length statistics")
+            # TODO: If these are cached, can't we just show them by default?
+            # It won't take up computation time.
+            if show_embeddings:
                 try:
-                    # Header widget
-                    dstats.load_or_prepare_dset_peek(load_only=True)
+                    # Embeddings widget
+                    dstats.load_or_prepare_embeddings(load_only=True)
                 except:
-                    logs.warning("Issue with %s." % "dataset peek")
+                    logs.warning("Issue with %s." % "embeddings")
+            # TODO: If these are cached, can't we just show them by default?
+            # It won't take up computation time.
+            if show_perplexities:
                 try:
-                    dstats.load_or_prepare_vocab(load_only=True)
+                    dstats.load_or_prepare_text_perplexities(load_only=True)
                 except:
-                    logs.warning("Issue with %s." % "vocabulary statistics")
-                try:
-                    # General stats widget
-                    dstats.load_or_prepare_general_stats(load_only=True)
-                except:
-                    logs.warning("Issue with %s." % "general statistics")
-                try:
-                    # Labels widget
-                    dstats.load_or_prepare_labels(load_only=True)
-                except:
-                    logs.warning("Issue with %s." % "label statistics")
-                try:
-                    # Text lengths widget
-                    dstats.load_or_prepare_text_lengths(load_only=True)
-                except:
-                    logs.warning("Issue with %s." % "text length statistics")
-                # TODO: If these are cached, can't we just show them by default?
-                # It won't take up computation time.
-                if show_embeddings:
-                    try:
-                        # Embeddings widget
-                        dstats.load_or_prepare_embeddings(load_only=True)
-                    except:
-                        logs.warning("Issue with %s." % "embeddings")
-                # TODO: If these are cached, can't we just show them by default?
-                # It won't take up computation time.
-                if show_perplexities:
-                    try:
-                        dstats.load_or_prepare_text_perplexities(load_only=True)
-                    except:
-                        logs.warning("Issue with %s." % "perplexities")
-                try:
-                    dstats.load_or_prepare_text_duplicates(load_only=True)
-                except:
-                    logs.warning("Issue with %s." % "text duplicates")
-                try:
-                    dstats.load_or_prepare_npmi(load_only=True)
-                except:
-                    logs.warning("Issue with %s." % "nPMI statistics")
-                try:
-                    dstats.load_or_prepare_zipf(load_only=True)
-                except:
-                    logs.warning("Issue with %s." % "Zipf statistics")
+                    logs.warning("Issue with %s." % "perplexities")
+            try:
+                dstats.load_or_prepare_text_duplicates(load_only=True)
+            except:
+                logs.warning("Issue with %s." % "text duplicates")
+            try:
+                dstats.load_or_prepare_npmi(load_only=True)
+            except:
+                logs.warning("Issue with %s." % "nPMI statistics")
+            try:
+                dstats.load_or_prepare_zipf(load_only=True)
+            except:
+                logs.warning("Issue with %s." % "Zipf statistics")
     # Calculates and creates cache_dir
     else:
         dstats.load_or_prepare_dset_peek()
