@@ -1,7 +1,6 @@
 import argparse
 import json
-# TODO(Tristan): Fix this dependency
-# from dotenv import load_dotenv
+from dotenv import load_dotenv
 import plotly
 import shutil
 import smtplib
@@ -12,18 +11,9 @@ from data_measurements import dataset_statistics
 from data_measurements.zipf import zipf
 from huggingface_hub import create_repo, Repository, hf_api
 from os import getenv
-from os.path import join as pjoin
+from os.path import exists, join as pjoin
 from pathlib import Path
 from utils import dataset_utils
-
-port = 465  # For SSL
-
-# if Path(".env").is_file():
-#    load_dotenv(".env")
-
-# TODO: Explain that this needs to be done/how to do it.
-HF_TOKEN = getenv("HF_TOKEN")
-EMAIL_PASSWORD = getenv("EMAIL_PASSWORD")
 
 
 def load_or_prepare_widgets(ds_args, show_embeddings=False,
@@ -297,18 +287,18 @@ def main():
         default=False,
         required=False,
         action="store_true",
-        help="Whether to overwrite a previous cache for these same arguments (Optional)",
+        help="Whether to overwrite a previous local cache for these same arguments (Optional)",
     )
     parser.add_argument(
         "--email",
         default=None,
-        help="An email that recieves a message about whether the computation was successful. If email is not None, then you must have EMAIL_PASSWORD for the sender email (data.measurements.tool@gmail.com) in a file named .env at the root of this repo.")
+        help="An email that recieves a message about whether the computation was successful. If email is not None, then you must have EMAIL_PASSWORD=<your email password> for the sender email (data.measurements.tool@gmail.com) in a file named .env at the root of this repo.")
     parser.add_argument(
         "--push_cache_to_hub",
         default=False,
         required=False,
         action="store_true",
-        help="Whether to push the cache to the datameasurements organization on the hub. If you are using this option, you must have HF_TOKEN in a file named .env at the root of this repo.",
+        help="Whether to push the cache to an organization on the hub. If you are using this option, you must have HUB_CACHE_ORGANIZATION=<the organization you've set up on the hub to store your cache> and HF_TOKEN=<your hf token> on separate lines in a file named .env at the root of this repo.",
     )
     parser.add_argument("--prepare_GUI_data", default=False, required=False,
                         action="store_true",
@@ -322,7 +312,11 @@ def main():
     print(args)
     # run_data_measurements.py -d hate_speech18 -c default -s train -f text -w npmi
     if args.email is not None:
+        if Path(".env").is_file():
+            load_dotenv(".env")
+        EMAIL_PASSWORD = getenv("EMAIL_PASSWORD")
         context = ssl.create_default_context()
+        port = 465
         server = smtplib.SMTP_SSL("smtp.gmail.com", port, context=context)
         server.login("data.measurements.tool@gmail.com", EMAIL_PASSWORD)
 
@@ -332,62 +326,22 @@ def main():
 
     dataset_cache_dir = f"{args.dataset}_{args.config}_{args.split}_{args.feature}"
     cache_path = args.out_dir + "/" + dataset_cache_dir
+
+    # Initialize the repository
+    if exists(cache_path):
+        if args.overwrite_previous:
+            shutil.rmtree(cache_path)
+        else:
+            raise OSError("Cache for this dataset already exists. Delete it or use the --overwrite_previous argument.")
     dataset_utils.make_cache_path(cache_path)
 
     dataset_arguments_message = f"dataset: {args.dataset}, config: {args.config}, split: {args.split}, feature: {args.feature}, label field: {args.label_field}, label names: {args.label_names}"
-    # Prepare some of the messages we use in different if-else/try-except cases later.
-    not_computing_message = "As you specified, not overwriting the previous dataset cache."
-    # Initialize the repository
+
     if args.push_cache_to_hub:
-        try:
-            create_repo(dataset_cache_dir, organization="datameasurements",
-                        repo_type="dataset", private=True, token=HF_TOKEN)
-        # Error because the repo is already created
-        except hf_api.HTTPError as err:
-            if err.args[
-                0] == "409 Client Error: Conflict for url: https://huggingface.co/api/repos/create - You already created this dataset repo":
-                already_computed_message = f"Already created a repo for the dataset with arguments: {dataset_arguments_message}."
-            else:
-                already_computed_message = " - ".join(err.args)
-            print(already_computed_message)
-            if args.overwrite_previous:
-                print("As you specified, overwriting previous cache.")
-            else:
-                print(not_computing_message)
-                if args.email is not None:
-                    server.sendmail("data.measurements.tool@gmail.com",
-                                    args.email,
-                                    "Subject: Data Measurments not Computed\n\n" + already_computed_message + " " + not_computing_message)
-                return
-        # Some other error that we do not anticipate.
-        except Exception as err:
-            error_message = f"There is an error on the hub that is preventing repo creation. Details: " + " - ".join(
-                err.args)
-            print(error_message)
-            print(not_computing_message)
-            if args.email is not None:
-                server.sendmail("data.measurements.tool@gmail.com", args.email,
-                                "Subject: Data Measurments not Computed\n\n" + error_message + "\n" + not_computing_message)
-            return
+        repo = dataset_utils.initialize_cache_hub_repo(cache_path, dataset_cache_dir)
+
     # Run the measurements.
     try:
-        if args.push_cache_to_hub:
-            # TODO: This breaks if the cache path exists and it isn't a git repository (such as when someone has dev'ed locally and is moving to the online repo)
-            # A solution would be something like this, although probably the .git directory
-            # would also need to be checked to see if it's the *right* git repo.
-            """
-            n = 1
-            new_cache_path = cache_path
-            while os.path.exists(new_cache_path) and not os.path.exists(new_cache_path + "/.git"):
-               print("Trying to clone from repo to %s, but it exists already and is not a git repo." % new_cache_path)
-               new_cache_path = cache_path + "." + str(n)
-               print("Trying to clone to %s instead" % new_cache_path)
-               n += 1
-            """
-            repo = Repository(local_dir=cache_path,
-                              clone_from="datameasurements/" + dataset_cache_dir,
-                              repo_type="dataset", use_auth_token=HF_TOKEN)
-            repo.lfs_track(["*.feather"])
         get_text_label_df(
             args.dataset,
             args.config,
@@ -407,7 +361,7 @@ def main():
         print(computed_message)
         print()
         if args.email is not None:
-            computed_message += "\nYou can return to the data measurements tool to view them at https://huggingface.co/spaces/datameasurements/data-measurements-tool"
+            computed_message += "\nYou can return to the data measurements tool to view them."
             server.sendmail("data.measurements.tool@gmail.com", args.email,
                             "Subject: Data Measurements Computed!\n\n" + computed_message)
             print(computed_message)
@@ -431,28 +385,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-    # Deleted this because of merge conflict -- saving here in case it should not have been deleted.
-    # try:
-    #    create_repo(dataset_cache_dir, organization="datameasurements", repo_type="dataset", private=True, token=HF_TOKEN)
-    # except hf_api.HTTPError as err:
-    #    if err.args[0] == "409 Client Error: Conflict for url: https://huggingface.co/api/repos/create - You already created this dataset repo":
-    #        error_message = f"Already created a repo for the dataset with arguments: {dataset_arguments_message}."
-    #    else:
-    #        error_message = " - ".join(err.args)
-    #    print(error_message)
-    #    if args.overwrite_previous:
-    #        print("Overwriting precious cache.")
-    ## May never hit this.
-    # except Exception as err:
-    #    error_message = f"There is an error on the hub that is preventing repo creation. Details: " + " - ".join(err.args)
-    #    not_computing_message = "Not computing the dataset cache."
-    #    print(error_message)
-    #    print(not_computing_message)
-    #    if args.email is not None:
-    #        server.sendmail("data.measurements.tool@gmail.com", args.email, "Subject: Data Measurments not Computed\n\n" + error_message + "\n" + not_computing_message)
-    #    return
-    # try:
-    #    cache_path = args.out_dir + "/" + dataset_cache_dir
-    #    repo = Repository(local_dir=cache_path, clone_from="datameasurements/" + dataset_cache_dir, repo_type="dataset", use_auth_token=HF_TOKEN)
-    #    repo.lfs_track(["*.feather"])
