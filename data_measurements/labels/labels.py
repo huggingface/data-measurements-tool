@@ -90,18 +90,19 @@ class DMTHelper:
     in one file.
     """
 
-    def __init__(self, dstats, save):
+    def __init__(self, dstats, load_only, save):
         self.use_cache = dstats.use_cache
         self.fig_labels = dstats.fig_labels
         self.label_results = dstats.label_results
         self.cache_path = dstats.cache_path
         self.label_field = dstats.label_field
+        # Input HuggingFace dataset
         self.dset = dstats.dset
         self.dset_name = dstats.dset_name
         self.dset_config = dstats.dset_config
         self.label_names = dstats.label_names
-        # TODO: Should this just be an attribute of dstats instead?
         self.save = save
+        self.load_only = load_only
         # Filenames
         self.label_dir = "labels"
         label_json = "labels.json"
@@ -122,18 +123,19 @@ class DMTHelper:
                 logs.info("Loaded cached label figure.")
             if self.label_results:
                 logs.info("Loaded cached label results.")
-        # If we do not have a figure loaded from cache...
-        # Compute label statistics.
-        if not self.label_results:
-            self.label_results = self._prepare_labels()
-        # Create figure
-        if not self.fig_labels:
-            logs.info("Creating label figure.")
-            self.fig_labels = \
-                make_label_fig(self.label_results)
-        # Finish
-        if self.save:
-            self._write_label_cache()
+        if not self.load_only:
+            # If we do not have a figure loaded from cache...
+            # Compute label statistics.
+            if not self.label_results:
+                self.label_results = self._prepare_labels()
+            # Create figure
+            if not self.fig_labels:
+                logs.info("Creating label figure.")
+                self.fig_labels = \
+                    make_label_fig(self.label_results)
+            # Finish
+            if self.save:
+                self._write_label_cache()
 
     def _write_label_cache(self):
         utils.make_cache_path(pjoin(self.cache_path, self.label_dir))
