@@ -65,9 +65,7 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
     print(dataset_args)
     dstats = dataset_statistics.DatasetStatisticsCacheClass(**dataset_args,
                                                             use_cache=use_cache)
-    print("Loading dataset.")
-    dstats.load_or_prepare_dataset()
-    print("Dataset loaded.  Preparing vocab.")
+    print("Preparing vocab.")
     dstats.load_or_prepare_tokenized_df()
     print("Tokenized.")
     dstats.load_or_prepare_vocab()

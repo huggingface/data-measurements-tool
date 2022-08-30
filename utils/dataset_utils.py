@@ -381,7 +381,7 @@ def make_path(path):
 def counter_dict_to_df(dict_input):
     df_output = pd.DataFrame(dict_input, index=[0]).T
     df_output.columns = ["count"]
-    return df_output
+    return df_output.sort_values(by="count", ascending=False)
 
 def write_plotly(fig, fid):
     write_json(plotly.io.to_json(fig), fid)

@@ -14,7 +14,7 @@ TEXT = "text"
 # They may need to be updated if the evaluate library changes these strings
 DUPS_FRAC = "duplicate_fraction"
 # Evaluate calls the dictionary a "list"
-DUPS_DICT = "duplicates_list"
+DUPS_DICT = "duplicates_dict"
 # This isn't in the evaluate measurement, but TODO to add that...
 # DUPS_SUM = "duplicate_sum"
 
@@ -27,7 +27,7 @@ class DMTHelper:
     Does caching and using the evaluate library for computation.
     """
 
-    def __init__(self, dstats, save):
+    def __init__(self, dstats, load_only, save):
         # Input HuggingFace Dataset.
         self.dset = dstats.text_dset[TEXT]
         if self.dset is None:
@@ -36,9 +36,8 @@ class DMTHelper:
         self.use_cache = dstats.use_cache
         self.duplicates_results = dstats.duplicates_results
         self.cache_path = dstats.cache_path
-        #self.label_field = dstats.label_field
-        # TODO: Should this just be an attribute of dstats instead?
         self.save = save
+        self.load_only = load_only
         # Filenames
         self.dups_dir = "text_duplicates"
         dups_json = "text_duplicates.json"
@@ -57,11 +56,11 @@ class DMTHelper:
             self.duplicates_results = self._load_duplicates_cache()
             if self.duplicates_results:
                 logs.info("Loaded cached text duplicate results.")
-        if not self.duplicates_results:
+        if not self.duplicates_results and not self.load_only:
             self.duplicates_results = self._prepare_duplicates(list_duplicates=list_duplicates)
             logs.info("Prepared duplicates.")
-        if self.save:
-            self._write_duplicates_cache()
+            if self.save:
+                self._write_duplicates_cache()
 
     def _prepare_duplicates(self, list_duplicates=True):
         """Wraps the evaluate library."""
