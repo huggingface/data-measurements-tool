@@ -29,7 +29,7 @@ def load_or_prepare_widgets(ds_args, show_embeddings=False,
     Returns:
 
     """
-    dataset_utils.make_cache_path(ds_args["cache_dir"])
+    dataset_utils.make_path(ds_args["cache_dir"])
     dstats = dataset_statistics.DatasetStatisticsCacheClass(**ds_args,
                                                             use_cache=use_cache)
     # Header widget
@@ -328,7 +328,7 @@ def main():
             shutil.rmtree(cache_path)
         else:
             raise OSError("Cache for this dataset already exists. Delete it or use the --overwrite_previous argument.")
-    dataset_utils.make_cache_path(cache_path)
+    dataset_utils.make_path(cache_path)
 
     dataset_arguments_message = f"dataset: {args.dataset}, config: {args.config}, split: {args.split}, feature: {args.feature}, label field: {args.label_field}, label names: {args.label_names}"
 

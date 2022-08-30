@@ -21,28 +21,11 @@ from pathlib import Path
 Path('./log_files').mkdir(exist_ok=True)
 
 from data_measurements import dataset_statistics
+import utils
 from utils import dataset_utils
 from utils import streamlit_utils as st_utils
 
-logs = logging.getLogger(__name__)
-logs.setLevel(logging.WARNING)
-logs.propagate = False
-
-if not logs.handlers:
-    # Logging info to log file
-    file = logging.FileHandler("./log_files/app.log")
-    fileformat = logging.Formatter("%(asctime)s:%(message)s")
-    file.setLevel(logging.INFO)
-    file.setFormatter(fileformat)
-
-    # Logging debug messages to stream
-    stream = logging.StreamHandler()
-    streamformat = logging.Formatter("[data_measurements_tool] %(message)s")
-    stream.setLevel(logging.WARNING)
-    stream.setFormatter(streamformat)
-
-    logs.addHandler(file)
-    logs.addHandler(stream)
+logs = utils.prepare_logging(__file__)
 
 st.set_page_config(
     page_title="Demo to showcase dataset metrics",
