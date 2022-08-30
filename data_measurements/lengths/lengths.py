@@ -13,6 +13,7 @@ from os.path import exists, isdir
 from os.path import join as pjoin
 
 TOKENIZED_FIELD = "tokenized_text"
+LENGTH_FIELD = "length"
 
 logs = logging.getLogger(__name__)
 logs.setLevel(logging.INFO)
@@ -86,21 +87,18 @@ class DMTHelper:
             # Finish
             if self.save:
                 self._write_length_cache()
-        print("hi?")
-        print(self.length_results)
-        print(self.load_only)
 
     def _write_length_cache(self):
         ds_utils.make_cache_path(pjoin(self.cache_path, self.length_dir))
-        if self.length_results is not None:
+        if self.length_results:
             ds_utils.write_json(self.length_results, self.lengths_json_fid)
-        if self.fig_lengths is not None:
+        if self.fig_lengths:
             self.fig_lengths.savefig(self.lengths_fig_png_fid)
 
     def _prepare_lengths(self):
         """Loads a Lengths object and computes length statistics"""
         # Length object for the dataset
-        self.length_obj = Lengths(dataset=self.tokenized_df[TOKENIZED_FIELD])
+        self.length_obj = Lengths(dataset=self.tokenized_df)
         # TODO(?): DataFrame is a faster data structure to use (I think),
         # but no one appears to be using it, so move it to be a
         # non-default option?
@@ -141,10 +139,9 @@ class Lengths:
         self.length_df = None
 
     def prepare_lengths(self):
-        logs.warning(self.dset_df)
-        self.length_df = self.dset_df.apply(len, index="length", result_type="reduce")
-        logs.warning(self.length_df)
-        length_array = self.length_df.iloc[:, 0]
+        self.dset_df[LENGTH_FIELD] = self.dset_df[TOKENIZED_FIELD].apply(len)
+        self.length_df = self.dset_df[[LENGTH_FIELD]].sort_values(by=[LENGTH_FIELD], ascending=False)
+        length_array = self.length_df[LENGTH_FIELD] #.iloc[:, 0]
         self.avg_length = statistics.mean(length_array)
         self.std_length = statistics.stdev(length_array)
         self.num_uniq_lengths = len(length_array.unique())
