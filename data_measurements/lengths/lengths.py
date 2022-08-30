@@ -8,10 +8,14 @@ import pandas as pd
 from utils import dataset_utils as ds_utils
 
 
+from collections import Counter
+from os.path import exists, isdir
+from os.path import join as pjoin
+
 TOKENIZED_FIELD = "tokenized_text"
 
 logs = logging.getLogger(__name__)
-logs.setLevel(logging.WARNING)
+logs.setLevel(logging.INFO)
 logs.propagate = False
 
 if not logs.handlers:
@@ -24,7 +28,7 @@ if not logs.handlers:
     # Logging debug messages to stream
     stream = logging.StreamHandler()
     streamformat = logging.Formatter("[data_measurements_tool] %(message)s")
-    stream.setLevel(logging.WARNING)
+    stream.setLevel(logging.INFO)
     stream.setFormatter(streamformat)
 
     logs.addHandler(file)
@@ -41,13 +45,17 @@ def make_fig_lengths(length_df):
 class DMTHelper:
     def __init__(self, dstats, load_only=False, save=True):
         self.tokenized_df = dstats.tokenized_df
-        self.length_obj = None
         self.use_cache = dstats.use_cache
-        self.fig_lengths = dstats.fig_lengths
-        self.length_results = dstats.length_results
+        self.fig_lengths = None
+        self.length_results = {}
+        # Data structure that can be easily manipulated
+        self.length_df = None
         self.cache_path = dstats.cache_path
         self.save = save
         self.load_only = load_only
+        # Sufficient statistics
+        self.avg_length = None
+        self.std_length = None
         # Filenames
         self.length_dir = "lengths"
         length_json = "lengths.json"
@@ -59,6 +67,8 @@ class DMTHelper:
         # First look to see what we can load from cache.
         if self.use_cache:
             self.fig_lengths, self.length_results = self._load_length_cache()
+            print("what the what")
+            print(self.length_results)
             if self.fig_lengths:
                 logs.info("Loaded cached length figure.")
             if self.length_results:
@@ -68,17 +78,23 @@ class DMTHelper:
         if not self.length_results and not self.load_only:
             logs.info("Preparing length results")
             self.length_results = self._prepare_lengths()
+            self.avg_length = self.length_obj.avg_length
+            self.std_length = self.length_obj.std_length
+            self.length_df = self.length_obj.length_df
             logs.info("Creating length figure.")
-            self.fig_lengths = make_fig_lengths(self.length_obj.length_df)
+            self.fig_lengths = make_fig_lengths(self.length_df)
             # Finish
             if self.save:
                 self._write_length_cache()
+        print("hi?")
+        print(self.length_results)
+        print(self.load_only)
 
     def _write_length_cache(self):
         ds_utils.make_cache_path(pjoin(self.cache_path, self.length_dir))
-        if self.length_results:
+        if self.length_results is not None:
             ds_utils.write_json(self.length_results, self.lengths_json_fid)
-        if self.fig_lengths:
+        if self.fig_lengths is not None:
             self.fig_lengths.savefig(self.lengths_fig_png_fid)
 
     def _prepare_lengths(self):
@@ -122,9 +138,12 @@ class Lengths:
         self.std_length = None
         self.num_uniq_lengths = None
         self.length_stats_dict = {}
+        self.length_df = None
 
     def prepare_lengths(self):
-        self.length_df = pd.DataFrame(self.dset_df.apply(len))
+        logs.warning(self.dset_df)
+        self.length_df = self.dset_df.apply(len, index="length", result_type="reduce")
+        logs.warning(self.length_df)
         length_array = self.length_df.iloc[:, 0]
         self.avg_length = statistics.mean(length_array)
         self.std_length = statistics.stdev(length_array)
@@ -134,5 +153,4 @@ class Lengths:
             "standard_dev_instance_length": self.std_length,
             "num_instance_lengths": self.num_uniq_lengths,
         }
-        print(self.length_stats_dict)
         return self.length_stats_dict
