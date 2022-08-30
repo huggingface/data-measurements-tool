@@ -172,13 +172,13 @@ def expander_text_lengths(dstats, column_id):
             st.pyplot(dstats.length_obj.fig_lengths, use_container_width=True)
         st.markdown(
             "The average length of text instances is **"
-            + str(dstats.length_obj.avg_length)
+            + str(round(dstats.length_obj.avg_length, 2))
             + " words**, with a standard deviation of **"
-            + str(dstats.length_obj.std_length)
+            + str(round(dstats.length_obj.std_length, 2))
             + "**."
         )
-        # This is quite a large file and is breaking our ability to navigate the app development.
         # Just passing if it's not already there for launch v0
+        # TODO: Have "length" be a constant.
         if dstats.length_obj.length_df is not None:
             start_id_show_lengths = st.selectbox(
                 "Show examples of length:",
