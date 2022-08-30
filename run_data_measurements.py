@@ -29,7 +29,7 @@ def load_or_prepare_widgets(ds_args, show_embeddings=False,
     Returns:
 
     """
-    dataset_utils.make_cache_path(ds_args["cache_dir"])
+    dataset_utils.make_path(ds_args["cache_dir"])
     dstats = dataset_statistics.DatasetStatisticsCacheClass(**ds_args,
                                                             use_cache=use_cache)
     # Header widget

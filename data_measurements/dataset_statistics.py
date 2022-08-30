@@ -337,9 +337,9 @@ class DatasetStatisticsCacheClass:
             logs.info("Preparing general stats")
             self.prepare_general_stats()
             if self.save:
-                utils.write_df(self.sorted_top_vocab_df,
+                ds_utils.write_df(self.sorted_top_vocab_df,
                                self.sorted_top_vocab_df_fid)
-                utils.write_json(self.general_stats_dict,
+                ds_utils.write_json(self.general_stats_dict,
                                  self.general_stats_json_fid)
 
     def load_or_prepare_text_lengths(self, load_only=False):
@@ -361,11 +361,11 @@ class DatasetStatisticsCacheClass:
                 self.fig_tok_length.savefig(self.fig_tok_length_fid)
         # Text length dataframe
         if self.use_cache and exists(self.length_df_fid):
-            self.length_df = utils.read_df(self.length_df_fid)
+            self.length_df = ds_utils.read_df(self.length_df_fid)
         elif not load_only:
             self.prepare_length_df()
             if self.save:
-                utils.write_df(self.length_df, self.length_df_fid)
+                ds_utils.write_df(self.length_df, self.length_df_fid)
 
         # Text length stats.
         if self.use_cache and exists(self.length_stats_json_fid):
@@ -377,7 +377,7 @@ class DatasetStatisticsCacheClass:
         elif not load_only:
             self.prepare_text_length_stats()
             if self.save:
-                utils.write_json(self.length_stats_dict,
+                ds_utils.write_json(self.length_stats_dict,
                                  self.length_stats_json_fid)
 
     def prepare_length_df(self):
@@ -488,11 +488,11 @@ class DatasetStatisticsCacheClass:
     def load_or_prepare_text_perplexities(self, load_only=False):
         if self.use_cache and exists(self.perplexities_df_fid):
             with open(self.perplexities_df_fid, "rb") as f:
-                self.perplexities_df = utils.read_df(f)
+                self.perplexities_df = ds_utils.read_df(f)
         elif not load_only:
             self.prepare_text_perplexities()
             if self.save:
-                utils.write_df(self.perplexities_df,
+                ds_utils.write_df(self.perplexities_df,
                                self.perplexities_df_fid)
 
     def load_general_stats(self):
@@ -561,19 +561,19 @@ class DatasetStatisticsCacheClass:
                 self.get_base_dataset()
             self.dset_peek = self.dset[:100]
             if self.save:
-                utils.write_json({"dset peek": self.dset_peek},
+                ds_utils.write_json({"dset peek": self.dset_peek},
                                  self.dset_peek_json_fid)
 
     def load_or_prepare_tokenized_df(self, load_only=False):
         if self.use_cache and exists(self.tokenized_df_fid):
-            self.tokenized_df = utils.read_df(self.tokenized_df_fid)
+            self.tokenized_df = ds_utils.read_df(self.tokenized_df_fid)
         elif not load_only:
             # tokenize all text instances
             self.tokenized_df = self.do_tokenization()
             if self.save:
                 logs.warning("Saving tokenized dataset to disk")
                 # save tokenized text
-                utils.write_df(self.tokenized_df, self.tokenized_df_fid)
+                ds_utils.write_df(self.tokenized_df, self.tokenized_df_fid)
 
     def load_or_prepare_text_dset(self, load_only=False):
         if self.use_cache and exists(self.text_dset_fid):
@@ -594,7 +594,7 @@ class DatasetStatisticsCacheClass:
         logs.warning(self.dset)
         # extract all text instances
         self.text_dset = self.dset.map(
-            lambda examples: utils.extract_field(
+            lambda examples: ds_utils.extract_field(
                 examples, self.text_field, OUR_TEXT_FIELD
             ),
             batched=True,
@@ -647,17 +647,17 @@ class DatasetStatisticsCacheClass:
             self.z.load(zipf_dict)
             # Zipf figure
             if exists(zipf_fig_json_fid):
-                self.zipf_fig = utils.read_plotly(zipf_fig_json_fid)
+                self.zipf_fig = ds_utils.read_plotly(zipf_fig_json_fid)
             elif not load_only:
                 self.zipf_fig = zipf.make_zipf_fig(self.z)
                 if self.save:
-                    utils.write_plotly(self.zipf_fig)
+                    ds_utils.write_plotly(self.zipf_fig)
         elif not load_only:
             self.prepare_zipf()
             if self.save:
                 zipf_dict = self.z.get_zipf_dict()
-                utils.write_json(zipf_dict, zipf_json_fid)
-                utils.write_plotly(self.zipf_fig, zipf_fig_json_fid)
+                ds_utils.write_json(zipf_dict, zipf_json_fid)
+                ds_utils.write_plotly(self.zipf_fig, zipf_fig_json_fid)
                 self.zipf_fig.write_html(zipf_fig_html_fid)
 
     def prepare_zipf(self):
