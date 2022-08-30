@@ -190,6 +190,8 @@ class DatasetStatisticsCacheClass:
         self.label_field = label_field
         # what are the names of the classes?
         self.label_names = label_names
+        # save label pie chart in the class so it doesn't ge re-computed
+        self.fig_labels = None
         ## Hugging Face dataset objects
         self.dset = None  # original dataset
         # HF dataset with all of the self.text_field instances in self.dset
@@ -200,15 +202,13 @@ class DatasetStatisticsCacheClass:
         # HF dataset with all of the self.label_field instances in self.dset
         # TODO: Not being used anymore; make sure & remove.
         self.label_dset = None
+        self.length_obj = None
         ## Data frames
         # Tokenized text
         self.tokenized_df = None
-        self.fig_lengths = None
         # Data Frame version of self.label_dset
         # TODO: Not being used anymore. Make sure and remove
         self.label_df = None
-        # save label pie chart in the class so it doesn't ge re-computed
-        self.fig_labels = None
         # Save zipf fig so it doesn't need to be recreated.
         self.zipf_fig = None
         # Zipf object
@@ -227,8 +227,6 @@ class DatasetStatisticsCacheClass:
         self.dups_frac = 0
         self.dups_dict = {}
         self.perplexities_df = None
-        self.avg_length = None
-        self.std_length = None
         self.general_stats_dict = {}
         self.num_uniq_lengths = 0
         # clustering text by embeddings
@@ -261,8 +259,6 @@ class DatasetStatisticsCacheClass:
             self.cache_dir,
             self.dataset_cache_dir,  # {label_field},
         )
-        # Things that get defined later.
-        self.fig_tok_length_png = None
         self.length_stats_dict = None
 
         # Cache files not needed for UI
@@ -276,11 +272,6 @@ class DatasetStatisticsCacheClass:
         # Needed for UI
         self.dset_peek_json_fid = pjoin(self.cache_path, "dset_peek.json")
 
-        ## Length cache files
-        # Needed for UI
-        self.length_df_fid = pjoin(self.cache_path, "length_df.feather")
-        # Needed for UI
-        self.length_stats_json_fid = pjoin(self.cache_path, "length_stats.json")
         self.vocab_counts_df_fid = pjoin(self.cache_path,
                                          "vocab_counts.feather")
         # Needed for UI
@@ -288,8 +279,6 @@ class DatasetStatisticsCacheClass:
         # Needed for UI
         self.perplexities_df_fid = pjoin(self.cache_path,
                                          "perplexities_df.feather")
-        # Needed for UI
-        self.fig_tok_length_fid = pjoin(self.cache_path, "fig_tok_length.png")
 
         ## General text stats
         # Needed for UI
@@ -374,12 +363,8 @@ class DatasetStatisticsCacheClass:
         """
         # We work with the already tokenized dataset
         self.load_or_prepare_tokenized_df()
-        length_obj = lengths.DMTHelper(self, load_only=load_only, save=self.save)
-        length_obj.run_DMT_processing()
-        self.fig_lengths = length_obj.fig_lengths
-        self.length_results = length_obj.length_results
-        self.length_files = length_obj.get_length_filenames()
-
+        self.length_obj = lengths.DMTHelper(self, load_only=load_only, save=self.save)
+        self.length_obj.run_DMT_processing()
 
     def load_or_prepare_embeddings(self):
         """Uses an Embeddings class specific to this project,
