@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import warnings
-from pathlib import Path
+import utils
 
 import numpy as np
 import pandas as pd
@@ -28,28 +27,7 @@ np.seterr(divide="ignore")
 # treating inf values as NaN as well
 pd.set_option("use_inf_as_na", True)
 
-logs = logging.getLogger(__name__)
-logs.setLevel(logging.INFO)
-logs.propagate = False
-
-if not logs.handlers:
-
-    Path("./log_files").mkdir(exist_ok=True)
-
-    # Logging info to log file
-    file = logging.FileHandler("./log_files/npmi.log")
-    fileformat = logging.Formatter("%(asctime)s:%(message)s")
-    file.setLevel(logging.INFO)
-    file.setFormatter(fileformat)
-
-    # Logging debug messages to stream
-    stream = logging.StreamHandler()
-    streamformat = logging.Formatter("[data_measurements_tool] %(message)s")
-    stream.setLevel(logging.WARNING)
-    stream.setFormatter(streamformat)
-
-    logs.addHandler(file)
-    logs.addHandler(stream)
+logs = utils.prepare_logging(__file__)
 
 _NUM_BATCHES = 500
 
