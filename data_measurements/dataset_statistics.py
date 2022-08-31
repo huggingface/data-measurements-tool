@@ -157,7 +157,8 @@ class DatasetStatisticsCacheClass:
         self.cache_dir = cache_dir
         ## Caching
         # path to the directory used for caching
-        if isinstance(text_field, list):
+        # When using the UI, the "text field" is a tuple; this handles that.
+        if not isinstance(text_field, str):
             text_field = "-".join(text_field)
         self.dataset_cache_dir = f"{dset_name}_{dset_config}_{split_name}_{text_field}"
         # TODO: Having "cache_dir" and "cache_path" is confusing.
@@ -686,9 +687,7 @@ class nPMIStatisticsCacheClass:
         """
         # TODO: Add the user's ability to select subgroups.
         # TODO: Make min_vocab_count here value selectable by the user.
-
-        logs.warning(self.use_cache)
-        logs.warning(self.npmi_terms_fid)
+        logs.info("Looking for cached terms in " % self.npmi_terms_fid)
         if (
                 self.use_cache
                 and exists(self.npmi_terms_fid)

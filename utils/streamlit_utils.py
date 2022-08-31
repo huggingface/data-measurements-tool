@@ -295,17 +295,14 @@ def expander_zipf(dstats, column_id=""):
     z = dstats.z
     zipf_fig = dstats.zipf_fig
     with st.expander(
-            f"Vocabulary Distribution{column_id}: Zipf's Law Fit",
-            expanded=False
+        f"Vocabulary Distribution{column_id}: Zipf's Law Fit", expanded=False
     ):
         try:
-            _ZIPF_CAPTION = """This shows how close the observed language is 
-            to an ideal natural language distribution following 
-            [Zipf's law](https://en.wikipedia.org/wiki/Zipf%27s_law),
-            calculated by minimizing the 
-            [Kolmogorov-Smirnov (KS) statistic](https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test)."""
+            _ZIPF_CAPTION = """This shows how close the observed language is to an ideal
+            natural language distribution following [Zipf's law](https://en.wikipedia.org/wiki/Zipf%27s_law),
+            calculated by minimizing the [Kolmogorov-Smirnov (KS) statistic](https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test)."""
 
-            # powerlaw_eq = r"""p(x) \propto x^{- \alpha}"""
+            powerlaw_eq = r"""p(x) \propto x^{- \alpha}"""
             zipf_summary = (
                     "The optimal alpha based on this dataset is: **"
                     + str(round(z.alpha, 2))
@@ -315,18 +312,11 @@ def expander_zipf(dstats, column_id=""):
             zipf_summary += (
                     "**.  This was fit with a minimum rank value of: **"
                     + str(int(z.xmin))
-                    + "**, which is the optimal rank *beyond which* the scaling"
-                      " regime of the power law fits best."
+                    + "**, which is the optimal rank *beyond which* the scaling regime of the power law fits best."
             )
 
-            alpha_warning = "Your alpha value is a bit on the high side, which" \
-                            " means that the distribution over words in this" \
-                            " dataset is a bit unnatural. This could be due to" \
-                            " non-language items throughout the dataset."
-            xmin_warning = "The minimum rank for this fit is a bit on the high" \
-                           " side, which means that the frequencies of your" \
-                           " most common words aren't distributed as would be" \
-                           " expected by Zipf's law."
+            alpha_warning = "Your alpha value is a bit on the high side, which means that the distribution over words in this dataset is a bit unnatural. This could be due to non-language items throughout the dataset."
+            xmin_warning = "The minimum rank for this fit is a bit on the high side, which means that the frequencies of your most common words aren't distributed as would be expected by Zipf's law."
             fit_results_table = pd.DataFrame.from_dict(
                 {
                     r"Alpha:": [str("%.2f" % z.alpha)],
@@ -338,43 +328,40 @@ def expander_zipf(dstats, column_id=""):
             )
             fit_results_table.index.name = column_id
             st.caption(
-                "Use this widget for the counts of different words in your "
-                "dataset, measuring the difference between the observed count "
-                "and the expected count under Zipf's law."
+                "Use this widget for the counts of different words in your dataset, measuring the difference between the observed count and the expected count under Zipf's law."
             )
             st.markdown(_ZIPF_CAPTION)
-            st.write("""A Zipfian distribution follows the power law: 
-            $p(x) \propto x^{-α}$
-            with an ideal α value of 1.""")
-            st.markdown(
-                "In general, an alpha greater than 2 or a minimum rank greater"
-                " than 10 (take with a grain of salt) means that your"
-                " distribution is relativaly _unnatural_ for natural language."
-                " This can be a sign of mixed artefacts in the dataset,"
-                " such as HTML markup."
+            st.write(
+                """
+            A Zipfian distribution follows the power law: $p(x) \propto x^{-α}$
+    with an ideal α value of 1."""
             )
             st.markdown(
-                "Below, you can see the counts of each word in your dataset vs."
-                " the expected number of counts following a Zipfian distribution."
+                "In general, an alpha greater than 2 or a minimum rank greater than 10 (take with a grain of salt) means that your distribution is relativaly _unnatural_ for natural language. This can be a sign of mixed artefacts in the dataset, such as HTML markup."
+            )
+            st.markdown(
+                "Below, you can see the counts of each word in your dataset vs. the expected number of counts following a Zipfian distribution."
             )
             st.markdown("-----")
             st.write("### Here is your dataset's Zipf results:")
             st.dataframe(fit_results_table)
             st.write(zipf_summary)
-            st.markdown("\nThe KS test p-value is < %.2f" % z.ks_test.pvalue)
-            if z.ks_test.pvalue < 0.01:
-                st.markdown(
-                    "\n Great news! Your data fits a powerlaw with a minimum KS"
-                    "distance of %.4f" % z.distance)
-            else:
-                st.markdown("\n Sadly, your data does not fit a powerlaw. =(")
+            # TODO: Nice UI version of the content in the comments.
+            # st.markdown("\nThe KS test p-value is < %.2f" % z.ks_test.pvalue)
+            # if z.ks_test.pvalue < 0.01:
+            #    st.markdown(
+            #        "\n Great news! Your data fits a powerlaw with a minimum KS " "distance of %.4f" % z.distance)
+            # else:
+            #    st.markdown("\n Sadly, your data does not fit a powerlaw. =(")
+            # st.markdown("Checking the goodness of fit of our observed distribution")
+            # st.markdown("to the hypothesized power law distribution")
+            # st.markdown("using a Kolmogorov–Smirnov (KS) test.")
             st.plotly_chart(zipf_fig, use_container_width=True)
             if z.alpha > 2:
                 st.markdown(alpha_warning)
             if z.xmin > 5:
                 st.markdown(xmin_warning)
-        except Exception as e:
-            logs.warning("Hit zipf error %s " % e)
+        except:
             st.write("Under construction!")
 
 
