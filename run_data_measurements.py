@@ -29,6 +29,7 @@ def load_or_prepare_widgets(ds_args, show_embeddings=False,
     Returns:
 
     """
+    app.load_or_prepare(ds_args, show_embeddings, show_perplexities, use_cache)
     dataset_utils.make_path(ds_args["cache_dir"])
     dstats = dataset_statistics.DatasetStatisticsCacheClass(**ds_args,
                                                             use_cache=use_cache)
@@ -57,7 +58,7 @@ def load_or_prepare_widgets(ds_args, show_embeddings=False,
     dstats.load_or_prepare_zipf()
 
 
-def load_or_prepare(dataset_args, do_html=False, use_cache=False):
+def load_or_prepare(dataset_args, calculation=False, use_cache=False):
     # TODO: Catch error exceptions for each measurement, so that an error
     # for one measurement doesn't break the calculation of all of them.
 
@@ -71,17 +72,17 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
     dstats.load_or_prepare_vocab()
     print("Vocab prepared.")
 
-    if not dataset_args["calculation"]:
+    if not calculation:
         do_all = True
 
-    if do_all or dataset_args["calculation"] == "general":
+    if do_all or calculation == "general":
         print("\n* Calculating general statistics.")
         dstats.load_or_prepare_general_stats()
         print("Done!")
         print(
             "Basic text statistics now available at %s." % dstats.general_stats_json_fid)
 
-    if do_all or dataset_args["calculation"] == "duplicates":
+    if do_all or calculation == "duplicates":
         print("\n* Calculating text duplicates.")
         dstats.load_or_prepare_text_duplicates()
         duplicates_fid_dict = dstats.duplicates_files
@@ -90,7 +91,7 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
             print("%s: %s" % (key, value))
         print()
 
-    if do_all or dataset_args["calculation"] == "lengths":
+    if do_all or calculation == "lengths":
         print("\n* Calculating text lengths.")
         dstats.load_or_prepare_text_lengths()
         print("Done!")
@@ -98,7 +99,7 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
             "- Text length results now available at %s." % dstats.length_df_fid)
         print()
 
-    if do_all or dataset_args["calculation"] == "labels":
+    if do_all or calculation == "labels":
         print("\n* Calculating label statistics.")
         dstats.load_or_prepare_labels()
         label_fid_dict = dstats.label_files
@@ -109,12 +110,12 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
 
 
 
-    if do_all or dataset_args["calculation"] == "npmi":
+    if do_all or calculation == "npmi":
         print("\n* Preparing nPMI.")
         npmi_stats = dataset_statistics.nPMIStatisticsCacheClass(
             dstats, use_cache=use_cache
         )
-        do_npmi(npmi_stats, use_cache=use_cache)
+        do_npmi(npmi_stats)
         print("Done!")
         print(
             "nPMI results now available in %s for all identity terms that "
@@ -123,7 +124,7 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
             % npmi_stats.pmi_cache_path
         )
 
-    if do_all or dataset_args["calculation"] == "zipf":
+    if do_all or calculation == "zipf":
         print("\n* Preparing Zipf.")
         dstats.load_or_prepare_zipf()
         print("Done!")
@@ -136,17 +137,17 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
         )
 
     # Don't do this one until someone specifically asks for it -- takes awhile.
-    if dataset_args["calculation"] == "embeddings":
+    if calculation == "embeddings":
         print("\n* Preparing text embeddings.")
         dstats.load_or_prepare_embeddings()
 
     # Don't do this one until someone specifically asks for it -- takes awhile.
-    if dataset_args["calculation"] == "perplexities":
+    if calculation == "perplexities":
         print("\n* Preparing text perplexities.")
         dstats.load_or_prepare_text_perplexities()
 
 
-def do_npmi(npmi_stats, use_cache=True):
+def do_npmi(npmi_stats):
     available_terms = npmi_stats.load_or_prepare_npmi_terms()
     completed_pairs = {}
     print("Iterating through terms for joint npmi.")
@@ -171,7 +172,6 @@ def get_text_label_df(
         label_names,
         calculation,
         out_dir,
-        do_html=False,
         prepare_gui=False,
         use_cache=True,
 ):
@@ -185,13 +185,12 @@ def get_text_label_df(
         "text_field": text_field,
         "label_field": label_field,
         "label_names": label_names,
-        "calculation": calculation,
         "cache_dir": out_dir,
     }
     if prepare_gui:
         load_or_prepare_widgets(dataset_args, use_cache=use_cache)
     else:
-        load_or_prepare(dataset_args, use_cache=use_cache)
+        load_or_prepare(dataset_args, calculation=calculation, use_cache=use_cache)
 
 
 def main():
@@ -223,11 +222,13 @@ def main():
     parser.add_argument(
         "-f",
         "--feature",
+        "-t",
+        "--text-field",
         required=True,
         nargs="+",
         type=str,
         default="text",
-        help="Text column to prepare",
+        help="Column to prepare (handled as text)",
     )
     parser.add_argument(
         "-w",
@@ -317,8 +318,7 @@ def main():
 
     # The args specify that multiple features can be selected.
     # We combine them for the filename here.
-    args.feature = ".".join(args.feature)
-
+    args.feature = "-".join(args.feature)
     dataset_cache_dir = f"{args.dataset}_{args.config}_{args.split}_{args.feature}"
     cache_path = args.out_dir + "/" + dataset_cache_dir
 
@@ -346,7 +346,6 @@ def main():
             args.label_names,
             args.calculation,
             args.out_dir,
-            do_html=args.do_html,
             prepare_gui=args.prepare_GUI_data,
             use_cache=args.cached,
         )

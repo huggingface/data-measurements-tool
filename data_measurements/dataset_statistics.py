@@ -18,7 +18,6 @@ import matplotlib.pyplot as plt
 import nltk
 import numpy as np
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 import seaborn as sns
 import statistics
@@ -26,10 +25,8 @@ import utils
 import utils.dataset_utils as ds_utils
 from data_measurements.embeddings.embeddings import Embeddings
 from data_measurements.labels import labels
-from data_measurements.text_duplicates import text_duplicates as td
 from data_measurements.npmi.npmi import nPMI
-# TODO(meg): Incorporate this from evaluate library.
-# import evaluate
+from data_measurements.text_duplicates import text_duplicates as td
 from data_measurements.zipf import zipf
 from datasets import load_from_disk, load_metric
 from nltk.corpus import stopwords
@@ -42,9 +39,6 @@ from utils.dataset_utils import (CNT, EMBEDDING_FIELD, LENGTH_FIELD,
                                  OUR_TEXT_FIELD, PERPLEXITY_FIELD, PROP,
                                  TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
                                  TOT_WORDS, VOCAB, WORD)
-
-
-pd.options.display.float_format = "{:,.3f}".format
 
 logs = utils.prepare_logging(__file__)
 
@@ -132,17 +126,36 @@ class DatasetStatisticsCacheClass:
             text_field,
             label_field,
             label_names,
-            calculation=None,
             use_cache=False,
             save=True,
     ):
+
+        ### What are we analyzing?
+        # name of the Hugging Face dataset
+        self.dset_name = dset_name
+        # original HuggingFace dataset
+        self.dset = None
+        # name of the dataset config
+        self.dset_config = dset_config
+        # name of the split to analyze
+        self.split_name = split_name
+        # which text/feature fields are we analysing?
+        self.text_field = text_field
+
+        ## Label variables
+        # which label fields are we analysing?
+        self.label_field = label_field
+        # what are the names of the classes?
+        self.label_names = label_names
+        # where are they being cached?
+        self.label_files = {}
+        # label pie chart used in the UI
+        self.fig_labels = None
+        # results
         self.label_results = None
-        self.duplicates_results = None
-        self.calculation = calculation
-        self.our_length_field = LENGTH_FIELD
-        self.our_tokenized_field = TOKENIZED_FIELD
-        self.our_embedding_field = EMBEDDING_FIELD
+
         self.cache_dir = cache_dir
+        ## Caching
         # path to the directory used for caching
         if isinstance(text_field, list):
             text_field = "-".join(text_field)
@@ -156,125 +169,77 @@ class DatasetStatisticsCacheClass:
         self.use_cache = use_cache
         # Save newly calculated results.
         self.save = save
-        ### What are we analyzing?
-        # name of the Hugging Face dataset
-        self.dset_name = dset_name
-        # name of the dataset config
-        self.dset_config = dset_config
-        # name of the split to analyze
-        self.split_name = split_name
-        # TODO: Chould this be "feature" ?
-        # which text fields are we analysing?
-        self.text_field = text_field
-        # which label fields are we analysing?
-        self.label_field = label_field
-        # what are the names of the classes?
-        self.label_names = label_names
-        ## Hugging Face dataset objects
-        self.dset = None  # original dataset
+
+
         # HF dataset with all of the self.text_field instances in self.dset
         self.text_dset = None
         self.dset_peek = None
-        # HF dataset with text embeddings in the same order as self.text_dset
-        self.embeddings_dset = None
-        # HF dataset with all of the self.label_field instances in self.dset
-        # TODO: Not being used anymore; make sure & remove.
-        self.label_dset = None
-        ## Data frames
         # Tokenized text
         self.tokenized_df = None
-        # save sentence length histogram in the class so it doesn't ge re-computed
-        self.length_df = None
-        self.fig_tok_length = None
-        # Data Frame version of self.label_dset
-        # TODO: Not being used anymore. Make sure and remove
-        self.label_df = None
-        # save label pie chart in the class so it doesn't ge re-computed
-        self.fig_labels = None
+
+        ## Zipf
         # Save zipf fig so it doesn't need to be recreated.
         self.zipf_fig = None
         # Zipf object
         self.z = None
+
+        ## Vocabulary
         # Vocabulary with word counts in the dataset
         self.vocab_counts_df = None
         # Vocabulary filtered to remove stopwords
         self.vocab_counts_filtered_df = None
         self.sorted_top_vocab_df = None
-        ## General statistics and duplicates
+
+        # Text Duplicates
+        self.duplicates_results = None
+        self.duplicates_files = {}
+        self.dups_frac = 0
+        self.dups_dict = {}
+
+        ## Perplexity
+        self.perplexities_df = None
+
+        ## Lengths
+        self.avg_length = None
+        self.std_length = None
+        self.length_stats_dict = None
+        self.length_df = None
+        self.fig_tok_length = None
+        self.num_uniq_lengths = 0
+
+        ## "General" stats
+        self.general_stats_dict = {}
         self.total_words = 0
         self.total_open_words = 0
         # Number of NaN values (NOT empty strings)
         self.text_nan_count = 0
-        # Text Duplicates module
-        self.dups_frac = 0
-        self.dups_dict = {}
-        self.perplexities_df = None
-        self.avg_length = None
-        self.std_length = None
-        self.general_stats_dict = {}
-        self.num_uniq_lengths = 0
-        # clustering text by embeddings
-        # the hierarchical clustering tree is represented as a list of nodes,
-        # the first is the root
-        self.node_list = []
-        # save tree figure in the class so it doesn't ge re-computed
-        self.fig_tree = None
-        # keep Embeddings object around to explore clusters
-        self.embeddings = None
+
         # nPMI
         # Holds a nPMIStatisticsCacheClass object
         self.npmi_stats = None
-        # TODO: Have lowercase be an option for a user to set.
-        self.to_lowercase = True
         # The minimum amount of times a word should occur to be included in
         # word-count-based calculations (currently just relevant to nPMI)
         self.min_vocab_count = MIN_VOCAB_COUNT
         self.cvec = _CVEC
-        # File definitions
-        # path to the directory used for caching
-        if not isinstance(text_field, str):
-            text_field = ".".join(text_field)
-        # if isinstance(label_field, str):
-        #    label_field = label_field
-        # else:
-        #    label_field = "-".join(label_field)
-        self.dataset_cache_dir = f"{dset_name}_{dset_config}_{split_name}_{text_field}"
-        self.cache_path = pjoin(
-            self.cache_dir,
-            self.dataset_cache_dir,  # {label_field},
-        )
-        # Things that get defined later.
-        self.fig_tok_length_png = None
-        self.length_stats_dict = None
 
-        # Cache files not needed for UI
         self.dset_fid = pjoin(self.cache_path, "base_dset")
         self.tokenized_df_fid = pjoin(self.cache_path, "tokenized_df.feather")
-        # TODO: Not being used anymore. Check and remove.
-        self.label_dset_fid = pjoin(self.cache_path, "label_dset")
 
-        # Needed for UI -- embeddings
         self.text_dset_fid = pjoin(self.cache_path, "text_dset")
-        # Needed for UI
         self.dset_peek_json_fid = pjoin(self.cache_path, "dset_peek.json")
 
         ## Length cache files
-        # Needed for UI
         self.length_df_fid = pjoin(self.cache_path, "length_df.feather")
-        # Needed for UI
         self.length_stats_json_fid = pjoin(self.cache_path, "length_stats.json")
+
         self.vocab_counts_df_fid = pjoin(self.cache_path,
                                          "vocab_counts.feather")
-        # Needed for UI
         self.dup_counts_df_fid = pjoin(self.cache_path, "dup_counts_df.feather")
-        # Needed for UI
         self.perplexities_df_fid = pjoin(self.cache_path,
                                          "perplexities_df.feather")
-        # Needed for UI
         self.fig_tok_length_fid = pjoin(self.cache_path, "fig_tok_length.png")
 
         ## General text stats
-        # Needed for UI
         self.general_stats_json_fid = pjoin(self.cache_path,
                                             "general_stats_dict.json")
         # Needed for UI
@@ -282,14 +247,7 @@ class DatasetStatisticsCacheClass:
             self.cache_path, "sorted_top_vocab.feather"
         )
 
-        self.label_files = {}
-        self.duplicates_files = {}
 
-        ## Embeddings cache files
-        # Needed for UI
-        self.node_list_fid = pjoin(self.cache_path, "node_list.th")
-        # Needed for UI
-        self.fig_tree_json_fid = pjoin(self.cache_path, "fig_tree.json")
         self.load_or_prepare_dataset()
 
     def get_base_dataset(self):
@@ -413,15 +371,6 @@ class DatasetStatisticsCacheClass:
             self.prepare_length_df()
         self.fig_tok_length = make_fig_lengths(self.tokenized_df,
                                                LENGTH_FIELD)
-
-    def load_or_prepare_embeddings(self, load_only=False):
-        # TODO: Incorporate 'load only' if we use this widget.
-        """Uses an Embeddings class specific to this project,
-           which uses the attributes defined in this file directly"""
-        self.embeddings = Embeddings(self, use_cache=self.use_cache)
-        self.embeddings.make_hierarchical_clustering()
-        self.node_list = self.embeddings.node_list
-        self.fig_tree = self.embeddings.fig_tree
 
     ## Labels functions
     def load_or_prepare_labels(self, load_only=False):
@@ -552,6 +501,7 @@ class DatasetStatisticsCacheClass:
         logs.info("Doing text dset.")
         self.load_or_prepare_text_dset(load_only=load_only)
 
+    # TODO: Are we not using this anymore?
     def load_or_prepare_dset_peek(self, load_only=False):
         if self.use_cache and exists(self.dset_peek_json_fid):
             with open(self.dset_peek_json_fid, "r") as f:
