@@ -269,13 +269,6 @@ def main():
         action="store_true",
         help="Whether to use cached files (Optional)",
     )
-    parser.add_argument(
-        "--do_html",
-        default=False,
-        required=False,
-        action="store_true",
-        help="Whether to write out corresponding HTML files (Optional)",
-    )
     parser.add_argument("--out_dir", default="cache_dir",
                         help="Where to write out to.")
     parser.add_argument(
