@@ -3,7 +3,8 @@ import logging
 import os
 import pandas as pd
 import plotly.express as px
-import utils.dataset_utils as utils
+import utils
+import utils.dataset_utils as ds_utils
 from collections import Counter
 from os.path import exists, isdir
 from os.path import join as pjoin
@@ -19,25 +20,7 @@ EVAL_LABEL_FRAC = "fractions"
 # TODO: This should ideally be in what's returned from the evaluate library
 EVAL_LABEL_SUM = "sums"
 
-logs = logging.getLogger(__name__)
-logs.setLevel(logging.WARNING)
-logs.propagate = False
-
-if not logs.handlers:
-    # Logging info to log file
-    file = logging.FileHandler("./log_files/labels.log")
-    fileformat = logging.Formatter("%(asctime)s:%(message)s")
-    file.setLevel(logging.INFO)
-    file.setFormatter(fileformat)
-
-    # Logging debug messages to stream
-    stream = logging.StreamHandler()
-    streamformat = logging.Formatter("[data_measurements_tool] %(message)s")
-    stream.setLevel(logging.WARNING)
-    stream.setFormatter(streamformat)
-
-    logs.addHandler(file)
-    logs.addHandler(stream)
+logs = utils.prepare_logging(__file__)
 
 
 def map_labels(label_field, ds_name_to_dict, ds_name, config_name):
@@ -79,7 +62,7 @@ def make_label_fig(label_results, chart_type="pie"):
 
 
 def extract_label_names(label_field, ds_name, config_name):
-    ds_name_to_dict = utils.get_dataset_info_dicts(ds_name)
+    ds_name_to_dict = ds_utils.get_dataset_info_dicts(ds_name)
     label_names = map_labels(label_field, ds_name_to_dict, ds_name, config_name)
     return label_names
 
@@ -138,11 +121,11 @@ class DMTHelper:
                 self._write_label_cache()
 
     def _write_label_cache(self):
-        utils.make_cache_path(pjoin(self.cache_path, self.label_dir))
+        ds_utils.make_path(pjoin(self.cache_path, self.label_dir))
         if self.label_results:
-            utils.write_json(self.label_results, self.labels_json_fid)
+            ds_utils.write_json(self.label_results, self.labels_json_fid)
         if self.fig_labels:
-            utils.write_plotly(self.fig_labels, self.labels_fig_json_fid)
+            ds_utils.write_plotly(self.fig_labels, self.labels_fig_json_fid)
             self.fig_labels.write_html(self.labels_fig_html_fid)
 
     def _prepare_labels(self):
@@ -174,11 +157,11 @@ class DMTHelper:
         label_results = {}
         # Image exists. Load it.
         if exists(self.labels_fig_json_fid):
-            fig_labels = utils.read_plotly(self.labels_fig_json_fid)
+            fig_labels = ds_utils.read_plotly(self.labels_fig_json_fid)
         # Measurements exist. Load them.
         if exists(self.labels_json_fid):
             # Loads the label list, names, and results
-            label_results = utils.read_json(self.labels_json_fid)
+            label_results = ds_utils.read_json(self.labels_json_fid)
         return fig_labels, label_results
 
     def get_label_filenames(self):

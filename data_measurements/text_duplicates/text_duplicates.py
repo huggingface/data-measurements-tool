@@ -3,7 +3,8 @@ import logging
 import os
 import pandas as pd
 import plotly.express as px
-import utils.dataset_utils as utils
+import utils
+import utils.dataset_utils as ds_utils
 from collections import Counter
 from os.path import exists, isdir
 from os.path import join as pjoin
@@ -17,25 +18,7 @@ DUPS_DICT = "duplicates_dict"
 # This isn't in the evaluate measurement, but TODO to add that...
 # DUPS_SUM = "duplicate_sum"
 
-logs = logging.getLogger(__name__)
-logs.setLevel(logging.WARNING)
-logs.propagate = False
-
-if not logs.handlers:
-    # Logging info to log file
-    file = logging.FileHandler("./log_files/text_duplicates.log")
-    fileformat = logging.Formatter("%(asctime)s:%(message)s")
-    file.setLevel(logging.INFO)
-    file.setFormatter(fileformat)
-
-    # Logging debug messages to stream
-    stream = logging.StreamHandler()
-    streamformat = logging.Formatter("[data_measurements_tool] %(message)s")
-    stream.setLevel(logging.WARNING)
-    stream.setFormatter(streamformat)
-
-    logs.addHandler(file)
-    logs.addHandler(stream)
+logs = utils.prepare_logging(__file__)
 
 class DMTHelper:
     """Helper class for the Data Measurements Tool.
@@ -89,18 +72,18 @@ class DMTHelper:
         """Loads previously computed results from cache."""
         results = {}
         if exists(self.dups_result_json_fid):
-            results = utils.read_json(self.dups_result_json_fid)
+            results = ds_utils.read_json(self.dups_result_json_fid)
         return results
     
     def _write_duplicates_cache(self):
         """Writes newly computer results to cache."""
-        utils.make_cache_path(pjoin(self.cache_path, self.dups_dir))
+        ds_utils.make_path(pjoin(self.cache_path, self.dups_dir))
         if self.duplicates_results:
-            utils.write_json(self.duplicates_results, self.dups_result_json_fid)
+            ds_utils.write_json(self.duplicates_results, self.dups_result_json_fid)
             # TODO: Use df_to_html rather than write_json_as_html;
             # this will make it possible to order the results.
             # But they must first be turned into a dataframe.
-            utils.write_json_as_html(self.duplicates_results, self.dups_result_html_fid)
+            ds_utils.write_json_as_html(self.duplicates_results, self.dups_result_html_fid)
 
     def get_duplicates_filenames(self):
         dups_fid_dict = {"statistics": self.dups_result_json_fid, "html":self.dups_result_html_fid}
