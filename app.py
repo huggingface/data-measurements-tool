@@ -23,8 +23,6 @@ import utils
 from utils import dataset_utils
 from utils import streamlit_utils as st_utils
 
-# Create the directory for log files (if it doesn't exist)
-Path('./log_files').mkdir(exist_ok=True)
 logs = utils.prepare_logging(__file__)
 
 # Utility for sidebar description and selection of the dataset
