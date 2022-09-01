@@ -97,10 +97,10 @@ def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=T
      Otherwise, the data is prepared if it doesn't yet exist.
      Args:
          ds_args (dict): the dataset arguments defined via the streamlit app GUI
+         load_prepare_list (list): List of (widget_name, widget_load_or_prepare_function)
          show_perplexities (Bool): whether perplexities should be loaded and displayed for this dataset
          live (Bool): Whether the system is deployed for live use by users.
          pull_cache_from_hub (Bool): Whether the cache should be pulled from the hub (vs locally)
-         use_cache (Bool) : whether the cache is used by default or not
      Returns:
          dstats: the computed dataset statistics (from the dataset_statistics class)
      """
@@ -150,6 +150,7 @@ def show_column(dstats, display_list, show_perplexities, column_id=""):
     Function for displaying the elements in the streamlit app.
     Args:
         dstats (class): The dataset_statistics.py DatasetStatisticsCacheClass
+        display_list (list): List of tuples for (widget_name, widget_display_function)
         show_perplexities (Bool): Whether perplexities should be loaded and displayed for this dataset
         column_id (str): Which column of the dataset the analysis is done on [DEPRECATED for v1]
     """
