@@ -3,6 +3,8 @@ from pathlib import Path
 import utils.dataset_utils as ds_utils
 
 def prepare_logging(fid):
+    # Create the directory for log files (if it doesn't exist)
+    Path('./log_files').mkdir(exist_ok=True)
     logs = logging.getLogger(__name__)
     logs.setLevel(logging.INFO)
     logs.propagate = False
