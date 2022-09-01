@@ -98,8 +98,8 @@ def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=T
      Args:
          ds_args (dict): the dataset arguments defined via the streamlit app GUI
          show_perplexities (Bool): whether perplexities should be loaded and displayed for this dataset
-         live:
-         pull_cache_from_hub:
+         live (Bool): Whether the system is deployed for live use by users.
+         pull_cache_from_hub (Bool): Whether the cache should be pulled from the hub (vs locally)
          use_cache (Bool) : whether the cache is used by default or not
      Returns:
          dstats: the computed dataset statistics (from the dataset_statistics class)
