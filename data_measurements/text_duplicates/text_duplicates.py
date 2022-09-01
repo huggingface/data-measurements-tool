@@ -28,16 +28,18 @@ class DMTHelper:
     """
 
     def __init__(self, dstats, load_only, save):
+        self.save = save
+        self.load_only = load_only
+        # Whether to try using cache first.
+        # Must be true when self.load_only = True; this function assures that.
+        self.use_cache = ds_utils.check_load_and_use_cache(self.load_only, dstats.use_cache)
         # Input HuggingFace Dataset.
         self.dset = dstats.text_dset[TEXT]
         if self.dset is None:
             dstats.load_or_prepare_text_dset()
             self.dset = dstats.text_dset
-        self.use_cache = dstats.use_cache
         self.duplicates_results = dstats.duplicates_results
         self.cache_path = dstats.cache_path
-        self.save = save
-        self.load_only = load_only
         # Filenames
         self.dups_dir = "text_duplicates"
         dups_json = "text_duplicates.json"

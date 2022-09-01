@@ -74,7 +74,11 @@ class DMTHelper:
     """
 
     def __init__(self, dstats, load_only, save):
-        self.use_cache = dstats.use_cache
+        self.save = save
+        self.load_only = load_only
+        # Whether to try using cache first.
+        # Must be true when self.load_only = True; this function assures that.
+        self.use_cache = ds_utils.check_load_and_use_cache(self.load_only, dstats.use_cache)
         self.fig_labels = dstats.fig_labels
         self.label_results = dstats.label_results
         self.cache_path = dstats.cache_path
@@ -84,8 +88,6 @@ class DMTHelper:
         self.dset_name = dstats.dset_name
         self.dset_config = dstats.dset_config
         self.label_names = dstats.label_names
-        self.save = save
-        self.load_only = load_only
         # Filenames
         self.label_dir = "labels"
         label_json = "labels.json"
