@@ -111,9 +111,11 @@ def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=T
     if live:
         # Only use what's cached; don't prepare anything
         load_only = True
+        logs.info("Only using cache.")
     else:
         # Prepare things anew and cache them if we're not live.
         load_only = False
+        logs.info("Making new calculations if cache is not there.")
     if pull_cache_from_hub:
         logs.info("Pulling cache from hub:")
         logs.info(dataset_utils.pull_cache_from_hub(dstats.cache_path, dstats.dataset_cache_dir))
