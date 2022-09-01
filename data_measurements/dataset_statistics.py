@@ -1002,26 +1002,6 @@ def define_subgroup_files(subgroup_list, pmi_cache_path):
 
 ## Input/Output ##
 
-
-def intersect_dfs(df_dict):
-    started = 0
-    new_df = None
-    for key, df in df_dict.items():
-        if df is None:
-            continue
-        for key2, df2 in df_dict.items():
-            if df2 is None:
-                continue
-            if key == key2:
-                continue
-            if started:
-                new_df = new_df.join(df2, how="inner", lsuffix="1", rsuffix="2")
-            else:
-                new_df = df.join(df2, how="inner", lsuffix="1", rsuffix="2")
-                started = 1
-    return new_df.copy()
-
-
 def write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files):
     """
     Saves the calculated nPMI statistics to their output files.
