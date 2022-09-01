@@ -46,14 +46,17 @@ def make_fig_lengths(length_df):
 class DMTHelper:
     def __init__(self, dstats, load_only=False, save=True):
         self.tokenized_df = dstats.tokenized_df
-        self.use_cache = dstats.use_cache
-        self.fig_lengths = None
-        self.length_results = {}
-        # Data structure that can be easily manipulated
-        self.length_df = None
+        # Whether to only use cache
+        self.load_only = load_only
+        # Whether to try using cache first.
+        # Must be true when self.load_only = True; this function assures that.
+        self.use_cache = ds_utils.check_load_and_use_cache(self.load_only, dstats.use_cache)
         self.cache_path = dstats.cache_path
         self.save = save
-        self.load_only = load_only
+        self.length_results = {}
+        self.fig_lengths = None
+        # Data structure that can be easily manipulated
+        self.length_df = None
         # Sufficient statistics
         self.avg_length = None
         self.std_length = None
