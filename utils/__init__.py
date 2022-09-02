@@ -10,7 +10,7 @@ def prepare_logging(fid):
 
     # Logging info to log file
     file_path = ("./log_files/%s.log" % log_fid)
-    print("Logging output in ../log_files/")
+    print("Logging output in %s " % file_path)
     ds_utils.make_path("./log_files/")
     file = logging.FileHandler(file_path)
     fileformat = logging.Formatter("%(asctime)s:%(message)s")
