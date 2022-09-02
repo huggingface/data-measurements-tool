@@ -36,40 +36,44 @@ class DMTHelper:
         self.use_cache = ds_utils.check_load_and_use_cache(self.load_only, dstats.use_cache)
         self.cache_path = dstats.cache_path
         self.save = save
-        self.length_stats = {}
         self.fig_lengths = None
         # Lengths class object
         self.lengths_obj = None
         # Data structure for lengths list that can be easily manipulated
         self.lengths_df = None
-        # Sufficient statistics
+        # Measurements
         self.avg_length = None
         self.std_length = None
+        # Dict for the measurements
+        self.length_stats_dict = {}
         # Filenames
         self.lengths_dir = "lengths"
-        lengths_stats_json = "lengths.json"
+        length_meas_json = "length_measurements.json"
         lengths_fig_png = "lengths_fig.png"
-        lengths_list_feather = "lengths.feather"
-        self.length_stats_json_fid = pjoin(self.cache_path, self.lengths_dir, lengths_stats_json)
+        lengths_list_feather = "length_list.feather"
+        self.length_stats_json_fid = pjoin(self.cache_path, self.lengths_dir, length_meas_json)
         self.lengths_fig_png_fid = pjoin(self.cache_path, self.lengths_dir, lengths_fig_png)
         self.lengths_list_feather_fid = pjoin(self.cache_path, self.lengths_dir, lengths_list_feather)
 
     def run_DMT_processing(self):
+        """
+        Associates the measurements to the dataset.
+        """
         # First look to see what we can load from cache.
         if self.use_cache:
-            self.lengths_df, self.length_stats, self.fig_lengths = self._load_lengths_cache()
-            # If fig_lengths is not None
-            if isinstance(self.fig_lengths, Figure):
-                logs.info("Loaded cached length figure.")
-            if self.length_stats != {}:
-                logs.info("Loaded cached length results.")
+            self.lengths_df, self.length_stats_dict, self.fig_lengths = self._load_lengths_cache()
             if isinstance(self.lengths_df, pd.DataFrame):
                 logs.info("Loaded cached sentences with lengths.")
+            if self.length_stats_dict != {}:
+                logs.info("Loaded cached length results.")
+            if isinstance(self.fig_lengths, Figure):
+                logs.info("Loaded cached length figure.")
         # If we do not have a figure loaded from cache...
         # Compute length statistics.
-        if not self.length_stats and not self.load_only:
+        if not self.length_stats_dict and not self.load_only:
             logs.info("Preparing length results")
             self.lengths_obj = self._prepare_lengths()
+            self.length_stats_dict = self.lengths_obj.length_stats_dict
             self.avg_length = self.lengths_obj.avg_length
             self.std_length = self.lengths_obj.std_length
             self.lengths_df = self.lengths_obj.lengths_df
@@ -82,7 +86,7 @@ class DMTHelper:
     def _load_lengths_cache(self):
         lengths_df = None
         fig_lengths = None
-        length_stats = {}
+        length_stats_dict = {}
         # Dataframe with <sentence, length> exists. Load it.
         if exists(self.lengths_list_feather_fid):
             lengths_df = ds_utils.read_df(self.lengths_list_feather_fid)
@@ -92,15 +96,15 @@ class DMTHelper:
         # Measurements exist. Load them.
         if exists(self.length_stats_json_fid):
             # Loads the length sufficient statistics
-            length_stats = ds_utils.read_json(self.length_stats_json_fid)
-        return lengths_df, length_stats, fig_lengths
+            length_stats_dict = ds_utils.read_json(self.length_stats_json_fid)
+        return lengths_df, length_stats_dict, fig_lengths
 
     def _write_lengths_cache(self):
+        # Writes the data structures using the corresponding filetypes.
         ds_utils.make_path(pjoin(self.cache_path, self.lengths_dir))
-        if self.length_stats != {}:
-            ds_utils.write_json(self.length_stats, self.length_stats_json_fid)
+        if self.length_stats_dict != {}:
+            ds_utils.write_json(self.length_stats_dict, self.length_stats_json_fid)
         if isinstance(self.fig_lengths, Figure):
-            logs.warning(type(self.fig_lengths))
             self.fig_lengths.savefig(self.lengths_fig_png_fid)
         if isinstance(self.lengths_df, pd.DataFrame):
             ds_utils.write_df(self.lengths_df, self.lengths_list_feather_fid)
@@ -112,7 +116,6 @@ class DMTHelper:
         lengths_obj = Lengths(dataset=self.tokenized_df)
         lengths_obj.prepare_lengths()
         return lengths_obj
-
 
 
     def get_filenames(self):
@@ -134,7 +137,7 @@ class Lengths:
         self.avg_length = None
         self.std_length = None
         self.num_uniq_lengths = None
-        self.lengths_stats_dict = {}
+        self.length_stats_dict = {}
         self.lengths_df = None
 
     def prepare_lengths(self):
@@ -144,7 +147,7 @@ class Lengths:
         self.avg_length = statistics.mean(lengths_array)
         self.std_length = statistics.stdev(lengths_array)
         self.num_uniq_lengths = len(lengths_array.unique())
-        self.lengths_stats_dict = {
+        self.length_stats_dict = {
             "average_instance_length": self.avg_length,
             "standard_dev_instance_length": self.std_length,
             "num_instance_lengths": self.num_uniq_lengths,

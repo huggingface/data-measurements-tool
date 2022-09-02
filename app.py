@@ -16,10 +16,6 @@ import logging
 import streamlit as st
 from os import mkdir
 from os.path import isdir
-from pathlib import Path
-
-Path('./log_files').mkdir(exist_ok=True)
-
 from data_measurements import dataset_statistics
 import utils
 from utils import dataset_utils
@@ -230,7 +226,7 @@ def show_column(dstats, ds_name_to_dict, show_embeddings, show_perplexities, col
     # start showing stuff
     title_str = f"### Showing{column_id}: {dstats.dset_name} - {dstats.dset_config} - {dstats.split_name} - {'-'.join(dstats.text_field)}"
     st.markdown(title_str)
-    logs.info("showing header")
+    logs.info("showing header.")
     st_utils.expander_header(dstats, ds_name_to_dict, column_id)
     for widget_num, widget_call in sorted(widget_dict.items()):
         widget_type = widget_call[0]
