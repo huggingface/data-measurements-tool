@@ -92,9 +92,7 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
 
     if do_all or dataset_args["calculation"] == "lengths":
         print("\n* Calculating text lengths.")
-        print("1")
         dstats.load_or_prepare_text_lengths()
-        print("2")
         length_fid_dict = dstats.length_files
         print("If all went well, then results are in the following files:")
         for key, value in length_fid_dict.items():
