@@ -22,7 +22,6 @@ EVAL_LABEL_SUM = "sums"
 
 logs = utils.prepare_logging(__file__)
 
-
 def map_labels(label_field, ds_name_to_dict, ds_name, config_name):
     label_field, label_names = (
         ds_name_to_dict[ds_name][config_name]["features"][label_field][0]

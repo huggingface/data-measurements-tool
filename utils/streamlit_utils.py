@@ -177,17 +177,15 @@ def expander_text_lengths(dstats, column_id):
             + str(round(dstats.length_obj.std_length, 2))
             + "**."
         )
-        # Just passing if it's not already there for launch v0
-        # TODO: Have "length" be a constant.
-        if dstats.length_obj.length_df is not None:
+        if dstats.length_obj.lengths_df is not None:
             start_id_show_lengths = st.selectbox(
                 "Show examples of length:",
-                np.sort(dstats.length_obj.length_df["length"].unique())[::-1].tolist(),
+                np.sort(dstats.length_obj.lengths_df["length"].unique())[::-1].tolist(),
                 key=f"select_show_length_{column_id}",
             )
             st.table(
-                dstats.length_obj.length_df[
-                    dstats.length_obj.length_df["length"] == start_id_show_lengths
+                dstats.length_obj.lengths_df[
+                    dstats.length_obj.lengths_df["length"] == start_id_show_lengths
                 ].set_index("length")
             )
 
