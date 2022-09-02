@@ -109,7 +109,7 @@ def initialize_cache_hub_repo(cache_path, dataset_cache_dir):
     repo.lfs_track(["*.feather"])
     return repo
 
-def pull_cache_from_hub(cache_path, dataset_cache_dir):
+def pull_cache_from_hub(cache_path, dataset_cache_dir, logs=None):
     """
     This function tries to pull a datasets cache from the huggingface hub if a
     cache for the dataset does not already exist locally. The function expects you
@@ -121,29 +121,34 @@ def pull_cache_from_hub(cache_path, dataset_cache_dir):
             The path to the local dataset cache that you want.
         dataset_cache_dir (string):
             The name of the dataset repo on the huggingface hub.
+        logs (logs from the logging package):
+            Optional. For adding info about the attempt to pull the cache from the hub.
 
-    Returns:
-        string: a log about whether the cache was pulled or not
     """
 
     hub_cache_organization, hf_token = _load_dotenv_for_cache_on_hub()
     clone_source = pjoin(hub_cache_organization, dataset_cache_dir)
 
-    log = "Pulled cache from hub!"
     if not isdir(cache_path):
         # Here, dataset_info.id is of the form: <hub cache organization>/<dataset cache dir>
         if dataset_cache_dir in [
             dataset_info.id.split("/")[-1] for dataset_info in
             list_datasets(author=hub_cache_organization,
                           use_auth_token=hf_token)]:
-            repo = Repository(local_dir=cache_path,
-                              clone_from=clone_source,
-                              repo_type="dataset", use_auth_token=hf_token)
+            Repository(local_dir=cache_path,
+                       clone_from=clone_source,
+                       repo_type="dataset", use_auth_token=hf_token)
+            if logs is not None:
+                log_msg = "Pulled cache from hub!"
+                logs.info(log_msg)
         else:
-            log = "Asking to pull cache from hub but cannot find cached repo on the hub."
+            if logs is not None:
+                log_msg = "Asking to pull cache from hub but cannot find cached repo on the hub."
+                logs.warning(log_msg)
     else:
-        log = "Already a local cache for the dataset, so not pulling from the hub."
-    return log
+        if logs is not None:
+            log_msg = "Already a local cache for the dataset, so not pulling from the hub."
+            logs.warning(log_msg)
 
 
 def load_truncated_dataset(

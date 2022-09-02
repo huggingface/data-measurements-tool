@@ -83,7 +83,7 @@ def load_or_prepare(ds_args, show_embeddings, show_perplexities, use_cache=False
         logs.warning("Using cache")
     dstats = dataset_statistics.DatasetStatisticsCacheClass(CACHE_DIR, **ds_args, use_cache=use_cache)
     if pull_cache_from_hub:
-        logs.warning(dataset_utils.pull_cache_from_hub(dstats.cache_path, dstats.dataset_cache_dir))
+        dataset_utils.pull_cache_from_hub(dstats.cache_path, dstats.dataset_cache_dir, logs=logs)
 
     logs.warning("Loading dataset")
     dstats.load_or_prepare_dataset()
@@ -135,7 +135,7 @@ def load_or_prepare_widgets(ds_args, show_embeddings, show_perplexities, live=Tr
     dstats = dataset_statistics.DatasetStatisticsCacheClass(CACHE_DIR, **ds_args, use_cache=use_cache)
 
     if pull_cache_from_hub:
-        logs.warning(dataset_utils.pull_cache_from_hub(dstats.cache_path, dstats.dataset_cache_dir))
+        dataset_utils.pull_cache_from_hub(dstats.cache_path, dstats.dataset_cache_dir, logs=logs)
 
     if live:
         # checks whether the cache_dir exists in deployment mode
