@@ -347,6 +347,8 @@ class DatasetStatisticsCacheClass:
         self.load_or_prepare_tokenized_df()
         self.length_obj = lengths.DMTHelper(self, load_only=load_only, save=self.save)
         self.length_obj.run_DMT_processing()
+        self.length_files = self.length_obj.get_filenames()
+
 
     def load_or_prepare_embeddings(self):
         """Uses an Embeddings class specific to this project,
