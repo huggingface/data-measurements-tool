@@ -501,6 +501,7 @@ class DatasetStatisticsCacheClass:
         """
         if not self.dset:
             self.prepare_base_dataset(load_only=load_only)
+        logs.info("Doing text dset.")
         self.load_or_prepare_text_dset(load_only=load_only)
 
     # TODO: Are we not using this anymore?
@@ -753,19 +754,19 @@ class nPMIStatisticsCacheClass:
             joint_npmi_df = joint_npmi_df[npmi_display_cols]
             # When maybe some things have been computed for the selected subgroups.
         else:
-            logs.info("Preparing new joint npmi")
+            logs.debug("Preparing new joint npmi")
             joint_npmi_df, subgroup_dict = self.prepare_joint_npmi_df(
                 subgroup_pair, subgroup_files
             )
             # Cache new results
-            logs.info("Writing out.")
+            logs.debug("Writing out.")
             for subgroup in subgroup_pair:
                 write_subgroup_npmi_data(subgroup, subgroup_dict,
                                          subgroup_files)
             with open(joint_npmi_fid, "w+") as f:
                 joint_npmi_df.to_csv(f)
-        logs.info("The joint npmi df is")
-        logs.info(joint_npmi_df)
+        logs.debug("The joint npmi df is")
+        logs.debug(joint_npmi_df)
         return joint_npmi_df
 
     @staticmethod
@@ -792,7 +793,7 @@ class nPMIStatisticsCacheClass:
         subgroup_dict = {}
         # When npmi is computed for some (but not all) of subgroup_list
         for subgroup in subgroup_pair:
-            logs.info("Load or failing...")
+            logs.debug("Load or failing...")
             # When subgroup npmi has been computed in a prior session.
             cached_results = self.load_or_fail_cached_npmi_scores(
                 subgroup, subgroup_files[subgroup]
@@ -802,7 +803,7 @@ class nPMIStatisticsCacheClass:
                 # FYI: subgroup_cooc_df, subgroup_pmi_df, subgroup_npmi_df = cached_results
                 # Holds the previous sessions' data for use in this session.
                 subgroup_dict[subgroup] = cached_results
-        logs.info("Calculating for subgroup list")
+        logs.debug("Calculating for subgroup list")
         joint_npmi_df, subgroup_dict = self.do_npmi(subgroup_pair,
                                                     subgroup_dict)
         return joint_npmi_df.dropna(), subgroup_dict
@@ -816,7 +817,7 @@ class nPMIStatisticsCacheClass:
         :return: Selected identity term's co-occurrence counts with
                  other words, pmi per word, and nPMI per word.
         """
-        logs.info("Initializing npmi class")
+        logs.debug("Initializing npmi class")
         npmi_obj = self.set_npmi_obj()
         # Canonical ordering used
         subgroup_pair = tuple(sorted(subgroup_pair))
@@ -825,13 +826,13 @@ class nPMIStatisticsCacheClass:
             # If the subgroup data is already computed, grab it.
             # TODO: Should we set idx and column names similarly to how we set them for cached files?
             if subgroup not in subgroup_dict:
-                logs.info("Calculating statistics for %s" % subgroup)
+                logs.info("Calculating npmi statistics for %s" % subgroup)
                 vocab_cooc_df, pmi_df, npmi_df = npmi_obj.calc_metrics(subgroup)
                 # Store the nPMI information for the current subgroups
                 subgroup_dict[subgroup] = (vocab_cooc_df, pmi_df, npmi_df)
         # Pair the subgroups together, indexed by all words that
         # co-occur between them.
-        logs.info("Computing pairwise npmi bias")
+        logs.debug("Computing pairwise npmi bias")
         paired_results = npmi_obj.calc_paired_metrics(subgroup_pair,
                                                       subgroup_dict)
         UI_results = make_npmi_fig(paired_results, subgroup_pair)
@@ -861,13 +862,13 @@ class nPMIStatisticsCacheClass:
                 and exists(subgroup_pmi_fid)
                 and exists(subgroup_cooc_fid)
         ):
-            logs.info("Reading in pmi data....")
+            logs.debug("Reading in pmi data....")
             with open(subgroup_cooc_fid, "rb") as f:
                 subgroup_cooc_df = pd.read_csv(f)
-            logs.info("pmi")
+            logs.debug("pmi")
             with open(subgroup_pmi_fid, "rb") as f:
                 subgroup_pmi_df = pd.read_csv(f)
-            logs.info("npmi")
+            logs.debug("npmi")
             with open(subgroup_npmi_fid, "rb") as f:
                 subgroup_npmi_df = pd.read_csv(f)
             subgroup_cooc_df = _set_idx_cols_from_cache(
