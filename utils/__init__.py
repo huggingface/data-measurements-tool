@@ -3,15 +3,15 @@ from pathlib import Path
 import utils.dataset_utils as ds_utils
 
 def prepare_logging(fid):
-    logs = logging.getLogger(__name__)
+    ds_utils.make_path("./log_files/")
+    log_fid = Path(fid).stem
+    logs = logging.getLogger(log_fid)
     logs.setLevel(logging.INFO)
     logs.propagate = False
-    log_fid = Path(fid).stem
 
     # Logging info to log file
     file_path = ("./log_files/%s.log" % log_fid)
     print("Logging output in %s " % file_path)
-    ds_utils.make_path("./log_files/")
     file = logging.FileHandler(file_path)
     fileformat = logging.Formatter("%(asctime)s:%(message)s")
     file.setLevel(logging.INFO)
