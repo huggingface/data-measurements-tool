@@ -126,6 +126,7 @@ class DatasetStatisticsCacheClass:
             text_field,
             label_field,
             label_names,
+            dataset_cache_dir=None,
             use_cache=False,
             save=True,
     ):
@@ -154,18 +155,16 @@ class DatasetStatisticsCacheClass:
         # results
         self.label_results = None
 
-        self.cache_dir = cache_dir
         ## Caching
-        # path to the directory used for caching
-        # When using the UI, the "text field" is a tuple; this handles that.
-        if not isinstance(text_field, str):
-            text_field = "-".join(text_field)
-        self.dataset_cache_dir = f"{dset_name}_{dset_config}_{split_name}_{text_field}"
-        # TODO: Having "cache_dir" and "cache_path" is confusing.
-        self.cache_path = pjoin(
-            self.cache_dir,
-            self.dataset_cache_dir,
-        )
+        if not dataset_cache_dir:
+            _, self.dataset_cache_dir = ds_utils.get_cache_dir_naming(cache_dir,
+                                                                      dset_name,
+                                                                      dset_config,
+                                                                      split_name,
+                                                                      text_field)
+        else:
+            self.dataset_cache_dir = dataset_cache_dir
+
         # Use stored data if there; otherwise calculate afresh
         self.use_cache = use_cache
         # Save newly calculated results.
@@ -223,29 +222,29 @@ class DatasetStatisticsCacheClass:
         self.min_vocab_count = MIN_VOCAB_COUNT
         self.cvec = _CVEC
 
-        self.dset_fid = pjoin(self.cache_path, "base_dset")
-        self.tokenized_df_fid = pjoin(self.cache_path, "tokenized_df.feather")
+        self.dset_fid = pjoin(self.dataset_cache_dir, "base_dset")
+        self.tokenized_df_fid = pjoin(self.dataset_cache_dir, "tokenized_df.feather")
 
-        self.text_dset_fid = pjoin(self.cache_path, "text_dset")
-        self.dset_peek_json_fid = pjoin(self.cache_path, "dset_peek.json")
+        self.text_dset_fid = pjoin(self.dataset_cache_dir, "text_dset")
+        self.dset_peek_json_fid = pjoin(self.dataset_cache_dir, "dset_peek.json")
 
         ## Length cache files
-        self.length_df_fid = pjoin(self.cache_path, "length_df.feather")
-        self.length_stats_json_fid = pjoin(self.cache_path, "length_stats.json")
+        self.length_df_fid = pjoin(self.dataset_cache_dir, "length_df.feather")
+        self.length_stats_json_fid = pjoin(self.dataset_cache_dir, "length_stats.json")
 
-        self.vocab_counts_df_fid = pjoin(self.cache_path,
+        self.vocab_counts_df_fid = pjoin(self.dataset_cache_dir,
                                          "vocab_counts.feather")
-        self.dup_counts_df_fid = pjoin(self.cache_path, "dup_counts_df.feather")
-        self.perplexities_df_fid = pjoin(self.cache_path,
+        self.dup_counts_df_fid = pjoin(self.dataset_cache_dir, "dup_counts_df.feather")
+        self.perplexities_df_fid = pjoin(self.dataset_cache_dir,
                                          "perplexities_df.feather")
-        self.fig_tok_length_fid = pjoin(self.cache_path, "fig_tok_length.png")
+        self.fig_tok_length_fid = pjoin(self.dataset_cache_dir, "fig_tok_length.png")
 
         ## General text stats
-        self.general_stats_json_fid = pjoin(self.cache_path,
+        self.general_stats_json_fid = pjoin(self.dataset_cache_dir,
                                             "general_stats_dict.json")
         # Needed for UI
         self.sorted_top_vocab_df_fid = pjoin(
-            self.cache_path, "sorted_top_vocab.feather"
+            self.dataset_cache_dir, "sorted_top_vocab.feather"
         )
 
 
@@ -588,7 +587,7 @@ class DatasetStatisticsCacheClass:
 
     def load_or_prepare_zipf(self, load_only=False):
         zipf_json_fid, zipf_fig_json_fid, zipf_fig_html_fid = zipf.get_zipf_fids(
-            self.cache_path)
+            self.dataset_cache_dir)
         if self.use_cache and exists(zipf_json_fid):
             # Zipf statistics
             # Read Zipf statistics: Alpha, p-value, etc.
@@ -659,12 +658,12 @@ class nPMIStatisticsCacheClass:
 
     def __init__(self, dataset_stats, load_only=False, use_cache=False):
         self.dstats = dataset_stats
-        self.pmi_cache_path = pjoin(self.dstats.cache_path, "pmi_files")
-        if not isdir(self.pmi_cache_path):
+        self.pmi_dataset_cache_dir = pjoin(self.dstats.dataset_cache_dir, "pmi_files")
+        if not isdir(self.pmi_dataset_cache_dir):
             logs.warning(
-                "Creating pmi cache directory %s." % self.pmi_cache_path)
+                "Creating pmi cache directory %s." % self.pmi_dataset_cache_dir)
             # We need to preprocess everything.
-            mkdir(self.pmi_cache_path)
+            mkdir(self.pmi_dataset_cache_dir)
         self.joint_npmi_df_dict = {}
         # TODO: Users ideally can type in whatever words they want.
         self.termlist = _IDENTITY_TERMS
@@ -677,7 +676,7 @@ class nPMIStatisticsCacheClass:
         self.open_class_only = True
         self.min_vocab_count = self.dstats.min_vocab_count
         self.subgroup_files = {}
-        self.npmi_terms_fid = pjoin(self.dstats.cache_path, "npmi_terms.json")
+        self.npmi_terms_fid = pjoin(self.dstats.dataset_cache_dir, "npmi_terms.json")
 
     def load_or_prepare_npmi_terms(self):
         """
@@ -728,14 +727,14 @@ class nPMIStatisticsCacheClass:
         subgroup1 = subgroup_pair[0]
         subgroup2 = subgroup_pair[1]
         subgroups_str = "-".join(subgroup_pair)
-        if not isdir(self.pmi_cache_path):
+        if not isdir(self.pmi_dataset_cache_dir):
             logs.warning("Creating cache")
             # We need to preprocess everything.
             # This should eventually all go into a prepare_dataset CLI
-            mkdir(self.pmi_cache_path)
-        joint_npmi_fid = pjoin(self.pmi_cache_path, subgroups_str + "_npmi.csv")
+            mkdir(self.pmi_dataset_cache_dir)
+        joint_npmi_fid = pjoin(self.pmi_dataset_cache_dir, subgroups_str + "_npmi.csv")
         subgroup_files = define_subgroup_files(subgroup_pair,
-                                               self.pmi_cache_path)
+                                               self.pmi_dataset_cache_dir)
         # Defines the filenames for the cache files from the selected subgroups.
         # Get as much precomputed data as we can.
         if self.use_cache and exists(joint_npmi_fid):
@@ -913,7 +912,8 @@ def count_vocab_frequencies(tokenized_df):
     i = 0
     tf = []
     while i < len(batches) - 1:
-        logs.info("%s of %s vocab batches" % (str(i), str(len(batches))))
+        if i % 100 == 0:
+            logs.info("%s of %s vocab batches" % (str(i), str(len(batches))))
         batch_result = np.sum(
             document_matrix[batches[i]: batches[i + 1]].toarray(), axis=0
         )
@@ -980,7 +980,7 @@ def make_npmi_fig(paired_results, subgroup_pair):
 ## Input/Output ###
 
 
-def define_subgroup_files(subgroup_list, pmi_cache_path):
+def define_subgroup_files(subgroup_list, pmi_dataset_cache_dir):
     """
     Sets the file ids for the input identity terms
     :param subgroup_list: List of identity terms
@@ -989,9 +989,9 @@ def define_subgroup_files(subgroup_list, pmi_cache_path):
     subgroup_files = {}
     for subgroup in subgroup_list:
         # TODO: Should the pmi, npmi, and count just be one file?
-        subgroup_npmi_fid = pjoin(pmi_cache_path, subgroup + "_npmi.csv")
-        subgroup_pmi_fid = pjoin(pmi_cache_path, subgroup + "_pmi.csv")
-        subgroup_cooc_fid = pjoin(pmi_cache_path, subgroup + "_vocab_cooc.csv")
+        subgroup_npmi_fid = pjoin(pmi_dataset_cache_dir, subgroup + "_npmi.csv")
+        subgroup_pmi_fid = pjoin(pmi_dataset_cache_dir, subgroup + "_pmi.csv")
+        subgroup_cooc_fid = pjoin(pmi_dataset_cache_dir, subgroup + "_vocab_cooc.csv")
         subgroup_files[subgroup] = (
             subgroup_npmi_fid,
             subgroup_pmi_fid,

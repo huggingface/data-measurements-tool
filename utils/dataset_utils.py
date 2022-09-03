@@ -88,22 +88,28 @@ def _load_dotenv_for_cache_on_hub():
     hub_cache_organization = getenv("HUB_CACHE_ORGANIZATION")
     return hub_cache_organization, hf_token
 
-def initialize_cache_hub_repo(cache_path, dataset_cache_dir):
+def get_cache_dir_naming(out_dir, dataset, config, split, feature):
+    feature_text = hyphenated(feature)
+    dataset_cache_name = f"{dataset}_{config}_{split}_{feature_text}"
+    local_dataset_cache_dir = out_dir + "/" + dataset_cache_name
+    return dataset_cache_name, local_dataset_cache_dir
+
+def initialize_cache_hub_repo(local_cache_dir, dataset_cache_name):
     """
     This function tries to initialize a dataset cache on the huggingface hub. The
     function expects you to have HUB_CACHE_ORGANIZATION=<the organization you've set up on the hub to store your cache>
     and HF_TOKEN=<your hf token> on separate lines in a file named .env at the root of this repo.
 
     Args:
-        cache_path (string):
+        local_cache_dir (string):
             The path to the local dataset cache.
-        dataset_cache_dir (string):
+        dataset_cache_name (string):
             The name of the dataset repo on the huggingface hub that you want.
     """
 
     hub_cache_organization, hf_token = _load_dotenv_for_cache_on_hub()
-    clone_source = pjoin(hub_cache_organization, dataset_cache_dir)
-    repo = Repository(local_dir=cache_path,
+    clone_source = pjoin(hub_cache_organization, dataset_cache_name)
+    repo = Repository(local_dir=local_cache_dir,
                       clone_from=clone_source,
                       repo_type="dataset", use_auth_token=hf_token)
     repo.lfs_track(["*.feather"])
@@ -219,7 +225,9 @@ def load_truncated_dataset(
         dataset.save_to_disk(cache_name)
     return dataset
 
-
+def hyphenated(features):
+    """When multiple features are asked for, hyphenate them together when they're used for filenames or titles"""
+    return '-'.join(features)
 
 def get_typed_features(features, ftype="string", parents=None):
     """
