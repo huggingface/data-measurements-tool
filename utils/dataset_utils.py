@@ -157,14 +157,16 @@ def load_truncated_dataset(
     config_name,
     split_name,
     num_rows=_MAX_ROWS,
-    cache_name=None,
     use_cache=True,
+    cache_dir=CACHE_DIR,
     use_streaming=True,
+    save=True,
 ):
     """
     This function loads the first `num_rows` items of a dataset for a
     given `config_name` and `split_name`.
-    If `cache_name` exists, the truncated dataset is loaded from `cache_name`.
+    If `use_cache` and `cache_name` exists, the truncated dataset is loaded from
+    `cache_name`.
     Otherwise, a new truncated dataset is created and immediately saved
     to `cache_name`.
     When the dataset is streamable, we iterate through the first
@@ -181,21 +183,22 @@ def load_truncated_dataset(
             dataset configuration
         split_name (string):
             split name
-        num_rows (int):
+        num_rows (int) [optional]:
             number of rows to truncate the dataset to
-        cache_name (string):
+        cache_dir (string):
             name of the cache directory
         use_cache (bool):
-            whether to load form the cache if it exists
+            whether to load from the cache if it exists
         use_streaming (bool):
             whether to use streaming when the dataset supports it
+        save (bool):
+            whether to save the dataset locally
     Returns:
-        Dataset: the truncated dataset as a Dataset object
+        Dataset: the (truncated if specified) dataset as a Dataset object
     """
-    if cache_name is None:
-        cache_name = f"{dataset_name}_{config_name}_{split_name}_{num_rows}"
-    if exists(cache_name):
-        dataset = load_from_disk(cache_name)
+    logs.info("Loading or preparing dataset saved in %s " % cache_dir)
+    if use_cache and exists(cache_dir):
+        dataset = load_from_disk(cache_dir)
     else:
         if use_streaming and dataset_name in _STREAMABLE_DATASET_LIST:
             iterable_dataset = load_dataset(
@@ -220,9 +223,12 @@ def load_truncated_dataset(
             )
             if len(full_dataset) >= num_rows:
                 dataset = full_dataset.select(range(num_rows))
+                # Make the directory name clear that it's not the full dataset.
+                cache_dir = pjoin(cache_dir, ("_%s" % num_rows))
             else:
                 dataset = full_dataset
-        dataset.save_to_disk(cache_name)
+        if save:
+            dataset.save_to_disk(cache_dir)
     return dataset
 
 def hyphenated(features):

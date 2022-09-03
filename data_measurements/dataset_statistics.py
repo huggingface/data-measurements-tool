@@ -119,13 +119,13 @@ class DatasetStatisticsCacheClass:
 
     def __init__(
             self,
-            cache_dir,
             dset_name,
             dset_config,
             split_name,
             text_field,
             label_field,
             label_names,
+            cache_dir="cache_dir",
             dataset_cache_dir=None,
             use_cache=False,
             save=True,
@@ -169,7 +169,6 @@ class DatasetStatisticsCacheClass:
         self.use_cache = use_cache
         # Save newly calculated results.
         self.save = save
-
 
         # HF dataset with all of the self.text_field instances in self.dset
         self.text_dset = None
@@ -222,7 +221,7 @@ class DatasetStatisticsCacheClass:
         self.min_vocab_count = MIN_VOCAB_COUNT
         self.cvec = _CVEC
 
-        self.dset_fid = pjoin(self.dataset_cache_dir, "base_dset")
+        self.hf_dset_cache_dir = pjoin(self.dataset_cache_dir, "base_dset")
         self.tokenized_df_fid = pjoin(self.dataset_cache_dir, "tokenized_df.feather")
 
         self.text_dset_fid = pjoin(self.dataset_cache_dir, "text_dset")
@@ -246,21 +245,21 @@ class DatasetStatisticsCacheClass:
         self.sorted_top_vocab_df_fid = pjoin(
             self.dataset_cache_dir, "sorted_top_vocab.feather"
         )
+        # Set the HuggingFace dataset object with the given arguments.
+        self.dset = self.get_dataset()
 
 
-        self.load_or_prepare_dataset()
-
-    def get_base_dataset(self):
-        """Gets a pointer to the truncated base dataset object."""
-        if not self.dset:
-            self.dset = ds_utils.load_truncated_dataset(
-                self.dset_name,
-                self.dset_config,
-                self.split_name,
-                cache_name=self.dset_fid,
-                use_cache=True,
-                use_streaming=True,
-            )
+    def get_dataset(self):
+        """
+        Gets the HuggingFace Dataset object.
+        First tries to use the given cache directory if specified;
+        otherwise saves to the given cache directory if specified.
+        """
+        dset = ds_utils.load_truncated_dataset(self.dset_name, self.dset_config,
+                                               self.split_name,
+                                               cache_dir=self.hf_dset_cache_dir,
+                                               save=self.save)
+        return dset
 
 
     def load_or_prepare_general_stats(self, load_only=False):
@@ -277,10 +276,12 @@ class DatasetStatisticsCacheClass:
         # For the general statistics, text duplicates are not saved in their
         # own files, but rather just the text duplicate fraction is saved in the
         # "general" file. We therefore set save=False for
-        # the text duplicate filesin this case.
+        # the text duplicate files in this case.
         # Similarly, we don't get the full list of duplicates
         # in general stats, so set list_duplicates to False
-        self.load_or_prepare_text_duplicates(load_only=load_only, save=False, list_duplicates=False)
+        self.load_or_prepare_text_duplicates(load_only=load_only, save=False,
+                                             list_duplicates=False)
+        logs.info("Duplicates results:")
         logs.info(self.duplicates_results)
         self.general_stats_dict.update(self.duplicates_results)
         # TODO: Tighten the rest of this similar to text_duplicates.
@@ -380,6 +381,7 @@ class DatasetStatisticsCacheClass:
         or else uses what's available in the cache.
         Currently supports Datasets with just one label column.
         """
+        print(self.dset)
         label_obj = labels.DMTHelper(self, load_only=load_only, save=self.save)
         label_obj.run_DMT_processing()
         self.fig_labels = label_obj.fig_labels
@@ -497,8 +499,8 @@ class DatasetStatisticsCacheClass:
         Returns:
 
         """
-        print("hi?")
-        logs.info("Doing text dset.")
+        if not self.dset:
+            self.prepare_base_dataset(load_only=load_only)
         self.load_or_prepare_text_dset(load_only=load_only)
 
     # TODO: Are we not using this anymore?

@@ -1,19 +1,18 @@
 import logging
 from pathlib import Path
-import utils.dataset_utils as ds_utils
 
 def prepare_logging(fid):
     # Create the directory for log files (if it doesn't exist)
     Path('./log_files').mkdir(exist_ok=True)
     log_fid = Path(fid).stem
     logs = logging.getLogger(log_fid)
-    logs.setLevel(logging.INFO)
+    logs.setLevel(logging.DEBUG)
     logs.propagate = False
 
     # Logging info to log file
     file_path = ("./log_files/%s.log" % log_fid)
     print("Logging output in %s" % file_path)
-    ds_utils.make_path("./log_files/")
+    os.makedirs(file_path, exist_ok=True)
     file = logging.FileHandler(file_path)
     fileformat = logging.Formatter("%(asctime)s:%(message)s")
     file.setLevel(logging.INFO)

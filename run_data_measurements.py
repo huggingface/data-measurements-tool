@@ -65,11 +65,10 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
     do_all = False
     dstats = dataset_statistics.DatasetStatisticsCacheClass(**dataset_args,
                                                             use_cache=use_cache)
-    logs.info("Preparing vocab.")
+    logs.info("Tokenizing dataset.")
     dstats.load_or_prepare_tokenized_df()
-    logs.info("Tokenized.")
+    logs.info("Calculating vocab.")
     dstats.load_or_prepare_vocab()
-    logs.info("Vocab prepared.")
 
     if not calculation:
         do_all = True
@@ -123,7 +122,7 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
         dstats.load_or_prepare_zipf()
         logs.info("Done!")
         zipf_json_fid, zipf_fig_json_fid, zipf_fig_html_fid = zipf.get_zipf_fids(
-            dstats.cache_path)
+            dstats.dataset_cache_dir)
         logs.info("Zipf results now available at %s." % zipf_json_fid)
         logs.info(
             "Figure saved to %s, with corresponding json at %s."
@@ -190,8 +189,6 @@ def set_defaults(args):
     return args
 
 def main():
-    print("wut")
-
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=textwrap.dedent(
@@ -292,12 +289,10 @@ def main():
     parser.add_argument("--keep_local", default=True, required=False,
                         action="store_true",
                         help="Whether to save the data locally.")
-    print("wut wut")
     orig_args = parser.parse_args()
     args = set_defaults(orig_args)
     logs.info("Proceeding with the following arguments:")
     logs.info(args)
-    print("Wait a second....")
     # run_data_measurements.py -d hate_speech18 -c default -s train -f text -w npmi
     if args.email is not None:
         if Path(".env").is_file():
