@@ -14,18 +14,19 @@
 
 import json
 import os
-from dataclasses import asdict
-from os.path import exists, isdir, join as pjoin
+import pandas as pd
 import plotly
 import pyarrow.feather as feather
-import pandas as pd
+import utils
+from dataclasses import asdict
 from datasets import Dataset, get_dataset_infos, load_dataset, load_from_disk, \
     NamedSplit
+from dotenv import load_dotenv
 from huggingface_hub import Repository, list_datasets
 from json2html import *
-from dotenv import load_dotenv
-from pathlib import Path
 from os import getenv
+from os.path import exists, isdir, join as pjoin
+from pathlib import Path
 
 # treating inf values as NaN as well
 pd.set_option("use_inf_as_na", True)
@@ -71,6 +72,8 @@ _STREAMABLE_DATASET_LIST = [
 ]
 
 _MAX_ROWS = 200000
+
+logs = utils.prepare_logging(__file__)
 
 def _load_dotenv_for_cache_on_hub():
     """
