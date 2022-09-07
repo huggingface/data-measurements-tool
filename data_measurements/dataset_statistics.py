@@ -27,7 +27,7 @@ import utils.dataset_utils as ds_utils
 from data_measurements.embeddings.embeddings import Embeddings
 from data_measurements.labels import labels
 from data_measurements.text_duplicates import text_duplicates as td
-from data_measurements.npmi.npmi import nPMI
+from data_measurements.npmi import npmi
 # TODO(meg): Incorporate this from evaluate library.
 # import evaluate
 from data_measurements.zipf import zipf
@@ -83,7 +83,7 @@ _CLOSED_CLASS = (
         ]
         + [str(i) for i in range(0, 21)]
 )
-_IDENTITY_TERMS = [
+IDENTITY_TERMS = [
     "man",
     "woman",
     "non-binary",
@@ -631,17 +631,10 @@ class DatasetStatisticsCacheClass:
         return tokenized_df
 
     def load_or_prepare_npmi(self, load_only=False):
-        self.npmi_stats = nPMIStatisticsCacheClass(self, load_only=load_only,
-                                                   use_cache=self.use_cache)
-        self.npmi_stats.load_or_prepare_npmi_terms()
-
-        npmi_obj = npmi.DMTHelper(self, save=save)
-        npmi_obj.run_DMT_processing(list_duplicates=list_duplicates)
-        self.npmi_results = npmi_obj.results
-        self.npmi_frac = self.duplicates_results[td.DUPS_FRAC]
-        if list_duplicates and td.DUPS_DICT in self.duplicates_results:
-            self.npmi_dict = self.duplicates_results[td.DUPS_DICT]
-        self.duplicates_files = npmi_obj.get_duplicates_filenames()
+        npmi_obj = npmi.DMTHelper(self, IDENTITY_TERMS, use_cache=self.use_cache, save=self.save)
+        npmi_obj.run_DMT_processing(load_only=load_only)
+        self.npmi_results = npmi_obj.npmi_results
+        self.npmi_files = npmi_obj.get_filenames()
 
 
     def load_or_prepare_zipf(self, save=True):
@@ -682,34 +675,6 @@ def _set_idx_col_names(input_vocab_df):
         input_vocab_df = input_vocab_df.set_index([VOCAB])
         input_vocab_df[VOCAB] = input_vocab_df.index
     return input_vocab_df
-
-
-def _set_idx_cols_from_cache(csv_df, subgroup=None, calc_str=None):
-    """
-    Helps make sure all of the read-in files can be accessed within code
-    via standardized indices and column names.
-    :param csv_df:
-    :param subgroup:
-    :param calc_str:
-    :return:
-    """
-    # The csv saves with this column instead of the index, so that's weird.
-    if "Unnamed: 0" in csv_df.columns:
-        csv_df = csv_df.set_index("Unnamed: 0")
-        csv_df.index.name = WORD
-    elif WORD in csv_df.columns:
-        csv_df = csv_df.set_index(WORD)
-        csv_df.index.name = WORD
-    elif VOCAB in csv_df.columns:
-        csv_df = csv_df.set_index(VOCAB)
-        csv_df.index.name = WORD
-    if subgroup and calc_str:
-        csv_df.columns = [subgroup + "-" + calc_str]
-    elif subgroup:
-        csv_df.columns = [subgroup]
-    elif calc_str:
-        csv_df.columns = [calc_str]
-    return csv_df
 
 
 def dummy(doc):
@@ -783,48 +748,7 @@ def make_fig_lengths(tokenized_df, length_field):
     return fig_tok_length
 
 
-def make_npmi_fig(paired_results, subgroup_pair):
-    subgroup1, subgroup2 = subgroup_pair
-    UI_results = pd.DataFrame()
-    if "npmi-bias" in paired_results:
-        UI_results["npmi-bias"] = paired_results["npmi-bias"].astype(float)
-    UI_results[subgroup1 + "-npmi"] = paired_results["npmi"][
-        subgroup1 + "-npmi"
-        ].astype(float)
-    UI_results[subgroup1 + "-count"] = paired_results["count"][
-        subgroup1 + "-count"
-        ].astype(int)
-    if subgroup1 != subgroup2:
-        UI_results[subgroup2 + "-npmi"] = paired_results["npmi"][
-            subgroup2 + "-npmi"
-            ].astype(float)
-        UI_results[subgroup2 + "-count"] = paired_results["count"][
-            subgroup2 + "-count"
-            ].astype(int)
-    return UI_results.sort_values(by="npmi-bias", ascending=True)
 
-
-## Input/Output ###
-
-
-def define_subgroup_files(subgroup_list, pmi_cache_path):
-    """
-    Sets the file ids for the input identity terms
-    :param subgroup_list: List of identity terms
-    :return:
-    """
-    subgroup_files = {}
-    for subgroup in subgroup_list:
-        # TODO: Should the pmi, npmi, and count just be one file?
-        subgroup_npmi_fid = pjoin(pmi_cache_path, subgroup + "_npmi.csv")
-        subgroup_pmi_fid = pjoin(pmi_cache_path, subgroup + "_pmi.csv")
-        subgroup_cooc_fid = pjoin(pmi_cache_path, subgroup + "_vocab_cooc.csv")
-        subgroup_files[subgroup] = (
-            subgroup_npmi_fid,
-            subgroup_pmi_fid,
-            subgroup_cooc_fid,
-        )
-    return subgroup_files
 
 
 ## Input/Output ##
@@ -849,21 +773,3 @@ def intersect_dfs(df_dict):
     return new_df.copy()
 
 
-def write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files):
-    """
-    Saves the calculated nPMI statistics to their output files.
-    Includes the npmi scores for each identity term, the pmi scores, and the
-    co-occurrence counts of the identity term with all the other words
-    :param subgroup: Identity term
-    :return:
-    """
-    subgroup_fids = subgroup_files[subgroup]
-    subgroup_npmi_fid, subgroup_pmi_fid, subgroup_cooc_fid = subgroup_fids
-    subgroup_dfs = subgroup_dict[subgroup]
-    subgroup_cooc_df, subgroup_pmi_df, subgroup_npmi_df = subgroup_dfs
-    with open(subgroup_npmi_fid, "w+") as f:
-        subgroup_npmi_df.to_csv(f)
-    with open(subgroup_pmi_fid, "w+") as f:
-        subgroup_pmi_df.to_csv(f)
-    with open(subgroup_cooc_fid, "w+") as f:
-        subgroup_cooc_df.to_csv(f)

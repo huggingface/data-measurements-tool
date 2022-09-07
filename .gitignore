@@ -1,0 +1,12 @@
+.gitignore
+.DS_Store
+*.pyc
+log_files
+log_files/*
+log_files/*/*
+cache_dir
+cache_dir/*
+*/cache_dir/*
+.idea/*
+.env/*
+ */*__pycache__*
