@@ -381,7 +381,6 @@ class DatasetStatisticsCacheClass:
         or else uses what's available in the cache.
         Currently supports Datasets with just one label column.
         """
-        print(self.dset)
         label_obj = labels.DMTHelper(self, load_only=load_only, save=self.save)
         label_obj.run_DMT_processing()
         self.fig_labels = label_obj.fig_labels

@@ -419,7 +419,7 @@ def npmi_show(paired_results):
         if s.shape[0] > 10000:
             bias_thres = max(abs(s["npmi-bias"][5000]),
                              abs(s["npmi-bias"][-5000]))
-            print(f"filtering with bias threshold: {bias_thres}")
+            logs.info(f"filtering with bias threshold: {bias_thres}")
             s_filtered = s[s["npmi-bias"].abs() > bias_thres]
         else:
             s_filtered = s
