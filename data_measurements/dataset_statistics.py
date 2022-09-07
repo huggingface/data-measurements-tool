@@ -290,7 +290,6 @@ class DatasetStatisticsCacheClass:
         self.node_list_fid = pjoin(self.cache_path, "node_list.th")
         # Needed for UI
         self.fig_tree_json_fid = pjoin(self.cache_path, "fig_tree.json")
-        self.load_or_prepare_dataset()
 
     def get_base_dataset(self):
         """Gets a pointer to the truncated base dataset object."""

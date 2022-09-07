@@ -14,18 +14,19 @@
 
 import json
 import os
-from dataclasses import asdict
-from os.path import exists, isdir, join as pjoin
+import pandas as pd
 import plotly
 import pyarrow.feather as feather
-import pandas as pd
+import utils
+from dataclasses import asdict
 from datasets import Dataset, get_dataset_infos, load_dataset, load_from_disk, \
     NamedSplit
+from dotenv import load_dotenv
 from huggingface_hub import Repository, list_datasets
 from json2html import *
-from dotenv import load_dotenv
-from pathlib import Path
 from os import getenv
+from os.path import exists, isdir, join as pjoin
+from pathlib import Path
 
 # treating inf values as NaN as well
 pd.set_option("use_inf_as_na", True)
@@ -71,6 +72,8 @@ _STREAMABLE_DATASET_LIST = [
 ]
 
 _MAX_ROWS = 200000
+
+logs = utils.prepare_logging(__file__)
 
 def _load_dotenv_for_cache_on_hub():
     """
@@ -122,28 +125,25 @@ def pull_cache_from_hub(cache_path, dataset_cache_dir):
         dataset_cache_dir (string):
             The name of the dataset repo on the huggingface hub.
 
-    Returns:
-        string: a log about whether the cache was pulled or not
     """
 
     hub_cache_organization, hf_token = _load_dotenv_for_cache_on_hub()
     clone_source = pjoin(hub_cache_organization, dataset_cache_dir)
 
-    log = "Pulled cache from hub!"
-    if not isdir(cache_path):
+    if isdir(cache_path):
+        logs.warning("Already a local cache for the dataset, so not pulling from the hub.")
+    else:
         # Here, dataset_info.id is of the form: <hub cache organization>/<dataset cache dir>
         if dataset_cache_dir in [
             dataset_info.id.split("/")[-1] for dataset_info in
             list_datasets(author=hub_cache_organization,
                           use_auth_token=hf_token)]:
-            repo = Repository(local_dir=cache_path,
-                              clone_from=clone_source,
-                              repo_type="dataset", use_auth_token=hf_token)
+            Repository(local_dir=cache_path,
+                       clone_from=clone_source,
+                       repo_type="dataset", use_auth_token=hf_token)
+            logs.info("Pulled cache from hub!")
         else:
-            log = "Asking to pull cache from hub but cannot find cached repo on the hub."
-    else:
-        log = "Already a local cache for the dataset, so not pulling from the hub."
-    return log
+            logs.warning("Asking to pull cache from hub but cannot find cached repo on the hub.")
 
 
 def load_truncated_dataset(
