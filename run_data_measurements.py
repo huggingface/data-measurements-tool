@@ -108,7 +108,6 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
         print()
 
 
-
     if do_all or dataset_args["calculation"] == "npmi":
         print("\n* Preparing nPMI.")
         npmi_stats = dataset_statistics.nPMIStatisticsCacheClass(
@@ -156,7 +155,7 @@ def do_npmi(npmi_stats, use_cache=True):
                 sorted_terms = tuple(sorted([term1, term2]))
                 if sorted_terms not in completed_pairs:
                     term1, term2 = sorted_terms
-                    print("Computing nPMI statistics for %s and %s" % (
+                    print("Computing nPMI bias between %s and %s" % (
                         term1, term2))
                     _ = npmi_stats.load_or_prepare_joint_npmi(sorted_terms)
                     completed_pairs[tuple(sorted_terms)] = {}

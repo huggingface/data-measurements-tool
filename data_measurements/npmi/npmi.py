@@ -40,19 +40,19 @@ class nPMI:
         tokenized_df,
         tokenized_col_name="tokenized_text",
     ):
-        logs.info("Initiating npmi class.")
-        logs.info("vocab is")
-        logs.info(vocab_counts_df)
+        logs.debug("Initiating npmi class.")
+        logs.debug("vocab is")
+        logs.debug(vocab_counts_df)
         self.vocab_counts_df = vocab_counts_df
-        logs.info("tokenized is")
+        logs.debug("tokenized is")
         self.tokenized_df = tokenized_df
-        logs.info(self.tokenized_df)
+        logs.debug(self.tokenized_df)
         self.tokenized_col_name = tokenized_col_name
         # self.mlb_list holds num batches x num_sentences
         self.mlb_list = []
 
     def binarize_words_in_sentence(self):
-        logs.info("Creating co-occurrence matrix for PMI calculations.")
+        logs.debug("Creating co-occurrence matrix for PMI calculations.")
         batches = np.linspace(0, self.tokenized_df.shape[0], _NUM_BATCHES).astype(int)
         i = 0
         # Creates list of size (# batches x # sentences)
@@ -60,7 +60,7 @@ class nPMI:
             # Makes a sparse matrix (shape: # sentences x # words),
             # with the occurrence of each word per sentence.
             mlb = MultiLabelBinarizer(classes=self.vocab_counts_df.index)
-            logs.info(
+            logs.debug(
                 "%s of %s sentence binarize batches." % (str(i), str(len(batches)))
             )
             # Returns series: batch size x num_words
@@ -74,13 +74,13 @@ class nPMI:
         initialize = True
         coo_df = None
         # Big computation here!  Should only happen once.
-        logs.info(
+        logs.debug(
             "Approaching big computation! Here, we binarize all words in the sentences, making a sparse matrix of sentences."
         )
         if not self.mlb_list:
             self.binarize_words_in_sentence()
         for batch_id in range(len(self.mlb_list)):
-            logs.info(
+            logs.debug(
                 "%s of %s co-occurrence count batches"
                 % (str(batch_id), str(len(self.mlb_list)))
             )
@@ -96,13 +96,13 @@ class nPMI:
             # Remove the sentences where the count of the subgroup is 0.
             # This way we have less computation & resources needs.
             subgroup_df = subgroup_df[subgroup_df > 0]
-            logs.info("Removing 0 counts, subgroup_df is")
-            logs.info(subgroup_df)
+            logs.debug("Removing 0 counts, subgroup_df is")
+            logs.debug(subgroup_df)
             mlb_subgroup_only = sent_batch_df[sent_batch_df[subgroup_idx] > 0]
-            logs.info("mlb subgroup only is")
-            logs.info(mlb_subgroup_only)
+            logs.debug("mlb subgroup only is")
+            logs.debug(mlb_subgroup_only)
             # Create cooccurrence matrix for the given subgroup and all words.
-            logs.info("Now we do the T.dot approach for co-occurrences")
+            logs.debug("Now we do the T.dot approach for co-occurrences")
             batch_coo_df = pd.DataFrame(mlb_subgroup_only.T.dot(subgroup_df))
 
             # Creates a batch-sized dataframe of co-occurrence counts.
@@ -111,11 +111,11 @@ class nPMI:
                 coo_df = batch_coo_df
             else:
                 coo_df = coo_df.add(batch_coo_df, fill_value=0)
-            logs.info("coo_df is")
-            logs.info(coo_df)
+            logs.debug("coo_df is")
+            logs.debug(coo_df)
             initialize = False
-        logs.info("Returning co-occurrence matrix")
-        logs.info(coo_df)
+        logs.debug("Returning co-occurrence matrix")
+        logs.debug(coo_df)
         return pd.DataFrame(coo_df)
 
     @staticmethod
@@ -133,16 +133,16 @@ class nPMI:
         # Canonical ordering. This is done previously, but just in case...
         subgroup1, subgroup2 = sorted(subgroup_pair)
         vocab_cooc_df1, pmi_df1, npmi_df1 = subgroup_npmi_dict[subgroup1]
-        logs.info("vocab cooc")
-        logs.info(vocab_cooc_df1)
+        logs.debug("vocab cooc")
+        logs.debug(vocab_cooc_df1)
         if subgroup1 == subgroup2:
             shared_npmi_df = npmi_df1
             shared_pmi_df = pmi_df1
             shared_vocab_cooc_df = vocab_cooc_df1
         else:
             vocab_cooc_df2, pmi_df2, npmi_df2 = subgroup_npmi_dict[subgroup2]
-            logs.info("vocab cooc2")
-            logs.info(vocab_cooc_df2)
+            logs.debug("vocab cooc2")
+            logs.debug(vocab_cooc_df2)
             # Note that lsuffix and rsuffix should not come into play.
             shared_npmi_df = npmi_df1.join(
                 npmi_df2, how="inner", lsuffix="1", rsuffix="2"
@@ -155,10 +155,10 @@ class nPMI:
             shared_vocab_cooc_df = shared_vocab_cooc_df[
                 shared_vocab_cooc_df.index.notnull()
             ]
-            logs.info("shared npmi df")
-            logs.info(shared_npmi_df)
-            logs.info("shared vocab df")
-            logs.info(shared_vocab_cooc_df)
+            logs.debug("shared npmi df")
+            logs.debug(shared_npmi_df)
+            logs.debug("shared vocab df")
+            logs.debug(shared_vocab_cooc_df)
         npmi_bias = (
             shared_npmi_df[subgroup1 + "-npmi"] - shared_npmi_df[subgroup2 + "-npmi"]
         )
@@ -171,16 +171,16 @@ class nPMI:
     def calc_metrics(self, subgroup):
         # Index of the subgroup word in the sparse vector
         subgroup_idx = self.vocab_counts_df.index.get_loc(subgroup)
-        logs.info("Calculating co-occurrences...")
+        logs.debug("Calculating co-occurrences...")
         df_coo = self.calc_cooccurrences(subgroup, subgroup_idx)
         vocab_cooc_df = self.set_idx_cols(df_coo, subgroup)
-        logs.info(vocab_cooc_df)
-        logs.info("Calculating PMI...")
+        logs.debug(vocab_cooc_df)
+        logs.debug("Calculating PMI...")
         pmi_df = self.calc_PMI(vocab_cooc_df, subgroup)
-        logs.info(pmi_df)
-        logs.info("Calculating nPMI...")
+        logs.debug(pmi_df)
+        logs.debug("Calculating nPMI...")
         npmi_df = self.calc_nPMI(pmi_df, vocab_cooc_df, subgroup)
-        logs.info(npmi_df)
+        logs.debug(npmi_df)
         return vocab_cooc_df, pmi_df, npmi_df
 
     def set_idx_cols(self, df_coo, subgroup):
@@ -208,8 +208,8 @@ class nPMI:
         p_subgroup_g_word = (
             vocab_cooc_df[subgroup + "-count"] / self.vocab_counts_df["count"]
         )
-        logs.info("p_subgroup_g_word is")
-        logs.info(p_subgroup_g_word)
+        logs.debug("p_subgroup_g_word is")
+        logs.debug(p_subgroup_g_word)
         pmi_df = pd.DataFrame()
         pmi_df[subgroup + "-pmi"] = np.log(p_subgroup_g_word / subgroup_prob)
         # Note: A potentially faster solution for adding count, npmi,
