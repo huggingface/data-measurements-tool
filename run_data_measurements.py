@@ -114,7 +114,7 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
             "nPMI results now available in %s for all identity terms that "
             "occur more than 10 times and all words that "
             "co-occur with both terms."
-            % npmi_stats.pmi_cache_path
+            % npmi_stats.pmi_dataset_cache_dir
         )
 
     if do_all or calculation == "zipf":

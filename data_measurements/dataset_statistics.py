@@ -248,7 +248,6 @@ class DatasetStatisticsCacheClass:
         # Set the HuggingFace dataset object with the given arguments.
         self.dset = self.get_dataset()
 
-
     def get_dataset(self):
         """
         Gets the HuggingFace Dataset object.
@@ -510,7 +509,7 @@ class DatasetStatisticsCacheClass:
                 self.dset_peek = json.load(f)["dset peek"]
         elif not load_only:
             if self.dset is None:
-                self.get_base_dataset()
+                self.get_dataset()
             self.dset_peek = self.dset[:100]
             if self.save:
                 ds_utils.write_json({"dset peek": self.dset_peek},
@@ -542,7 +541,7 @@ class DatasetStatisticsCacheClass:
                 self.text_dset.save_to_disk(self.text_dset_fid)
 
     def prepare_text_dset(self):
-        self.get_base_dataset()
+        self.get_dataset()
         logs.warning(self.dset)
         # extract all text instances
         self.text_dset = self.dset.map(
@@ -688,7 +687,7 @@ class nPMIStatisticsCacheClass:
         """
         # TODO: Add the user's ability to select subgroups.
         # TODO: Make min_vocab_count here value selectable by the user.
-        logs.info("Looking for cached terms in " % self.npmi_terms_fid)
+        logs.info("Looking for cached terms in %s" % self.npmi_terms_fid)
         if (
                 self.use_cache
                 and exists(self.npmi_terms_fid)

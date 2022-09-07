@@ -60,9 +60,11 @@ class nPMI:
             # Makes a sparse matrix (shape: # sentences x # words),
             # with the occurrence of each word per sentence.
             mlb = MultiLabelBinarizer(classes=self.vocab_counts_df.index)
-            logs.debug(
-                "%s of %s sentence binarize batches." % (str(i), str(len(batches)))
-            )
+            # Print out the progress every 100 batches.
+            if not i % 100:
+                logs.debug(
+                    "%s of %s sentence binarize batches." % (str(i), str(len(batches)))
+                )
             # Returns series: batch size x num_words
             mlb_series = mlb.fit_transform(
                 self.tokenized_df[self.tokenized_col_name][batches[i]:batches[i + 1]]
@@ -80,10 +82,12 @@ class nPMI:
         if not self.mlb_list:
             self.binarize_words_in_sentence()
         for batch_id in range(len(self.mlb_list)):
-            logs.debug(
-                "%s of %s co-occurrence count batches"
-                % (str(batch_id), str(len(self.mlb_list)))
-            )
+            # Every 100 batches, print out the progress.
+            if not batch_id % 100:
+                logs.debug(
+                    "%s of %s co-occurrence count batches"
+                    % (str(batch_id), str(len(self.mlb_list)))
+                )
             # List of all the sentences (list of vocab) in that batch
             batch_sentence_row = self.mlb_list[batch_id]
             # Dataframe of # sentences in batch x vocabulary size

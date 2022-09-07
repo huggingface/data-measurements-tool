@@ -37,8 +37,6 @@ st.set_page_config(
     initial_sidebar_state="auto",
 )
 
-@st.cache(hash_funcs={dmt_cls: lambda dstats: dstats.cache_path}, allow_output_mutation=True,)
-
 def get_widgets(dstats):
     """
     # A measurement widget requires 2 things:
@@ -74,7 +72,7 @@ def display_title(dstats):
 def display_measurements(dataset_args, display_list, loaded_dstats,
                          show_perplexities):
     """Displays the measurement results in the UI"""
-    if isdir(loaded_dstats.cache_path):
+    if isdir(loaded_dstats.dataset_cache_dir):
         show_column(loaded_dstats, display_list, show_perplexities)
     else:
         st.markdown("### Missing pre-computed data measures!")
@@ -117,14 +115,14 @@ def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=T
         load_only = False
         logs.info("Making new calculations if cache is not there.")
     if pull_cache_from_hub:
-        logs.info("Pulling cache from hub:")
-        # TODO: This doesn't seem to be being used ?
-        logs.info(dataset_utils.pull_cache_from_hub(dstats.cache_path, dstats.dataset_cache_dir))
+        dataset_utils.pull_cache_from_hub(dstats.cache_path, dstats.dataset_cache_dir)
 
-    # Data common across DMT: The first snippet of the dataset,
+    # Data common across DMT:
+    # Includes the dataset
     # and the vocabulary
-    dstats.load_or_prepare_dset_peek()
-    dstats.load_or_prepare_vocab()
+    dstats.load_or_prepare_dataset(load_only=load_only)
+    dstats.load_or_prepare_dset_peek(load_only=load_only)
+    dstats.load_or_prepare_vocab(load_only=load_only)
     # Custom widgets
     for widget_tuple in load_prepare_list:
         widget_name = widget_tuple[0]
@@ -133,7 +131,7 @@ def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=T
             widget_fn(load_only=load_only)
         except Exception as e:
             logs.warning("Issue with %s." % widget_name)
-            logs.warning(e)
+            logs.exception(e)
     # TODO: If these are cached, can't we just show them by default?
     # It won't take up computation time.
     if show_perplexities:
@@ -141,7 +139,7 @@ def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=T
             dstats.load_or_prepare_text_perplexities(load_only=load_only)
         except Exception as e:
             logs.warning("Issue with %s." % "perplexities")
-            logs.warning(e)
+            logs.exception(e)
     return dstats
 
 
@@ -165,10 +163,11 @@ def show_column(dstats, display_list, show_perplexities, column_id=""):
             widget_fn(dstats, column_id)
         except Exception as e:
             logs.warning("Jk jk jk. There was an issue with %s:" % widget_type)
-            logs.warning(e)
+            logs.exception(e)
     # TODO: Fix how this is a weird outlier.
     if show_perplexities:
         st_utils.expander_text_perplexities(dstats, column_id)
+    logs.info("Have finished displaying the widgets.")
 
 def main():
     parser = argparse.ArgumentParser()
@@ -188,7 +187,7 @@ def main():
 
     # Initialize the main DMT class with the UI-provided arguments
     # When using the app (this file), try to use cache by default.
-    dstats = dmt_cls(dataset_utils.CACHE_DIR, **dataset_args, use_cache=True)
+    dstats = dmt_cls(**dataset_args, use_cache=True)
     display_title(dstats)
     # Get the widget functionality for the different measurements.
     load_prepare_list, display_list = get_widgets(dstats)
