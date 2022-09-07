@@ -4,6 +4,7 @@
 log_files
 log_files/*
 log_files/*/*
+hate_speech*/*
 cache_dir
 cache_dir/*
 */cache_dir/*

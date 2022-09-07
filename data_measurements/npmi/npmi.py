@@ -69,11 +69,12 @@ class DMTHelper:
         self.npmi_results = None
 
     def run_DMT_processing(self, load_only=False):
-        self.load_or_prepare_avail_identity_terms(
-            load_only=load_only)
-        self.load_or_prepare_npmi_results(load_only)
+        # Sets the identity terms that can be used
+        self.load_or_prepare_avail_identity_terms(load_only=load_only)
+        # Gets the npmi scores and pair-wise differences for the identity terms.
+        self.load_or_prepare_npmi_results()
 
-    def load_or_prepare_npmi_results(self, load_only):
+    def load_or_prepare_npmi_results(self, load_only=False):
         # If we're trying to use the cache of available terms
         if self.use_cache:
             self.npmi_results = self._load_npmi_results_cache()
@@ -106,6 +107,7 @@ class DMTHelper:
                 self.avail_identity_terms = self._prepare_identity_terms()
             # Finish
             if self.save:
+                # TODO:PICKUPHERE
                 self._write_cache()
 
     def _load_identity_cache(self):
@@ -113,6 +115,12 @@ class DMTHelper:
             avail_identity_terms = json.load(open(self.npmi_terms_json_fid))
             return avail_identity_terms
         return []
+
+    def _load_npmi_results_cache(self):
+        if exists(self.npmi_df_fid):
+            npmi_results = json.load(open(self.npmi_terms_json_fid))
+            return npmi_results
+        return None
 
     def _prepare_identity_terms(self):
         """Uses DataFrame magic to return those terms that appear
@@ -201,7 +209,8 @@ class nPMI:
 
     def calc_cooccurrences(self, subgroup_idxs):
         """
-        Returns the co-occurrence matrix with dimensions vocab x vocab
+        Creates the co-occurrence matrix with dimensions vocab x vocab
+        by transposing vocab x sentence matrices.
         """
         # Big computation here!  Should only happen once per subgroup.
         logs.info(
@@ -220,17 +229,19 @@ class nPMI:
             sent_batch_df = pd.DataFrame(batch_sentence_row)
             print(subgroup_idxs)
             print(sent_batch_df[[35]])
+            # Remove the rows where the identity terms don't occur.
+            mlb_subgroup_only = sent_batch_df.loc[(sent_batch_df != 0).any(axis=1)]
             # sent_batch_df.loc[(sent_batch_df['col1'] == value) & (df['col2'] < value)]
             # Extract the set of sentences where the identity term appears
-            identity_sentences_df = sent_batch_df[sent_batch_df[subgroup_idxs] > 0]
-            print(identity_sentences_df)
-            # Remove the rows for sentences where the term counts are all NaN.
-            no_na = identity_sentences_df.dropna(how='all')
+            #identity_sentences_df = sent_batch_df[sent_batch_df[subgroup_idxs] > 0]
+            #print(identity_sentences_df)
+            ## Remove the rows for sentences where the term counts are all NaN.
+            #no_na = identity_sentences_df.dropna(how='all')
             # Remove the rows where the term counts are all 0.git add .
-            mlb_subgroup_only = no_na.loc[(no_na != 0).any(axis=1)]
+            #mlb_subgroup_only = no_na.loc[(no_na != 0).any(axis=1)]
             #mlb_subgroup_only.columns = self.identity_terms
-            print(mlb_subgroup_only)
             print(sent_batch_df)
+            print(mlb_subgroup_only)
             # Extract the sentences where the identity terms occur.
             #subgroup_df = subgroup_df[subgroup_df > 0]
             #print(subgroup_df)

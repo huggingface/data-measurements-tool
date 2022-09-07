@@ -111,17 +111,15 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
 
     if do_all or dataset_args["calculation"] == "npmi":
         print("\n* Preparing nPMI.")
-        npmi_stats = dataset_statistics.nPMIStatisticsCacheClass(
-            dstats, use_cache=use_cache
-        )
-        do_npmi(npmi_stats, use_cache=use_cache)
-        print("Done!")
-        print(
-            "nPMI results now available in %s for all identity terms that "
-            "occur more than 10 times and all words that "
-            "co-occur with both terms."
-            % npmi_stats.pmi_cache_path
-        )
+        dstats.load_or_prepare_npmi()
+        #do_npmi(npmi_stats, use_cache=use_cache)
+        #print("Done!")
+        #print(
+        #    "nPMI results now available in %s for all identity terms that "
+        #    "occur more than 10 times and all words that "
+        #    "co-occur with both terms."
+        #    % npmi_stats.pmi_cache_path
+        #)
 
     if do_all or dataset_args["calculation"] == "zipf":
         print("\n* Preparing Zipf.")
