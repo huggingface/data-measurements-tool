@@ -14,13 +14,13 @@ def prepare_logging(fid):
         file_path = ("./log_files/%s.log" % log_fid)
         ds_utils.make_path("./log_files/")
         file = logging.FileHandler(file_path)
-        fileformat = logging.Formatter("%(asctime)s:%(pathname)s,  %(module)s:%(lineno)s %(funcName)s, %(message)s")
+        fileformat = logging.Formatter("%(asctime)s:%(pathname)s,  %(module)s:%(lineno)s\n%(message)s")
         file.setLevel(logging.INFO)
         file.setFormatter(fileformat)
 
         # Logging debug messages to stream
         stream = logging.StreamHandler()
-        streamformat = logging.Formatter("[data_measurements_tool] %(pathname)s,  %(module)s:%(lineno)s %(funcName)s, %(message)s")
+        streamformat = logging.Formatter("[data_measurements_tool] %(pathname)s,  %(module)s:%(lineno)s\n%(message)s")
         stream.setLevel(logging.DEBUG)
         stream.setFormatter(streamformat)
 

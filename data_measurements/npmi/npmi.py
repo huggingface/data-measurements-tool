@@ -195,16 +195,25 @@ class nPMI:
     def calc_metrics(self):
         # Index of the subgroup word in the sparse vector
         subgroup_idxs = [self.vocab_counts_df.index.get_loc(subgroup) for subgroup in self.identity_terms]
-        #logs.info("Calculating co-occurrences of %s..." % subgroup)
+        logs.info("Calculating occurrences of identity terms, indexed in the vocabulary as:")
+        logs.info(subgroup_idxs)
+        # Defines the co-occurrences dataframe, self.coo_df
         self.calc_cooccurrences(subgroup_idxs)
-        vocab_cooc_df = self.set_idx_cols(self.coo_df, subgroup)
-        logs.info(vocab_cooc_df)
-        logs.info("Calculating PMI...")
-        pmi_df = self.calc_PMI(vocab_cooc_df, subgroup)
-        logs.info(pmi_df)
-        logs.info("Calculating nPMI...")
-        npmi_df = self.calc_nPMI(pmi_df, vocab_cooc_df, subgroup)
-        logs.info(npmi_df)
+        # Set the vocabulary indexes to their corresponding terms.
+        # For ease of use, they are indexed by term in the vocabulary dataframe.
+        logs.info(self.coo_df)
+        logs.info(self.vocab_counts_df.index)
+        vocab_cooc_df = self.coo_df.set_index(self.vocab_counts_df.index)
+        full_npmi_df = pd.DataFrame()
+        for subgroup in self.identity_terms:
+            logs.info("Examining %s" % subgroup)
+            logs.info("Calculating PMI...")
+            pmi_df = self.calc_PMI(vocab_cooc_df, subgroup)
+            logs.info(pmi_df)
+            logs.info("Calculating nPMI...")
+            npmi_df = self.calc_nPMI(pmi_df, self.coo_df, subgroup)
+            logs.info(npmi_df)
+            full_npmi_df[subgroup] = npmi_df
         return vocab_cooc_df, pmi_df, npmi_df
 
     def calc_cooccurrences(self, subgroup_idxs):
@@ -223,45 +232,32 @@ class nPMI:
                 "%s of %s co-occurrence count batches"
                 % (str(batch_id), str(len(self.word_cnt_per_sentence)))
             )
-            # List of all the sentences (list of vocab) in that batch
-            batch_sentence_row = self.word_cnt_per_sentence[batch_id]
-            # Dataframe of # sentences in batch x vocabulary size
-            sent_batch_df = pd.DataFrame(batch_sentence_row)
-            print(subgroup_idxs)
-            print(sent_batch_df[[35]])
-            # Remove the rows where the identity terms don't occur.
-            mlb_subgroup_only = sent_batch_df.loc[(sent_batch_df != 0).any(axis=1)]
-            # sent_batch_df.loc[(sent_batch_df['col1'] == value) & (df['col2'] < value)]
-            # Extract the set of sentences where the identity term appears
-            #identity_sentences_df = sent_batch_df[sent_batch_df[subgroup_idxs] > 0]
-            #print(identity_sentences_df)
-            ## Remove the rows for sentences where the term counts are all NaN.
-            #no_na = identity_sentences_df.dropna(how='all')
-            # Remove the rows where the term counts are all 0.git add .
-            #mlb_subgroup_only = no_na.loc[(no_na != 0).any(axis=1)]
-            #mlb_subgroup_only.columns = self.identity_terms
-            print(sent_batch_df)
-            print(mlb_subgroup_only)
-            # Extract the sentences where the identity terms occur.
-            #subgroup_df = subgroup_df[subgroup_df > 0]
-            #print(subgroup_df)
-            # Subgroup counts per-sentence for the given batch
-            #mlb_subgroup_only = sent_batch_df[sent_batch_df[subgroup_idxs] > 0]
-            # Calculate how much the subgroup term co-occurs with all the others
-            self.update_cooc_matrix(batch_id, mlb_subgroup_only, sent_batch_df)
+            # Sparse vectors of the vocab per sentence
+            # Size: # sentences in batch x vocabulary size
+            sent_batch_df = pd.DataFrame(self.word_cnt_per_sentence[batch_id])
+            logs.debug(subgroup_idxs)
+            logs.debug(sent_batch_df[[35]])
+            # Extract the set of sentences where the identity term appear.
+            # We do this to speed up the co-occurrence calculation,
+            # limiting it to those sentences that have the terms we care about.
+            identity_sentences_df = sent_batch_df.loc[(sent_batch_df[subgroup_idxs] != 0).any(axis=1)]
+            logs.debug(sent_batch_df)
+            logs.debug(identity_sentences_df)
+            # Calculate how much the identity terms co-occur with all the others
+            self.update_cooc_matrix(batch_id, identity_sentences_df, sent_batch_df)
 
-    def update_cooc_matrix(self, batch_id, mlb_subgroup_only, subgroup_df):
+
+    def update_cooc_matrix(self, batch_id, identity_sentences_df, sent_batch_df):
         # Create cooccurrence matrix for the given subgroup and all words.
         logs.debug("Doing the transpose for co-occurrences")
-        batch_coo_df = pd.DataFrame(mlb_subgroup_only.T.dot(subgroup_df))
         # Creates a batch-sized dataframe of co-occurrence counts.
-        # Note these could just be summed rather than be batch size.
+        batch_coo_df = pd.DataFrame(identity_sentences_df.T.dot(sent_batch_df))
         # Initialize the co-occurrence matrix with the correct number of columns
         if batch_id == 0:
-            self.coo_df = batch_coo_df
+            self.coo_df = batch_coo_df.astype(int)
         else:
-            self.coo_df = self.coo_df.add(batch_coo_df, fill_value=0)
-        logs.debug("Have co-occurrence matrix")
+            self.coo_df = self.coo_df.add(batch_coo_df, fill_value=0).astype(int)
+        logs.debug("Updated co-occurrence matrix:")
         logs.debug(self.coo_df)
 
     def set_idx_cols(self, df_coo, subgroup):
