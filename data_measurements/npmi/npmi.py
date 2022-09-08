@@ -192,31 +192,22 @@ class nPMI:
         # Dataframe of word co-occurrences
         # self.coo_df = self.count_cooccurrences(self.identity_terms, self.word_cnt_per_sentence)
 
-    def calc_metrics(self):
+    def calc_metrics(self, subgroup):
         # Index of the subgroup word in the sparse vector
-        subgroup_idxs = [self.vocab_counts_df.index.get_loc(subgroup) for subgroup in self.identity_terms]
-        logs.info("Calculating occurrences of identity terms, indexed in the vocabulary as:")
-        logs.info(subgroup_idxs)
-        # Defines the co-occurrences dataframe, self.coo_df
-        self.calc_cooccurrences(subgroup_idxs)
-        # Set the vocabulary indexes to their corresponding terms.
-        # For ease of use, they are indexed by term in the vocabulary dataframe.
-        logs.info(self.coo_df)
-        logs.info(self.vocab_counts_df.index)
-        vocab_cooc_df = self.coo_df.set_index(self.vocab_counts_df.index)
-        full_npmi_df = pd.DataFrame()
-        for subgroup in self.identity_terms:
-            logs.info("Examining %s" % subgroup)
-            logs.info("Calculating PMI...")
-            pmi_df = self.calc_PMI(vocab_cooc_df, subgroup)
-            logs.info(pmi_df)
-            logs.info("Calculating nPMI...")
-            npmi_df = self.calc_nPMI(pmi_df, self.coo_df, subgroup)
-            logs.info(npmi_df)
-            full_npmi_df[subgroup] = npmi_df
+        subgroup_idx = self.vocab_counts_df.index.get_loc(subgroup)
+        logs.debug("Calculating co-occurrences...")
+        df_coo = self.calc_cooccurrences(subgroup, subgroup_idx)
+        vocab_cooc_df = self.set_idx_cols(df_coo, subgroup)
+        logs.debug(vocab_cooc_df)
+        logs.debug("Calculating PMI...")
+        pmi_df = self.calc_PMI(vocab_cooc_df, subgroup)
+        logs.debug(pmi_df)
+        logs.debug("Calculating nPMI...")
+        npmi_df = self.calc_nPMI(pmi_df, vocab_cooc_df, subgroup)
+        logs.debug(npmi_df)
         return vocab_cooc_df, pmi_df, npmi_df
 
-    def calc_cooccurrences(self, subgroup_idxs):
+    def calc_cooccurrences(self, subgroup, subgroup_idx):
         """
         Creates the co-occurrence matrix with dimensions vocab x vocab
         by transposing vocab x sentence matrices.
