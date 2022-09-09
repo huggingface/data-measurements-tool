@@ -60,9 +60,11 @@ class nPMI:
             # Makes a sparse matrix (shape: # sentences x # words),
             # with the occurrence of each word per sentence.
             mlb = MultiLabelBinarizer(classes=self.vocab_counts_df.index)
-            logs.debug(
-                "%s of %s sentence binarize batches." % (str(i), str(len(batches)))
-            )
+            # Print out the progress every 100 batches.
+            if not i % 100:
+                logs.debug(
+                    "%s of %s sentence binarize batches." % (str(i), str(len(batches)))
+                )
             # Returns series: batch size x num_words
             mlb_series = mlb.fit_transform(
                 self.tokenized_df[self.tokenized_col_name][batches[i]:batches[i + 1]]
@@ -80,10 +82,12 @@ class nPMI:
         if not self.mlb_list:
             self.binarize_words_in_sentence()
         for batch_id in range(len(self.mlb_list)):
-            logs.debug(
-                "%s of %s co-occurrence count batches"
-                % (str(batch_id), str(len(self.mlb_list)))
-            )
+            # Every 100 batches, print out the progress.
+            if not batch_id % 100:
+                logs.debug(
+                    "%s of %s co-occurrence count batches"
+                    % (str(batch_id), str(len(self.mlb_list)))
+                )
             # List of all the sentences (list of vocab) in that batch
             batch_sentence_row = self.mlb_list[batch_id]
             # Dataframe of # sentences in batch x vocabulary size
@@ -96,13 +100,8 @@ class nPMI:
             # Remove the sentences where the count of the subgroup is 0.
             # This way we have less computation & resources needs.
             subgroup_df = subgroup_df[subgroup_df > 0]
-            logs.debug("Removing 0 counts, subgroup_df is")
-            logs.debug(subgroup_df)
             mlb_subgroup_only = sent_batch_df[sent_batch_df[subgroup_idx] > 0]
-            logs.debug("mlb subgroup only is")
-            logs.debug(mlb_subgroup_only)
             # Create cooccurrence matrix for the given subgroup and all words.
-            logs.debug("Now we do the T.dot approach for co-occurrences")
             batch_coo_df = pd.DataFrame(mlb_subgroup_only.T.dot(subgroup_df))
 
             # Creates a batch-sized dataframe of co-occurrence counts.
@@ -111,8 +110,6 @@ class nPMI:
                 coo_df = batch_coo_df
             else:
                 coo_df = coo_df.add(batch_coo_df, fill_value=0)
-            logs.debug("coo_df is")
-            logs.debug(coo_df)
             initialize = False
         logs.debug("Returning co-occurrence matrix")
         logs.debug(coo_df)

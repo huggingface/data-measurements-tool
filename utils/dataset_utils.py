@@ -91,22 +91,28 @@ def _load_dotenv_for_cache_on_hub():
     hub_cache_organization = getenv("HUB_CACHE_ORGANIZATION")
     return hub_cache_organization, hf_token
 
-def initialize_cache_hub_repo(cache_path, dataset_cache_dir):
+def get_cache_dir_naming(out_dir, dataset, config, split, feature):
+    feature_text = hyphenated(feature)
+    dataset_cache_name = f"{dataset}_{config}_{split}_{feature_text}"
+    local_dataset_cache_dir = out_dir + "/" + dataset_cache_name
+    return dataset_cache_name, local_dataset_cache_dir
+
+def initialize_cache_hub_repo(local_cache_dir, dataset_cache_name):
     """
     This function tries to initialize a dataset cache on the huggingface hub. The
     function expects you to have HUB_CACHE_ORGANIZATION=<the organization you've set up on the hub to store your cache>
     and HF_TOKEN=<your hf token> on separate lines in a file named .env at the root of this repo.
 
     Args:
-        cache_path (string):
+        local_cache_dir (string):
             The path to the local dataset cache.
-        dataset_cache_dir (string):
+        dataset_cache_name (string):
             The name of the dataset repo on the huggingface hub that you want.
     """
 
     hub_cache_organization, hf_token = _load_dotenv_for_cache_on_hub()
-    clone_source = pjoin(hub_cache_organization, dataset_cache_dir)
-    repo = Repository(local_dir=cache_path,
+    clone_source = pjoin(hub_cache_organization, dataset_cache_name)
+    repo = Repository(local_dir=local_cache_dir,
                       clone_from=clone_source,
                       repo_type="dataset", use_auth_token=hf_token)
     repo.lfs_track(["*.feather"])
@@ -151,14 +157,16 @@ def load_truncated_dataset(
     config_name,
     split_name,
     num_rows=_MAX_ROWS,
-    cache_name=None,
     use_cache=True,
+    cache_dir=CACHE_DIR,
     use_streaming=True,
+    save=True,
 ):
     """
     This function loads the first `num_rows` items of a dataset for a
     given `config_name` and `split_name`.
-    If `cache_name` exists, the truncated dataset is loaded from `cache_name`.
+    If `use_cache` and `cache_name` exists, the truncated dataset is loaded from
+    `cache_name`.
     Otherwise, a new truncated dataset is created and immediately saved
     to `cache_name`.
     When the dataset is streamable, we iterate through the first
@@ -175,21 +183,22 @@ def load_truncated_dataset(
             dataset configuration
         split_name (string):
             split name
-        num_rows (int):
+        num_rows (int) [optional]:
             number of rows to truncate the dataset to
-        cache_name (string):
+        cache_dir (string):
             name of the cache directory
         use_cache (bool):
-            whether to load form the cache if it exists
+            whether to load from the cache if it exists
         use_streaming (bool):
             whether to use streaming when the dataset supports it
+        save (bool):
+            whether to save the dataset locally
     Returns:
-        Dataset: the truncated dataset as a Dataset object
+        Dataset: the (truncated if specified) dataset as a Dataset object
     """
-    if cache_name is None:
-        cache_name = f"{dataset_name}_{config_name}_{split_name}_{num_rows}"
-    if exists(cache_name):
-        dataset = load_from_disk(cache_name)
+    logs.info("Loading or preparing dataset saved in %s " % cache_dir)
+    if use_cache and exists(cache_dir):
+        dataset = load_from_disk(cache_dir)
     else:
         if use_streaming and dataset_name in _STREAMABLE_DATASET_LIST:
             iterable_dataset = load_dataset(
@@ -214,30 +223,17 @@ def load_truncated_dataset(
             )
             if len(full_dataset) >= num_rows:
                 dataset = full_dataset.select(range(num_rows))
+                # Make the directory name clear that it's not the full dataset.
+                cache_dir = pjoin(cache_dir, ("_%s" % num_rows))
             else:
                 dataset = full_dataset
-        dataset.save_to_disk(cache_name)
+        if save:
+            dataset.save_to_disk(cache_dir)
     return dataset
 
-
-def intersect_dfs(df_dict):
-    started = 0
-    new_df = None
-    for key, df in df_dict.items():
-        if df is None:
-            continue
-        for key2, df2 in df_dict.items():
-            if df2 is None:
-                continue
-            if key == key2:
-                continue
-            if started:
-                new_df = new_df.join(df2, how="inner", lsuffix="1", rsuffix="2")
-            else:
-                new_df = df.join(df2, how="inner", lsuffix="1", rsuffix="2")
-                started = 1
-    return new_df.copy()
-
+def hyphenated(features):
+    """When multiple features are asked for, hyphenate them together when they're used for filenames or titles"""
+    return '-'.join(features)
 
 def get_typed_features(features, ftype="string", parents=None):
     """

@@ -18,7 +18,6 @@ import matplotlib.pyplot as plt
 import nltk
 import numpy as np
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 import seaborn as sns
 import statistics
@@ -26,10 +25,8 @@ import utils
 import utils.dataset_utils as ds_utils
 from data_measurements.embeddings.embeddings import Embeddings
 from data_measurements.labels import labels
-from data_measurements.text_duplicates import text_duplicates as td
 from data_measurements.npmi.npmi import nPMI
-# TODO(meg): Incorporate this from evaluate library.
-# import evaluate
+from data_measurements.text_duplicates import text_duplicates as td
 from data_measurements.zipf import zipf
 from datasets import load_from_disk, load_metric
 from nltk.corpus import stopwords
@@ -42,9 +39,6 @@ from utils.dataset_utils import (CNT, EMBEDDING_FIELD, LENGTH_FIELD,
                                  OUR_TEXT_FIELD, PERPLEXITY_FIELD, PROP,
                                  TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
                                  TOT_WORDS, VOCAB, WORD)
-
-
-pd.options.display.float_format = "{:,.3f}".format
 
 logs = utils.prepare_logging(__file__)
 
@@ -125,183 +119,146 @@ class DatasetStatisticsCacheClass:
 
     def __init__(
             self,
-            cache_dir,
             dset_name,
             dset_config,
             split_name,
             text_field,
             label_field,
             label_names,
-            calculation=None,
+            cache_dir="cache_dir",
+            dataset_cache_dir=None,
             use_cache=False,
             save=True,
     ):
-        self.label_results = None
-        self.duplicates_results = None
-        self.calculation = calculation
-        self.our_length_field = LENGTH_FIELD
-        self.our_tokenized_field = TOKENIZED_FIELD
-        self.our_embedding_field = EMBEDDING_FIELD
-        self.cache_dir = cache_dir
-        # path to the directory used for caching
-        if isinstance(text_field, list):
-            text_field = "-".join(text_field)
-        self.dataset_cache_dir = f"{dset_name}_{dset_config}_{split_name}_{text_field}"
-        # TODO: Having "cache_dir" and "cache_path" is confusing.
-        self.cache_path = pjoin(
-            self.cache_dir,
-            self.dataset_cache_dir,
-        )
-        # Use stored data if there; otherwise calculate afresh
-        self.use_cache = use_cache
-        # Save newly calculated results.
-        self.save = save
+
         ### What are we analyzing?
         # name of the Hugging Face dataset
         self.dset_name = dset_name
+        # original HuggingFace dataset
+        self.dset = None
         # name of the dataset config
         self.dset_config = dset_config
         # name of the split to analyze
         self.split_name = split_name
-        # TODO: Chould this be "feature" ?
-        # which text fields are we analysing?
+        # which text/feature fields are we analysing?
         self.text_field = text_field
+
+        ## Label variables
         # which label fields are we analysing?
         self.label_field = label_field
         # what are the names of the classes?
         self.label_names = label_names
-        ## Hugging Face dataset objects
-        self.dset = None  # original dataset
+        # where are they being cached?
+        self.label_files = {}
+        # label pie chart used in the UI
+        self.fig_labels = None
+        # results
+        self.label_results = None
+
+        ## Caching
+        if not dataset_cache_dir:
+            _, self.dataset_cache_dir = ds_utils.get_cache_dir_naming(cache_dir,
+                                                                      dset_name,
+                                                                      dset_config,
+                                                                      split_name,
+                                                                      text_field)
+        else:
+            self.dataset_cache_dir = dataset_cache_dir
+
+        # Use stored data if there; otherwise calculate afresh
+        self.use_cache = use_cache
+        # Save newly calculated results.
+        self.save = save
+
         # HF dataset with all of the self.text_field instances in self.dset
         self.text_dset = None
         self.dset_peek = None
-        # HF dataset with text embeddings in the same order as self.text_dset
-        self.embeddings_dset = None
-        # HF dataset with all of the self.label_field instances in self.dset
-        # TODO: Not being used anymore; make sure & remove.
-        self.label_dset = None
-        ## Data frames
         # Tokenized text
         self.tokenized_df = None
-        # save sentence length histogram in the class so it doesn't ge re-computed
-        self.length_df = None
-        self.fig_tok_length = None
-        # Data Frame version of self.label_dset
-        # TODO: Not being used anymore. Make sure and remove
-        self.label_df = None
-        # save label pie chart in the class so it doesn't ge re-computed
-        self.fig_labels = None
+
+        ## Zipf
         # Save zipf fig so it doesn't need to be recreated.
         self.zipf_fig = None
         # Zipf object
         self.z = None
+
+        ## Vocabulary
         # Vocabulary with word counts in the dataset
         self.vocab_counts_df = None
         # Vocabulary filtered to remove stopwords
         self.vocab_counts_filtered_df = None
         self.sorted_top_vocab_df = None
-        ## General statistics and duplicates
+
+        # Text Duplicates
+        self.duplicates_results = None
+        self.duplicates_files = {}
+        self.dups_frac = 0
+        self.dups_dict = {}
+
+        ## Perplexity
+        self.perplexities_df = None
+
+        ## Lengths
+        self.avg_length = None
+        self.std_length = None
+        self.length_stats_dict = None
+        self.length_df = None
+        self.fig_tok_length = None
+        self.num_uniq_lengths = 0
+
+        ## "General" stats
+        self.general_stats_dict = {}
         self.total_words = 0
         self.total_open_words = 0
         # Number of NaN values (NOT empty strings)
         self.text_nan_count = 0
-        # Text Duplicates module
-        self.dups_frac = 0
-        self.dups_dict = {}
-        self.perplexities_df = None
-        self.avg_length = None
-        self.std_length = None
-        self.general_stats_dict = {}
-        self.num_uniq_lengths = 0
-        # clustering text by embeddings
-        # the hierarchical clustering tree is represented as a list of nodes,
-        # the first is the root
-        self.node_list = []
-        # save tree figure in the class so it doesn't ge re-computed
-        self.fig_tree = None
-        # keep Embeddings object around to explore clusters
-        self.embeddings = None
+
         # nPMI
         # Holds a nPMIStatisticsCacheClass object
         self.npmi_stats = None
-        # TODO: Have lowercase be an option for a user to set.
-        self.to_lowercase = True
         # The minimum amount of times a word should occur to be included in
         # word-count-based calculations (currently just relevant to nPMI)
         self.min_vocab_count = MIN_VOCAB_COUNT
         self.cvec = _CVEC
-        # File definitions
-        # path to the directory used for caching
-        if not isinstance(text_field, str):
-            text_field = ".".join(text_field)
-        # if isinstance(label_field, str):
-        #    label_field = label_field
-        # else:
-        #    label_field = "-".join(label_field)
-        self.dataset_cache_dir = f"{dset_name}_{dset_config}_{split_name}_{text_field}"
-        self.cache_path = pjoin(
-            self.cache_dir,
-            self.dataset_cache_dir,  # {label_field},
-        )
-        # Things that get defined later.
-        self.fig_tok_length_png = None
-        self.length_stats_dict = None
 
-        # Cache files not needed for UI
-        self.dset_fid = pjoin(self.cache_path, "base_dset")
-        self.tokenized_df_fid = pjoin(self.cache_path, "tokenized_df.feather")
-        # TODO: Not being used anymore. Check and remove.
-        self.label_dset_fid = pjoin(self.cache_path, "label_dset")
+        self.hf_dset_cache_dir = pjoin(self.dataset_cache_dir, "base_dset")
+        self.tokenized_df_fid = pjoin(self.dataset_cache_dir, "tokenized_df.feather")
 
-        # Needed for UI -- embeddings
-        self.text_dset_fid = pjoin(self.cache_path, "text_dset")
-        # Needed for UI
-        self.dset_peek_json_fid = pjoin(self.cache_path, "dset_peek.json")
+        self.text_dset_fid = pjoin(self.dataset_cache_dir, "text_dset")
+        self.dset_peek_json_fid = pjoin(self.dataset_cache_dir, "dset_peek.json")
 
         ## Length cache files
-        # Needed for UI
-        self.length_df_fid = pjoin(self.cache_path, "length_df.feather")
-        # Needed for UI
-        self.length_stats_json_fid = pjoin(self.cache_path, "length_stats.json")
-        self.vocab_counts_df_fid = pjoin(self.cache_path,
+        self.length_df_fid = pjoin(self.dataset_cache_dir, "length_df.feather")
+        self.length_stats_json_fid = pjoin(self.dataset_cache_dir, "length_stats.json")
+
+        self.vocab_counts_df_fid = pjoin(self.dataset_cache_dir,
                                          "vocab_counts.feather")
-        # Needed for UI
-        self.dup_counts_df_fid = pjoin(self.cache_path, "dup_counts_df.feather")
-        # Needed for UI
-        self.perplexities_df_fid = pjoin(self.cache_path,
+        self.dup_counts_df_fid = pjoin(self.dataset_cache_dir, "dup_counts_df.feather")
+        self.perplexities_df_fid = pjoin(self.dataset_cache_dir,
                                          "perplexities_df.feather")
-        # Needed for UI
-        self.fig_tok_length_fid = pjoin(self.cache_path, "fig_tok_length.png")
+        self.fig_tok_length_fid = pjoin(self.dataset_cache_dir, "fig_tok_length.png")
 
         ## General text stats
-        # Needed for UI
-        self.general_stats_json_fid = pjoin(self.cache_path,
+        self.general_stats_json_fid = pjoin(self.dataset_cache_dir,
                                             "general_stats_dict.json")
         # Needed for UI
         self.sorted_top_vocab_df_fid = pjoin(
-            self.cache_path, "sorted_top_vocab.feather"
+            self.dataset_cache_dir, "sorted_top_vocab.feather"
         )
+        # Set the HuggingFace dataset object with the given arguments.
+        self.dset = self.get_dataset()
 
-        self.label_files = {}
-        self.duplicates_files = {}
-
-        ## Embeddings cache files
-        # Needed for UI
-        self.node_list_fid = pjoin(self.cache_path, "node_list.th")
-        # Needed for UI
-        self.fig_tree_json_fid = pjoin(self.cache_path, "fig_tree.json")
-
-    def get_base_dataset(self):
-        """Gets a pointer to the truncated base dataset object."""
-        if not self.dset:
-            self.dset = ds_utils.load_truncated_dataset(
-                self.dset_name,
-                self.dset_config,
-                self.split_name,
-                cache_name=self.dset_fid,
-                use_cache=True,
-                use_streaming=True,
-            )
+    def get_dataset(self):
+        """
+        Gets the HuggingFace Dataset object.
+        First tries to use the given cache directory if specified;
+        otherwise saves to the given cache directory if specified.
+        """
+        dset = ds_utils.load_truncated_dataset(self.dset_name, self.dset_config,
+                                               self.split_name,
+                                               cache_dir=self.hf_dset_cache_dir,
+                                               save=self.save)
+        return dset
 
 
     def load_or_prepare_general_stats(self, load_only=False):
@@ -318,10 +275,12 @@ class DatasetStatisticsCacheClass:
         # For the general statistics, text duplicates are not saved in their
         # own files, but rather just the text duplicate fraction is saved in the
         # "general" file. We therefore set save=False for
-        # the text duplicate filesin this case.
+        # the text duplicate files in this case.
         # Similarly, we don't get the full list of duplicates
         # in general stats, so set list_duplicates to False
-        self.load_or_prepare_text_duplicates(load_only=load_only, save=False, list_duplicates=False)
+        self.load_or_prepare_text_duplicates(load_only=load_only, save=False,
+                                             list_duplicates=False)
+        logs.info("Duplicates results:")
         logs.info(self.duplicates_results)
         self.general_stats_dict.update(self.duplicates_results)
         # TODO: Tighten the rest of this similar to text_duplicates.
@@ -412,15 +371,6 @@ class DatasetStatisticsCacheClass:
             self.prepare_length_df()
         self.fig_tok_length = make_fig_lengths(self.tokenized_df,
                                                LENGTH_FIELD)
-
-    def load_or_prepare_embeddings(self, load_only=False):
-        # TODO: Incorporate 'load only' if we use this widget.
-        """Uses an Embeddings class specific to this project,
-           which uses the attributes defined in this file directly"""
-        self.embeddings = Embeddings(self, use_cache=self.use_cache)
-        self.embeddings.make_hierarchical_clustering()
-        self.node_list = self.embeddings.node_list
-        self.fig_tree = self.embeddings.fig_tree
 
     ## Labels functions
     def load_or_prepare_labels(self, load_only=False):
@@ -547,16 +497,19 @@ class DatasetStatisticsCacheClass:
         Returns:
 
         """
+        if not self.dset:
+            self.prepare_base_dataset(load_only=load_only)
         logs.info("Doing text dset.")
         self.load_or_prepare_text_dset(load_only=load_only)
 
+    # TODO: Are we not using this anymore?
     def load_or_prepare_dset_peek(self, load_only=False):
         if self.use_cache and exists(self.dset_peek_json_fid):
             with open(self.dset_peek_json_fid, "r") as f:
                 self.dset_peek = json.load(f)["dset peek"]
         elif not load_only:
             if self.dset is None:
-                self.get_base_dataset()
+                self.get_dataset()
             self.dset_peek = self.dset[:100]
             if self.save:
                 ds_utils.write_json({"dset peek": self.dset_peek},
@@ -588,7 +541,7 @@ class DatasetStatisticsCacheClass:
                 self.text_dset.save_to_disk(self.text_dset_fid)
 
     def prepare_text_dset(self):
-        self.get_base_dataset()
+        self.get_dataset()
         logs.warning(self.dset)
         # extract all text instances
         self.text_dset = self.dset.map(
@@ -635,7 +588,7 @@ class DatasetStatisticsCacheClass:
 
     def load_or_prepare_zipf(self, load_only=False):
         zipf_json_fid, zipf_fig_json_fid, zipf_fig_html_fid = zipf.get_zipf_fids(
-            self.cache_path)
+            self.dataset_cache_dir)
         if self.use_cache and exists(zipf_json_fid):
             # Zipf statistics
             # Read Zipf statistics: Alpha, p-value, etc.
@@ -706,12 +659,12 @@ class nPMIStatisticsCacheClass:
 
     def __init__(self, dataset_stats, load_only=False, use_cache=False):
         self.dstats = dataset_stats
-        self.pmi_cache_path = pjoin(self.dstats.cache_path, "pmi_files")
-        if not isdir(self.pmi_cache_path):
+        self.pmi_dataset_cache_dir = pjoin(self.dstats.dataset_cache_dir, "pmi_files")
+        if not isdir(self.pmi_dataset_cache_dir):
             logs.warning(
-                "Creating pmi cache directory %s." % self.pmi_cache_path)
+                "Creating pmi cache directory %s." % self.pmi_dataset_cache_dir)
             # We need to preprocess everything.
-            mkdir(self.pmi_cache_path)
+            mkdir(self.pmi_dataset_cache_dir)
         self.joint_npmi_df_dict = {}
         # TODO: Users ideally can type in whatever words they want.
         self.termlist = _IDENTITY_TERMS
@@ -724,7 +677,7 @@ class nPMIStatisticsCacheClass:
         self.open_class_only = True
         self.min_vocab_count = self.dstats.min_vocab_count
         self.subgroup_files = {}
-        self.npmi_terms_fid = pjoin(self.dstats.cache_path, "npmi_terms.json")
+        self.npmi_terms_fid = pjoin(self.dstats.dataset_cache_dir, "npmi_terms.json")
 
     def load_or_prepare_npmi_terms(self):
         """
@@ -734,9 +687,7 @@ class nPMIStatisticsCacheClass:
         """
         # TODO: Add the user's ability to select subgroups.
         # TODO: Make min_vocab_count here value selectable by the user.
-
-        logs.warning(self.use_cache)
-        logs.warning(self.npmi_terms_fid)
+        logs.info("Looking for cached terms in %s" % self.npmi_terms_fid)
         if (
                 self.use_cache
                 and exists(self.npmi_terms_fid)
@@ -777,14 +728,14 @@ class nPMIStatisticsCacheClass:
         subgroup1 = subgroup_pair[0]
         subgroup2 = subgroup_pair[1]
         subgroups_str = "-".join(subgroup_pair)
-        if not isdir(self.pmi_cache_path):
+        if not isdir(self.pmi_dataset_cache_dir):
             logs.warning("Creating cache")
             # We need to preprocess everything.
             # This should eventually all go into a prepare_dataset CLI
-            mkdir(self.pmi_cache_path)
-        joint_npmi_fid = pjoin(self.pmi_cache_path, subgroups_str + "_npmi.csv")
+            mkdir(self.pmi_dataset_cache_dir)
+        joint_npmi_fid = pjoin(self.pmi_dataset_cache_dir, subgroups_str + "_npmi.csv")
         subgroup_files = define_subgroup_files(subgroup_pair,
-                                               self.pmi_cache_path)
+                                               self.pmi_dataset_cache_dir)
         # Defines the filenames for the cache files from the selected subgroups.
         # Get as much precomputed data as we can.
         if self.use_cache and exists(joint_npmi_fid):
@@ -962,7 +913,8 @@ def count_vocab_frequencies(tokenized_df):
     i = 0
     tf = []
     while i < len(batches) - 1:
-        logs.info("%s of %s vocab batches" % (str(i), str(len(batches))))
+        if i % 100 == 0:
+            logs.info("%s of %s vocab batches" % (str(i), str(len(batches))))
         batch_result = np.sum(
             document_matrix[batches[i]: batches[i + 1]].toarray(), axis=0
         )
@@ -1029,7 +981,7 @@ def make_npmi_fig(paired_results, subgroup_pair):
 ## Input/Output ###
 
 
-def define_subgroup_files(subgroup_list, pmi_cache_path):
+def define_subgroup_files(subgroup_list, pmi_dataset_cache_dir):
     """
     Sets the file ids for the input identity terms
     :param subgroup_list: List of identity terms
@@ -1038,9 +990,9 @@ def define_subgroup_files(subgroup_list, pmi_cache_path):
     subgroup_files = {}
     for subgroup in subgroup_list:
         # TODO: Should the pmi, npmi, and count just be one file?
-        subgroup_npmi_fid = pjoin(pmi_cache_path, subgroup + "_npmi.csv")
-        subgroup_pmi_fid = pjoin(pmi_cache_path, subgroup + "_pmi.csv")
-        subgroup_cooc_fid = pjoin(pmi_cache_path, subgroup + "_vocab_cooc.csv")
+        subgroup_npmi_fid = pjoin(pmi_dataset_cache_dir, subgroup + "_npmi.csv")
+        subgroup_pmi_fid = pjoin(pmi_dataset_cache_dir, subgroup + "_pmi.csv")
+        subgroup_cooc_fid = pjoin(pmi_dataset_cache_dir, subgroup + "_vocab_cooc.csv")
         subgroup_files[subgroup] = (
             subgroup_npmi_fid,
             subgroup_pmi_fid,
@@ -1050,26 +1002,6 @@ def define_subgroup_files(subgroup_list, pmi_cache_path):
 
 
 ## Input/Output ##
-
-
-def intersect_dfs(df_dict):
-    started = 0
-    new_df = None
-    for key, df in df_dict.items():
-        if df is None:
-            continue
-        for key2, df2 in df_dict.items():
-            if df2 is None:
-                continue
-            if key == key2:
-                continue
-            if started:
-                new_df = new_df.join(df2, how="inner", lsuffix="1", rsuffix="2")
-            else:
-                new_df = df.join(df2, how="inner", lsuffix="1", rsuffix="2")
-                started = 1
-    return new_df.copy()
-
 
 def write_subgroup_npmi_data(subgroup, subgroup_dict, subgroup_files):
     """
