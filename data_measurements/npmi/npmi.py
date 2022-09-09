@@ -272,6 +272,7 @@ class nPMI:
         logs.debug(coo_df)
         return pd.DataFrame(coo_df)
 
+
     def set_columm_names(self, df_coo, subgroup):
         """
         :param df_coo: Co-occurrence counts for subgroup, length is num_words

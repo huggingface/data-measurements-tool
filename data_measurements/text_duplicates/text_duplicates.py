@@ -35,15 +35,15 @@ class DMTHelper:
             self.dset = dstats.text_dset
         self.use_cache = dstats.use_cache
         self.duplicates_results = dstats.duplicates_results
-        self.cache_path = dstats.cache_path
+        self.cache_dir = dstats.dataset_cache_dir
         self.save = save
         self.load_only = load_only
         # Filenames
         self.dups_dir = "text_duplicates"
         dups_json = "text_duplicates.json"
         dups_html = "text_duplicates.html"
-        self.dups_result_json_fid = pjoin(self.cache_path, self.dups_dir, dups_json)
-        self.dups_result_html_fid = pjoin(self.cache_path, self.dups_dir, dups_html)
+        self.dups_result_json_fid = pjoin(self.cache_dir, self.dups_dir, dups_json)
+        self.dups_result_html_fid = pjoin(self.cache_dir, self.dups_dir, dups_html)
 
     def run_DMT_processing(self, list_duplicates=True):
         """Calls functions to do the main work.
@@ -77,7 +77,7 @@ class DMTHelper:
     
     def _write_duplicates_cache(self):
         """Writes newly computer results to cache."""
-        ds_utils.make_path(pjoin(self.cache_path, self.dups_dir))
+        ds_utils.make_path(pjoin(self.cache_dir, self.dups_dir))
         if self.duplicates_results:
             ds_utils.write_json(self.duplicates_results, self.dups_result_json_fid)
             # TODO: Use df_to_html rather than write_json_as_html;

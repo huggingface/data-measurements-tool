@@ -12,36 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import statistics
-
-import pandas as pd
+import logging
 import numpy as np
+import pandas as pd
 import seaborn as sns
+import statistics
 import streamlit as st
+import utils
+import utils.dataset_utils as ds_utils
 from st_aggrid import AgGrid, GridOptionsBuilder
+from utils.dataset_utils import HF_DESC_FIELD, HF_FEATURE_FIELD, HF_LABEL_FIELD
 
-# TODO: Clean up
-from .dataset_utils import HF_DESC_FIELD, HF_FEATURE_FIELD, HF_LABEL_FIELD, counter_dict_to_df
+logs = utils.prepare_logging(__file__)
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
+# Note: Make sure to consider colorblind-friendly colors for your images! Ex:
+# ["#332288", "#117733", "#882255", "#AA4499", "#CC6677", "#44AA99", "#DDCC77",
+# "#88CCEE"]
+
 def sidebar_header():
-    st.sidebar.markdown(
-        """
-    This demo showcases the [dataset metrics as we develop them](https://huggingface.co/blog/data-measurements-tool).
+    st.sidebar.markdown("""This demo showcases the 
+    [dataset metrics as we develop them](https://huggingface.co/blog/data-measurements-tool).
     Right now this has:
     - dynamic loading of datasets in the lib
     - fetching config and info without downloading the dataset
-    - propose the list of candidate text and label features to select
-    We are still working on:
-    - implementing all the current tools
-    """,
-        unsafe_allow_html=True,
-    )
+    - propose the list of candidate text and label features to select.
+    """, unsafe_allow_html=True,)
 
 
-def sidebar_selection(ds_name_to_dict, column_id):
+def sidebar_selection(ds_name_to_dict, column_id=""):
     ds_names = list(ds_name_to_dict.keys())
-    with st.sidebar.expander(f"Choose dataset and field {column_id}", expanded=True):
+    with st.sidebar.expander(f"Choose dataset and field {column_id}",
+                             expanded=True):
         # choose a dataset to analyze
         ds_name = st.selectbox(
             f"Choose dataset to explore{column_id}:",
@@ -50,8 +52,9 @@ def sidebar_selection(ds_name_to_dict, column_id):
         )
         # choose a config to analyze
         ds_configs = ds_name_to_dict[ds_name]
+        # special handling for the largest-by-far dataset, C4
         if ds_name == "c4":
-            config_names = ['en','en.noblocklist','realnewslike']
+            config_names = ['en', 'en.noblocklist', 'realnewslike']
         else:
             config_names = list(ds_configs.keys())
         config_name = st.selectbox(
@@ -60,12 +63,12 @@ def sidebar_selection(ds_name_to_dict, column_id):
             index=0,
         )
         # choose a subset of num_examples
-        # TODO: Handling for multiple text features
         ds_config = ds_configs[config_name]
         text_features = ds_config[HF_FEATURE_FIELD]["string"]
         # TODO @yacine: Explain what this is doing and why eg tp[0] could = "id"
         text_field = st.selectbox(
-            f"Which text feature from the{column_id} dataset would you like to analyze?",
+            f"Which text feature from the {column_id} dataset would you like to"
+            f" analyze?",
             [("text",)]
             if ds_name == "c4"
             else [tp for tp in text_features if tp[0] != "id"],
@@ -77,16 +80,18 @@ def sidebar_selection(ds_name_to_dict, column_id):
         if "test" in avail_splits:
             avail_splits.remove("test")
         split = st.selectbox(
-            f"Which split from the{column_id} dataset would you like to analyze?",
+            f"Which split from the{column_id} dataset would you like to "
+            f"analyze?",
             avail_splits,
             index=0,
         )
         label_field, label_names = (
-            ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][HF_LABEL_FIELD][0]
+            ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][
+                HF_LABEL_FIELD][0]
             if len(
-                ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][HF_LABEL_FIELD]
-            )
-            > 0
+                ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][
+                    HF_LABEL_FIELD]
+            ) > 0
             else ((), [])
         )
         return {
@@ -99,7 +104,7 @@ def sidebar_selection(ds_name_to_dict, column_id):
         }
 
 
-def expander_header(dstats, ds_name_to_dict, column_id):
+def expander_header(dstats, ds_name_to_dict, column_id=""):
     with st.expander(f"Dataset Description{column_id}"):
         st.markdown(
             ds_name_to_dict[dstats.dset_name][dstats.dset_config][HF_DESC_FIELD]
@@ -107,11 +112,11 @@ def expander_header(dstats, ds_name_to_dict, column_id):
         st.dataframe(dstats.dset_peek)
 
 
-def expander_general_stats(dstats, column_id):
+def expander_general_stats(dstats, column_id=""):
     with st.expander(f"General Text Statistics{column_id}"):
         st.caption(
-            "Use this widget to check whether the terms you see most represented"
-            " in the dataset make sense for the goals of the dataset."
+            "Use this widget to check whether the terms you see most "
+            "represented in the dataset make sense for the goals of the dataset."
         )
         st.markdown("There are {0} total words".format(str(dstats.total_words)))
         st.markdown(
@@ -133,14 +138,14 @@ def expander_general_stats(dstats, column_id):
             st.markdown(
                 "The dataset is {0}% duplicates. "
                 "For more information about the duplicates, "
-                "click the 'Duplicates' tab below.".format(str(round(dstats.dups_frac * 100, 2)))
+                "click the 'Duplicates' tab below.".format(
+                    str(round(dstats.dups_frac * 100, 2)))
             )
         else:
             st.markdown("There are 0 duplicate items in the dataset. ")
 
 
-### Show the label distribution from the datasets
-def expander_label_distribution(dstats, column_id):
+def expander_label_distribution(dstats, column_id=""):
     with st.expander(f"Label Distribution{column_id}", expanded=False):
         st.caption(
             "Use this widget to see how balanced the labels in your dataset are."
@@ -151,24 +156,29 @@ def expander_label_distribution(dstats, column_id):
             st.markdown("No labels were found in the dataset")
 
 
-def expander_text_lengths(dstats, column_id):
+def expander_text_lengths(dstats, column_id=""):
     _TEXT_LENGTH_CAPTION = (
-        "Use this widget to identify outliers, particularly suspiciously long outliers."
+        "Use this widget to identify outliers, particularly suspiciously long "
+        "outliers."
     )
     with st.expander(f"Text Lengths{column_id}", expanded=False):
         st.caption(_TEXT_LENGTH_CAPTION)
         st.markdown(
-            "Below, you can see how the lengths of the text instances in your dataset are distributed."
+            "Below, you can see how the lengths of the text instances in your "
+            "dataset are distributed."
         )
         st.markdown(
-            "Any unexpected peaks or valleys in the distribution may help to identify instances you want to remove or augment."
+            "Any unexpected peaks or valleys in the distribution may help to "
+            "identify instances you want to remove or augment."
         )
         st.markdown(
-            "### Here is the relative frequency of different text lengths in your dataset:"
+            "### Here is the relative frequency of different text lengths in "
+            "your dataset:"
         )
         try:
             st.image(dstats.fig_tok_length_png)
-        except:
+        except Exception as e:
+            logs.warning("Hit exception for length %s " % e)
             st.pyplot(dstats.fig_tok_length, use_container_width=True)
         st.markdown(
             "The average length of text instances is **"
@@ -177,8 +187,6 @@ def expander_text_lengths(dstats, column_id):
             + str(dstats.std_length)
             + "**."
         )
-        # This is quite a large file and is breaking our ability to navigate the app development.
-        # Just passing if it's not already there for launch v0
         if dstats.length_df is not None:
             start_id_show_lengths = st.selectbox(
                 "Show examples of length:",
@@ -188,144 +196,70 @@ def expander_text_lengths(dstats, column_id):
             st.table(
                 dstats.length_df[
                     dstats.length_df["length"] == start_id_show_lengths
-                ].set_index("length")
+                    ].set_index("length")
             )
 
 
-### Third, use a sentence embedding model
-def expander_text_embeddings(
-    text_dset, fig_tree, node_list, embeddings, text_field, column_id
-):
-    with st.expander(f"Text Embedding Clusters{column_id}", expanded=False):
-        _EMBEDDINGS_CAPTION = """
-        ### Hierarchical Clustering of Text Fields
-        Taking in the diversity of text represented in a dataset can be
-        challenging when it is made up of hundreds to thousands of sentences.
-        Grouping these text items based on a measure of similarity can help
-        users gain some insights into their distribution.
-        The following figure shows a hierarchical clustering of the text fields
-        in the dataset based on a
-        [Sentence-Transformer](https://hf.co/sentence-transformers/all-mpnet-base-v2)
-        model. Clusters are merged if any of the embeddings in cluster A has a
-        dot product with any of the embeddings or with the centroid of cluster B
-        higher than a threshold (one threshold per level, from 0.5 to 0.95).
-        To explore the clusters, you can:
-        - hover over a node to see the 5 most representative examples (deduplicated)
-        - enter an example in the text box below to see which clusters it is most similar to
-        - select a cluster by ID to show all of its examples
-        """
-        st.markdown(_EMBEDDINGS_CAPTION)
-        st.plotly_chart(fig_tree, use_container_width=True)
-        st.markdown("---\n")
-        if st.checkbox(
-            label="Enter text to see nearest clusters",
-            key=f"search_clusters_{column_id}",
-        ):
-            compare_example = st.text_area(
-                label="Enter some text here to see which of the clusters in the dataset it is closest to",
-                key=f"search_cluster_input_{column_id}",
-            )
-            if compare_example != "":
-                paths_to_leaves = embeddings.cached_clusters.get(
-                    compare_example,
-                    embeddings.find_cluster_beam(compare_example, beam_size=50),
-                )
-                clusters_intro = ""
-                if paths_to_leaves[0][1] < 0.3:
-                    clusters_intro += (
-                        "**Warning: no close clusters found (best score <0.3). **"
-                    )
-                clusters_intro += "The closest clusters to the text entered aboce are:"
-                st.markdown(clusters_intro)
-                for path, score in paths_to_leaves[:5]:
-                    example = text_dset[
-                        node_list[path[-1]]["sorted_examples_centroid"][0][0]
-                    ][text_field][:256]
-                    st.write(
-                        f"Cluster {path[-1]:5d} | Score: {score:.3f}  \n Example: {example}"
-                    )
-                show_node_default = paths_to_leaves[0][0][-1]
-            else:
-                show_node_default = len(node_list) // 2
-        else:
-            show_node_default = len(node_list) // 2
-        st.markdown("---\n")
-        if text_dset is None:
-            st.markdown("Missing source text to show, check back later!")
-        else:
-            show_node = st.selectbox(
-                f"Choose a leaf node to explore in the{column_id} dataset:",
-                range(len(node_list)),
-                index=show_node_default,
-            )
-            node = node_list[show_node]
-            start_id = st.slider(
-                f"Show closest sentences in cluster to the centroid{column_id} starting at index:",
-                0,
-                len(node["sorted_examples_centroid"]) - 5,
-                value=0,
-                step=5,
-            )
-            for sid, sim in node["sorted_examples_centroid"][start_id : start_id + 5]:
-                # only show the first 4 lines and the first 10000 characters
-                show_text = text_dset[sid][text_field][:10000]
-                show_text = "\n".join(show_text.split("\n")[:4])
-                st.text(f"{sim:.3f} \t {show_text}")
-
-
-### Then, show duplicates
-def expander_text_duplicates(dstats, column_id):
-    # TODO: Saving/loading figure
+def expander_text_duplicates(dstats, column_id=""):
     with st.expander(f"Text Duplicates{column_id}", expanded=False):
         st.caption(
-            "Use this widget to identify text strings that appear more than once."
+            "Use this widget to identify text strings that appear more than "
+            "once."
         )
         st.markdown(
-            "A model's training and testing may be negatively affected by unwarranted duplicates ([Lee et al., 2021](https://arxiv.org/abs/2107.06499))."
+            "A model's training and testing may be negatively affected by "
+            "unwarranted duplicates "
+            "([Lee et al., 2021](https://arxiv.org/abs/2107.06499))."
         )
         st.markdown("------")
         st.write(
-            "### Here is the list of all the duplicated items and their counts in the dataset."
+            "### Here is the list of all the duplicated items and their counts "
+            "in the dataset."
         )
         if not dstats.duplicates_results:
             st.write("There are no duplicates in this dataset! 🥳")
         else:
             st.write("The fraction of the data that is a duplicate is:")
             st.write(str(round(dstats.dups_frac, 4)))
-            # TODO: Check if this is slow when the size is large -- should we store as dataframes?
+            # TODO: Check if this is slow when the size is large --
+            # Should we store as dataframes?
             # Dataframes allow this to be interactive.
-            st.dataframe(counter_dict_to_df(dstats.dups_dict))
+            st.dataframe(ds_utils.counter_dict_to_df(dstats.dups_dict))
 
 
-### Then, show perplexities
-def expander_text_perplexities(dstats, column_id):
-    # TODO: Saving/loading figure
+def expander_text_perplexities(dstats, column_id=""):
     with st.expander(f"Text Perplexities{column_id}", expanded=False):
         st.caption(
             "Use this widget to identify text perplexities from GPT-2."
         )
         st.markdown(
             """
-            Outlier perplexities, especially very high values, could highlight an issue
-            with an example. Smaller variations should be interpreted with more care,
-            as they indicate how similar to the GPT-2 training corpus the examples are
-            rather than being reflective of general linguistic properties.
-            For more information on GPT-2, see its [model card](https://hf.co/gpt2).
+            Outlier perplexities, especially very high values, could highlight 
+            an issue with an example. Smaller variations should be interpreted 
+            with more care, as they indicate how similar to the GPT-2 training 
+            corpus the examples are rather than being reflective of general 
+            linguistic properties.
+            For more information on GPT-2, 
+            see its [model card](https://hf.co/gpt2).
             """
         )
         st.markdown("------")
         st.write(
-            "### Here is the list of the examples in the dataset, sorted by GPT-2 perplexity:"
+            "### Here is the list of the examples in the dataset, sorted by "
+            "GPT-2 perplexity:"
         )
         if dstats.perplexities_df is None or dstats.perplexities_df.empty:
-            st.write("Perplexities have not been computed yet for this dataset, or this dataset is too large (> 1,000,000 examples).")
+            st.write(
+                "Perplexities have not been computed yet for this dataset, or "
+                "this dataset is too large for the UI (> 1,000,000 examples).")
         else:
             st.dataframe(dstats.perplexities_df.reset_index(drop=True))
 
 
 def expander_npmi_description(min_vocab):
     _NPMI_CAPTION = (
-        "Use this widget to identify problematic biases and stereotypes in your data."
+        "Use this widget to identify problematic biases and stereotypes in "
+        "your data."
     )
     _NPMI_CAPTION1 = """
     nPMI scores for a word help to identify potentially
@@ -350,13 +284,14 @@ def expander_npmi_description(min_vocab):
         "identity terms.  "
     )
     st.markdown(
-        "The more *positive* the score, the more associated the word is with the first identity term.  "
-        "The more *negative* the score, the more associated the word is with the second identity term."
+        "The more *positive* the score, the more associated the word is with "
+        "the first identity term.  "
+        "The more *negative* the score, the more associated the word is with "
+        "the second identity term."
     )
 
 
-### Finally, show Zipf stuff
-def expander_zipf(dstats, column_id):
+def expander_zipf(dstats, column_id=""):
     z = dstats.z
     zipf_fig = dstats.zipf_fig
     with st.expander(
@@ -430,14 +365,11 @@ def expander_zipf(dstats, column_id):
             st.write("Under construction!")
 
 
-### Finally finally finally, show nPMI stuff.
-def npmi_widget(dstats, column_id):
+def npmi_widget(dstats, column_id=""):
     """
-    Part of the main app, but uses a user interaction so pulled out as its own f'n.
-    :param use_cache:
+    Part of the UI, but providing for interaction.
     :param column_id:
-    :param npmi_stats:
-    :param min_vocab:
+    :param dstats:
     :return:
     """
     min_vocab = dstats.min_vocab_count
@@ -458,64 +390,47 @@ def npmi_widget(dstats, column_id):
             # subgroup ordering.
             subgroup_pair = sorted([term1, term2])
             try:
-                joint_npmi_df = npmi_stats.load_or_prepare_joint_npmi(subgroup_pair)
+                joint_npmi_df = npmi_stats.load_or_prepare_joint_npmi(
+                    subgroup_pair)
                 npmi_show(joint_npmi_df)
             except KeyError:
                 st.markdown(
-                    "**WARNING!** The nPMI for these terms has not been pre-computed, please re-run caching."
+                    "**WARNING!** The nPMI for these terms has not been"
+                    " pre-computed, please re-run caching."
                 )
         else:
             st.markdown(
-                "No words found co-occurring with both of the selected identity terms."
+                "No words found co-occurring with both of the selected identity"
+                " terms."
             )
 
 
 def npmi_show(paired_results):
     if paired_results.empty:
-        st.markdown("No words that co-occur enough times for results!  Or there's a 🐛.  Or we're still computing this one. 🤷")
+        st.markdown(
+            "No words that co-occur enough times for results!  Or there's a 🐛."
+            "  Or we're still computing this one. 🤷")
     else:
-        s = pd.DataFrame(paired_results.sort_values(by="npmi-bias", ascending=True))
-        # s.columns=pd.MultiIndex.from_arrays([['npmi','npmi','npmi','count', 'count'],['bias','man','straight','man','straight']])
+        s = pd.DataFrame(
+            paired_results.sort_values(by="npmi-bias", ascending=True))
         s.index.name = "word"
         npmi_cols = s.filter(like="npmi").columns
         count_cols = s.filter(like="count").columns
         if s.shape[0] > 10000:
-            bias_thres = max(abs(s["npmi-bias"][5000]), abs(s["npmi-bias"][-5000]))
-            print(f"filtering with bias threshold: {bias_thres}")
+            bias_thres = max(abs(s["npmi-bias"][5000]),
+                             abs(s["npmi-bias"][-5000]))
+            logs.info(f"filtering with bias threshold: {bias_thres}")
             s_filtered = s[s["npmi-bias"].abs() > bias_thres]
         else:
             s_filtered = s
-        # TODO: This is very different look than the duplicates table above. Should probably standardize.
         cm = sns.palplot(sns.diverging_palette(270, 36, s=99, l=48, n=16))
-        out_df = (
-            s_filtered.style.background_gradient(subset=npmi_cols, cmap=cm)
-            .format(subset=npmi_cols, formatter="{:,.3f}")
-            .format(subset=count_cols, formatter=int)
-            .set_properties(
-                subset=count_cols, **{"width": "10em", "text-align": "center"}
-            )
-            .set_properties(**{"align": "center"})
-            .set_caption(
-                "nPMI scores and co-occurence counts between the selected identity terms and the words they both co-occur with"
-            )
-        )  # s = pd.read_excel("output.xlsx", index_col="word")
+        out_df = (s_filtered.style.background_gradient(subset=npmi_cols,
+                                                       cmap=cm).format(
+            subset=npmi_cols, formatter="{:,.3f}").format(subset=count_cols,
+                                                          formatter=int).set_properties(
+            subset=count_cols,
+            **{"width": "10em", "text-align": "center"}).set_properties(
+            **{"align": "center"}).set_caption(
+            "nPMI scores and co-occurence counts between the selected identity terms and the words they both co-occur with"))
         st.write("### Here is your dataset's nPMI results:")
         st.dataframe(out_df)
-
-### Dumping unused functions here for now
-### Second, show the distribution of text perplexities
-'''
-def expander_text_perplexities(text_label_df, sorted_sents_loss, fig_loss):
-    with st.expander("Show text perplexities A", expanded=False):
-        st.markdown("### Text perplexities A")
-        st.plotly_chart(fig_loss, use_container_width=True)
-        start_id_show_loss = st.slider(
-            "Show highest perplexity sentences in A starting at index:",
-            0,
-            text_label_df.shape[0] - 5,
-            value=0,
-            step=5,
-        )
-        for lss, sent in sorted_sents_loss[start_id_show_loss : start_id_show_loss + 5]:
-            st.text(f"{lss:.3f} {sent}")
-'''
