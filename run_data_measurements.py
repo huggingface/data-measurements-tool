@@ -101,9 +101,9 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
     if do_all or dataset_args["calculation"] == "labels":
         print("\n* Calculating label statistics.")
         dstats.load_or_prepare_labels()
-        label_fid_dict = dstats.label_files
+        npmi_fid_dict = dstats.label_files
         print("If all went well, then results are in the following files:")
-        for key, value in label_fid_dict.items():
+        for key, value in npmi_fid_dict.items():
             print("%s: %s" % (key, value))
         print()
 
@@ -112,6 +112,12 @@ def load_or_prepare(dataset_args, do_html=False, use_cache=False):
     if do_all or dataset_args["calculation"] == "npmi":
         print("\n* Preparing nPMI.")
         dstats.load_or_prepare_npmi()
+        npmi_fid_dict = dstats.npmi_files
+        print("If all went well, then results are in the following files:")
+        for key, value in npmi_fid_dict.items():
+            print("%s: %s" % (key, value))
+        print()
+
         #do_npmi(npmi_stats, use_cache=use_cache)
         #print("Done!")
         #print(

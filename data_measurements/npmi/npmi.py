@@ -52,8 +52,13 @@ class DMTHelper:
         self.min_count = dstats.min_vocab_count
         self.npmi_cache_path = pjoin(dstats.dataset_cache_dir, "npmi")
         ds_utils.make_path(self.npmi_cache_path)
-        self.npmi_terms_json_fid = pjoin(dstats.dataset_cache_dir, "npmi_terms.json")
-        self.npmi_df_fid = pjoin(dstats.dataset_cache_dir, "npmi_results.feather")
+        self.npmi_terms_json_fid = pjoin(self.npmi_cache_path, "npmi_terms.json")
+        #self.npmi_df_fid = pjoin(self.npmi_cache_path, "npmi_results.feather")
+        self.npmi_results_json_fid_dict = {}
+        for identity_term in identity_terms:
+            json_fid = pjoin(self.npmi_cache_path, "word_associations-" + identity_term + ".json")
+            self.npmi_results_json_fid_dict[identity_term] = json_fid
+        #self.npmi_results_json_prefix = self.npmi_cache_path + "/word_associations-"
         # TODO: Users ideally can type in whatever words they want.
         # This is the full list of terms.
         self.identity_terms = identity_terms
@@ -66,7 +71,7 @@ class DMTHelper:
         self.joint_npmi_df_dict = {}
         self.subgroup_results_dict = {}
         self.subgroup_files = {}
-        self.npmi_results = None
+        self.npmi_results_dict = {}
 
     def run_DMT_processing(self, load_only=False):
         # Sets the identity terms that can be used
@@ -77,14 +82,14 @@ class DMTHelper:
     def load_or_prepare_npmi_results(self, load_only=False):
         # If we're trying to use the cache of available terms
         if self.use_cache:
-            self.npmi_results = self._load_npmi_results_cache()
+            self.npmi_results_dict = self._load_npmi_results_cache()
         # Figure out the identity terms if we're not just loading from cache
         if not load_only:
-            if not self.npmi_results:
+            if not self.npmi_results_dict:
                 npmi_obj = nPMI(self.dstats.vocab_counts_df,
                                 self.tokenized_sentence_df,
                                 self.avail_identity_terms)
-                self.npmi_results = npmi_obj.npmi_bias_df
+                self.npmi_results_dict = npmi_obj.npmi_results_dict
             # Finish
             if self.save:
                 self._write_cache()
@@ -117,10 +122,16 @@ class DMTHelper:
         return []
 
     def _load_npmi_results_cache(self):
-        if exists(self.npmi_df_fid):
-            npmi_results = json.load(open(self.npmi_terms_json_fid))
-            return npmi_results
-        return None
+        npmi_results_dict = {}
+        for subgroup in self.identity_terms:
+            npmi_results_json_subgroup_fid = self.npmi_results_json_fid_dict[subgroup]
+            if exists(npmi_results_json_subgroup_fid):
+                npmi_results_dict[subgroup] = ds_utils.read_json(npmi_results_json_subgroup_fid)
+        return npmi_results_dict
+        #if exists(self.npmi_df_fid):
+        #    npmi_results = ds_utils.read_df(self.npmi_terms_json_fid)
+        #    return npmi_results
+        #return None
 
     def _prepare_identity_terms(self):
         """Uses DataFrame magic to return those terms that appear
@@ -146,11 +157,17 @@ class DMTHelper:
         ds_utils.make_path(self.npmi_cache_path)
         if self.avail_identity_terms:
             ds_utils.write_json(self.avail_identity_terms, self.npmi_terms_json_fid)
-        if self.npmi_results is not None:
-            ds_utils.write_df(self.npmi_results, self.npmi_df_fid)
+        for subgroup in self.npmi_results_dict:
+            #ds_utils.write_df(self.npmi_results, self.npmi_df_fid)
+            npmi_results_json_subgroup_fid = self.npmi_results_json_fid_dict[subgroup]
+            ds_utils.write_json(self.npmi_results_dict[subgroup], npmi_results_json_subgroup_fid)
 
     def get_available_terms(self):
         return self.load_or_prepare_identity_terms()
+
+    def get_filenames(self):
+        filenames = {"available terms":self.npmi_terms_json_fid, "results":self.npmi_results_json_fid_dict}
+        return filenames
 
 
 class nPMI:
@@ -175,91 +192,98 @@ class nPMI:
         logs.info(self.word_cnt_per_sentence)
         logs.info("identity terms are")
         logs.info(self.identity_terms)
-        # Data structure that holds the npmi scores and differences
-        # for different subgroups.
-        self.npmi_bias_df = pd.DataFrame(index=vocab_counts_df.index)
-        self.calc_metrics()
-        #for idx1 in range(len(self.identity_terms)):
-        #    subgroup1 = self.identity_terms[idx1]
-        #    vocab_cooc_df, pmi_df, npmi_df1 = self.calc_metrics(subgroup1)
-        #    for idx2 in range(idx1+1,len(self.identity_terms)):
-        #        subgroup2 = self.identity_terms[idx2]
-        #        vocab_cooc_df2, pmi_df2, npmi_df2 = self.calc_metrics(subgroup2)
-        #        # Canonical ordering
-        #        subgroup_tuple = sorted([subgroup1, subgroup2])
-        #        self.npmi_bias_df[subgroup_tuple] = npmi_df1 - npmi_df2
-        #        print(self.npmi_bias_df)
-        # Dataframe of word co-occurrences
-        # self.coo_df = self.count_cooccurrences(self.identity_terms, self.word_cnt_per_sentence)
+        self.npmi_results_dict = self.calc_metrics()
+        #self.npmi_bias_df = self.calc_metrics()
+        #print(self.npmi_bias_df)
 
-    def calc_metrics(self, subgroup):
-        # Index of the subgroup word in the sparse vector
-        subgroup_idx = self.vocab_counts_df.index.get_loc(subgroup)
-        logs.debug("Calculating co-occurrences...")
-        df_coo = self.calc_cooccurrences(subgroup, subgroup_idx)
-        vocab_cooc_df = self.set_idx_cols(df_coo, subgroup)
-        logs.debug(vocab_cooc_df)
-        logs.debug("Calculating PMI...")
-        pmi_df = self.calc_PMI(vocab_cooc_df, subgroup)
-        logs.debug(pmi_df)
-        logs.debug("Calculating nPMI...")
-        npmi_df = self.calc_nPMI(pmi_df, vocab_cooc_df, subgroup)
-        logs.debug(npmi_df)
-        return vocab_cooc_df, pmi_df, npmi_df
+    def calc_paired_metrics(self):
+        pass
+
+    def calc_metrics(self):
+        npmi_bias_dict = {}
+        # The columns should be identical sizes, so this hopefully won't have an effect.
+        take_bigger = lambda s1, s2: s1 if s1.sum() < s2.sum() else s2
+        for subgroup in self.identity_terms:
+            logs.info("Calculating for %s " % subgroup)
+            # Index of the subgroup word in the sparse vector
+            subgroup_idx = self.vocab_counts_df.index.get_loc(subgroup)
+            logs.debug("Calculating co-occurrences...")
+            df_coo = self.calc_cooccurrences(subgroup, subgroup_idx)
+            vocab_cooc_df = self.set_columm_names(df_coo, subgroup)
+            logs.debug("Converting from vocab indexes to vocab, we now have:")
+            logs.debug(vocab_cooc_df)
+            logs.debug("Calculating PMI...")
+            pmi_df = self.calc_PMI(vocab_cooc_df, subgroup)
+            logs.debug(pmi_df)
+            logs.debug("Calculating nPMI...")
+            npmi_df = self.calc_nPMI(pmi_df, vocab_cooc_df, subgroup)
+            logs.debug(npmi_df)
+            # Create a datastructure for all the calculations.
+            npmi_bias_dict[subgroup] = {"count":vocab_cooc_df.to_dict(), "pmi":pmi_df.to_dict(), "npmi": npmi_df.to_dict()}#vocab_cooc_df.combine(pmi_df, take_bigger, fill_value=0).combine(npmi_df, take_bigger, fill_value=0)
+            #logs.debug("npmi_bias_dict is:")
+            #print(npmi_bias_dict)
+        #npmi_bias_df = pd.DataFrame(npmi_bias_dict, index=["count", "npmi", "pmi"])
+        return npmi_bias_dict
+
 
     def calc_cooccurrences(self, subgroup, subgroup_idx):
-        """
-        Creates the co-occurrence matrix with dimensions vocab x vocab
-        by transposing vocab x sentence matrices.
-        """
+        initialize = True
+        coo_df = None
         # Big computation here!  Should only happen once per subgroup.
-        logs.info(
-            "Approaching big computation! Here, we count all words in the sentences, making a matrix of sentences x vocab."
+        logs.debug(
+            "Approaching big computation! Here, we binarize all words in the sentences, making a sparse matrix of sentences."
         )
-        # For each batch, calculate how many times the subgroup identity term
-        # co-occurs with the rest of the vocabulary
         for batch_id in range(len(self.word_cnt_per_sentence)):
-            logs.debug(
-                "%s of %s co-occurrence count batches"
-                % (str(batch_id), str(len(self.word_cnt_per_sentence)))
-            )
-            # Sparse vectors of the vocab per sentence
-            # Size: # sentences in batch x vocabulary size
-            sent_batch_df = pd.DataFrame(self.word_cnt_per_sentence[batch_id])
-            logs.debug(subgroup_idxs)
-            logs.debug(sent_batch_df[[35]])
-            # Extract the set of sentences where the identity term appear.
-            # We do this to speed up the co-occurrence calculation,
-            # limiting it to those sentences that have the terms we care about.
-            identity_sentences_df = sent_batch_df.loc[(sent_batch_df[subgroup_idxs] != 0).any(axis=1)]
-            logs.debug(sent_batch_df)
-            logs.debug(identity_sentences_df)
-            # Calculate how much the identity terms co-occur with all the others
-            self.update_cooc_matrix(batch_id, identity_sentences_df, sent_batch_df)
+            if not batch_id % 100:
+                logs.debug(
+                    "%s of %s co-occurrence count batches"
+                    % (str(batch_id), str(len(self.word_cnt_per_sentence)))
+                )
+            # List of all the sentences (list of vocab) in that batch
+            batch_sentence_row = self.word_cnt_per_sentence[batch_id]
+            # Dataframe of # sentences in batch x vocabulary size
+            sent_batch_df = pd.DataFrame(batch_sentence_row)
+            # Subgroup counts per-sentence for the given batch
+            subgroup_df = sent_batch_df[subgroup_idx]
+            subgroup_df.columns = [subgroup]
+            # Remove the sentences where the count of the subgroup is 0.
+            # This way we have less computation & resources needs.
+            subgroup_df = subgroup_df[subgroup_df > 0]
+            mlb_subgroup_only = sent_batch_df[sent_batch_df[subgroup_idx] > 0]
+            if not batch_id % 100:
+                logs.debug("Removing 0 counts, subgroup_df is")
+                logs.debug(subgroup_df)
+                logs.debug("mlb subgroup only is")
+                logs.debug(mlb_subgroup_only)
+                # Create cooccurrence matrix for the given subgroup and all words.
+                logs.debug("Now we do the transpose approach for co-occurrences")
+            batch_coo_df = pd.DataFrame(mlb_subgroup_only.T.dot(subgroup_df))
+            # Creates a batch-sized dataframe of co-occurrence counts.
+            # Note these could just be summed rather than be batch size.
+            if initialize:
+                coo_df = batch_coo_df
+            else:
+                coo_df = coo_df.add(batch_coo_df, fill_value=0)
+            if not batch_id % 100:
+                logs.debug("coo_df is")
+                logs.debug(coo_df)
+            initialize = False
+        logs.debug("Returning co-occurrence matrix")
+        logs.debug(coo_df)
+        return pd.DataFrame(coo_df)
 
-
-    def update_cooc_matrix(self, batch_id, identity_sentences_df, sent_batch_df):
-        # Create cooccurrence matrix for the given subgroup and all words.
-        logs.debug("Doing the transpose for co-occurrences")
-        # Creates a batch-sized dataframe of co-occurrence counts.
-        batch_coo_df = pd.DataFrame(identity_sentences_df.T.dot(sent_batch_df))
-        # Initialize the co-occurrence matrix with the correct number of columns
-        if batch_id == 0:
-            self.coo_df = batch_coo_df.astype(int)
-        else:
-            self.coo_df = self.coo_df.add(batch_coo_df, fill_value=0).astype(int)
-        logs.debug("Updated co-occurrence matrix:")
-        logs.debug(self.coo_df)
-
-    def set_idx_cols(self, df_coo, subgroup):
+    def set_columm_names(self, df_coo, subgroup):
         """
         :param df_coo: Co-occurrence counts for subgroup, length is num_words
         :return:
         """
         count_df = df_coo.set_index(self.vocab_counts_df.index)
+        count_df = count_df.loc[~(count_df == 0).all(axis=1)]
         count_df.columns = [subgroup + "-count"]
         count_df[subgroup + "-count"] = count_df[subgroup + "-count"].astype(
             int)
+        print("count_df is")
+        print(count_df)
         return count_df
 
     def calc_PMI(self, vocab_cooc_df, subgroup):
@@ -277,7 +301,7 @@ class nPMI:
         p_subgroup_g_word = (
                 vocab_cooc_df[subgroup + "-count"] / self.vocab_counts_df[
             "count"]
-        )
+        ).dropna()
         logs.info("p_subgroup_g_word is")
         logs.info(p_subgroup_g_word)
         pmi_df = pd.DataFrame()
@@ -286,7 +310,7 @@ class nPMI:
         # can be based on this zip idea:
         # df_test['size_kb'],  df_test['size_mb'], df_test['size_gb'] =
         # zip(*df_test['size'].apply(sizes))
-        return pmi_df
+        return pmi_df.dropna()
 
     def calc_nPMI(self, pmi_df, vocab_cooc_df, subgroup):
         """
@@ -302,7 +326,7 @@ class nPMI:
         normalize_pmi = -np.log(p_word_g_subgroup * p_word)
         npmi_df = pd.DataFrame()
         npmi_df[subgroup + "-npmi"] = pmi_df[subgroup + "-pmi"] / normalize_pmi
-        return npmi_df
+        return npmi_df.dropna()
 
 
 def count_words_per_sentence(tokenized_sentence_df, vocab_counts_df,
