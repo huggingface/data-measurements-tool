@@ -55,9 +55,16 @@ class DMTHelper:
         self.npmi_terms_json_fid = pjoin(self.npmi_cache_path, "npmi_terms.json")
         #self.npmi_df_fid = pjoin(self.npmi_cache_path, "npmi_results.feather")
         self.npmi_results_json_fid_dict = {}
-        for identity_term in identity_terms:
+        for i in range(len(identity_terms)):
+            identity_term = identity_terms[i]
             json_fid = pjoin(self.npmi_cache_path, "word_associations-" + identity_term + ".json")
             self.npmi_results_json_fid_dict[identity_term] = json_fid
+            for j in range(i+1,len(identity_terms)):
+                identity_term2 = identity_terms[j]
+                identity_pair = tuple(sorted([identity_term, identity_term2]))
+                identity_pair_fid = identity_pair[0] + "-" + identity_pair[1]
+                paired_json_fid = pjoin(self.npmi_cache_path, "word_associations-" + identity_pair_fid + ".json")
+                self.npmi_results_json_fid_dict[identity_pair] = paired_json_fid
         #self.npmi_results_json_prefix = self.npmi_cache_path + "/word_associations-"
         # TODO: Users ideally can type in whatever words they want.
         # This is the full list of terms.
@@ -66,12 +73,14 @@ class DMTHelper:
         logs.info(self.identity_terms)
         # identity_terms terms that are available more than _MIN_VOCAB_COUNT times
         self.avail_identity_terms = []
+        # pairs of identity terms between which differences are computed.
+        self.paired_identity_terms = []
         # TODO: Let users specify
         self.open_class_only = True
         self.joint_npmi_df_dict = {}
         self.subgroup_results_dict = {}
         self.subgroup_files = {}
-        self.npmi_results_dict = {}
+        self.results_dict = {}
 
     def run_DMT_processing(self, load_only=False):
         # Sets the identity terms that can be used
@@ -82,14 +91,14 @@ class DMTHelper:
     def load_or_prepare_npmi_results(self, load_only=False):
         # If we're trying to use the cache of available terms
         if self.use_cache:
-            self.npmi_results_dict = self._load_npmi_results_cache()
+            self.results_dict = self._load_npmi_results_cache()
         # Figure out the identity terms if we're not just loading from cache
         if not load_only:
-            if not self.npmi_results_dict:
+            if not self.results_dict:
                 npmi_obj = nPMI(self.dstats.vocab_counts_df,
                                 self.tokenized_sentence_df,
                                 self.avail_identity_terms)
-                self.npmi_results_dict = npmi_obj.npmi_results_dict
+                self.results_dict = npmi_obj.results_dict
             # Finish
             if self.save:
                 self._write_cache()
@@ -98,7 +107,8 @@ class DMTHelper:
         """
         Figures out what identity terms the user can select, based on whether
         they occur more than self.min_vocab_count times
-        :return: Identity terms occurring at least self.min_vocab_count times.
+        Provides identity terms -- uniquely and in pairs -- occurring at least
+        self.min_vocab_count times.
         """
         # If we're trying to use the cache of available terms
         if self.use_cache:
@@ -112,8 +122,21 @@ class DMTHelper:
                 self.avail_identity_terms = self._prepare_identity_terms()
             # Finish
             if self.save:
-                # TODO:PICKUPHERE
                 self._write_cache()
+        # Construct the identity pairs available based on this.
+        self.paired_identity_terms = self._pair_avail_identity_terms()
+
+    def _pair_avail_identity_terms(self):
+        paired_identity_terms = []
+        for i in range(len(self.identity_terms)):
+            s1 = self.identity_terms[i]
+            for j in range(i+1, len(self.identity_terms)):
+                s2 = self.identity_terms[j]
+                # Use the same (alphabetical) ordering for subgroup pairs.
+                pair = tuple(sorted([s1, s2]))
+                paired_identity_terms += [pair]
+        return paired_identity_terms
+
 
     def _load_identity_cache(self):
         if exists(self.npmi_terms_json_fid):
@@ -122,16 +145,11 @@ class DMTHelper:
         return []
 
     def _load_npmi_results_cache(self):
-        npmi_results_dict = {}
-        for subgroup in self.identity_terms:
-            npmi_results_json_subgroup_fid = self.npmi_results_json_fid_dict[subgroup]
-            if exists(npmi_results_json_subgroup_fid):
-                npmi_results_dict[subgroup] = ds_utils.read_json(npmi_results_json_subgroup_fid)
-        return npmi_results_dict
-        #if exists(self.npmi_df_fid):
-        #    npmi_results = ds_utils.read_df(self.npmi_terms_json_fid)
-        #    return npmi_results
-        #return None
+        results_dict = {}
+        for subgroups, fid in self.npmi_results_json_fid_dict.items():
+            if exists(fid):
+                results_dict[subgroups] = ds_utils.read_json(fid)
+        return results_dict
 
     def _prepare_identity_terms(self):
         """Uses DataFrame magic to return those terms that appear
@@ -157,10 +175,9 @@ class DMTHelper:
         ds_utils.make_path(self.npmi_cache_path)
         if self.avail_identity_terms:
             ds_utils.write_json(self.avail_identity_terms, self.npmi_terms_json_fid)
-        for subgroup in self.npmi_results_dict:
-            #ds_utils.write_df(self.npmi_results, self.npmi_df_fid)
-            npmi_results_json_subgroup_fid = self.npmi_results_json_fid_dict[subgroup]
-            ds_utils.write_json(self.npmi_results_dict[subgroup], npmi_results_json_subgroup_fid)
+        for subgroups in self.results_dict:
+            npmi_results_json_subgroup_fid = self.npmi_results_json_fid_dict[subgroups]
+            ds_utils.write_json(self.results_dict[subgroups], npmi_results_json_subgroup_fid)
 
     def get_available_terms(self):
         return self.load_or_prepare_identity_terms()
@@ -192,12 +209,37 @@ class nPMI:
         logs.info(self.word_cnt_per_sentence)
         logs.info("identity terms are")
         logs.info(self.identity_terms)
-        self.npmi_results_dict = self.calc_metrics()
-        #self.npmi_bias_df = self.calc_metrics()
+        self.results_dict = self.calc_metrics()
+        self.paired_results_dict = self.calc_paired_metrics()
+        logs.debug("npmi bias is")
+        logs.debug(self.paired_results_dict)
         #print(self.npmi_bias_df)
 
     def calc_paired_metrics(self):
-        pass
+        """Uses the subgroup dictionaries to compute the differences across pairs.
+        Uses dictionaries rather than dataframes due to the fact that dicts seem
+        to be preferred amongst evaluate users so far."""
+        paired_results_dict = {}
+        for i in range(len(self.identity_terms)):
+            s1 = self.identity_terms[i]
+            s1_dict = self._get_subgroup_dict(s1)
+            for j in range(i+1, len(self.identity_terms)):
+                s2 = self.identity_terms[j]
+                s2_dict = self._get_subgroup_dict(s2)
+                shared_keys = set(s1_dict).intersection(s2_dict)
+                npmi_diff = {key: s1_dict[key] - s2_dict[key] for key in shared_keys}
+                # Use the same (alphabetical) ordering for subgroup pairs.
+                pair = tuple(sorted([s1, s2]))
+                paired_results_dict[pair] = npmi_diff
+        return paired_results_dict
+
+    def _get_subgroup_dict(self, id_term, association="npmi"):
+        """Helper function to extract the dictionaries of {word:association_measure} for each
+        subgroup."""
+        id_term_association = self.results_dict[id_term][association]
+        id_term_npmi_key = id_term + "-" + association
+        id_term_dict = id_term_association[id_term_npmi_key]
+        return id_term_dict
 
     def calc_metrics(self):
         npmi_bias_dict = {}
@@ -218,10 +260,11 @@ class nPMI:
             logs.debug("Calculating nPMI...")
             npmi_df = self.calc_nPMI(pmi_df, vocab_cooc_df, subgroup)
             logs.debug(npmi_df)
-            # Create a datastructure for all the calculations.
-            npmi_bias_dict[subgroup] = {"count":vocab_cooc_df.to_dict(), "pmi":pmi_df.to_dict(), "npmi": npmi_df.to_dict()}#vocab_cooc_df.combine(pmi_df, take_bigger, fill_value=0).combine(npmi_df, take_bigger, fill_value=0)
-            #logs.debug("npmi_bias_dict is:")
-            #print(npmi_bias_dict)
+            # Create a data structure for the identity term associations
+            npmi_bias_dict[subgroup] = {"count":vocab_cooc_df.to_dict(), "pmi":pmi_df.to_dict(), "npmi": npmi_df.to_dict()}
+            #vocab_cooc_df.combine(pmi_df, take_bigger, fill_value=0).combine(npmi_df, take_bigger, fill_value=0)
+            logs.debug("npmi_bias_dict is:")
+            print(npmi_bias_dict)
         #npmi_bias_df = pd.DataFrame(npmi_bias_dict, index=["count", "npmi", "pmi"])
         return npmi_bias_dict
 
@@ -231,7 +274,8 @@ class nPMI:
         coo_df = None
         # Big computation here!  Should only happen once per subgroup.
         logs.debug(
-            "Approaching big computation! Here, we binarize all words in the sentences, making a sparse matrix of sentences."
+            "Approaching big computation! Here, we binarize all words in the "
+            "sentences, making a sparse matrix of sentences."
         )
         for batch_id in range(len(self.word_cnt_per_sentence)):
             if not batch_id % 100:

@@ -104,13 +104,18 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
             print("%s: %s" % (key, value))
         print()
 
-    if do_all or dataset_args["calculation"] == "npmi":
+    if do_all or calculation == "npmi":
         print("\n* Preparing nPMI.")
         dstats.load_or_prepare_npmi()
         npmi_fid_dict = dstats.npmi_files
         print("If all went well, then results are in the following files:")
         for key, value in npmi_fid_dict.items():
-            print("%s: %s" % (key, value))
+            if isinstance(value, dict):
+                print(key + ":")
+                for key2, value2 in value.items():
+                    print("\t%s: %s" % (key2, value2))
+            else:
+                print("%s: %s" % (key, value))
         print()
 
         #do_npmi(npmi_stats, use_cache=use_cache)
@@ -349,7 +354,7 @@ def main():
                             "Subject: Data Measurements Computed!\n\n" + computed_message)
             logs.info(computed_message)
     except Exception as e:
-        logs.warning(e)
+        logs.exception(e)
         error_message = f"An error occurred in computing data measurements " \
                         f"for dataset with arguments: {args}. " \
                         f"Feel free to make an issue here: " \

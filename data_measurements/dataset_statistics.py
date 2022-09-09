@@ -25,7 +25,7 @@ import utils
 import utils.dataset_utils as ds_utils
 from data_measurements.embeddings.embeddings import Embeddings
 from data_measurements.labels import labels
-from data_measurements.npmi.npmi import nPMI
+from data_measurements.npmi import npmi
 from data_measurements.text_duplicates import text_duplicates as td
 from data_measurements.zipf import zipf
 from datasets import load_from_disk, load_metric
@@ -312,7 +312,7 @@ class DatasetStatisticsCacheClass:
         """
         # Text length figure
         if self.use_cache and exists(self.fig_tok_length_fid):
-            self.fig_tok_length_png = mpimg.imread(self.fig_tok_length_fid)
+            self.fig_tok_length = mpimg.imread(self.fig_tok_length_fid)
         elif not load_only:
             self.prepare_fig_text_lengths()
             if self.save:
@@ -584,7 +584,7 @@ class DatasetStatisticsCacheClass:
     def load_or_prepare_npmi(self, load_only=False):
         npmi_obj = npmi.DMTHelper(self, IDENTITY_TERMS, use_cache=self.use_cache, save=self.save)
         npmi_obj.run_DMT_processing(load_only=load_only)
-        self.npmi_results = npmi_obj.npmi_results_dict
+        self.npmi_results = npmi_obj.results_dict
         self.npmi_files = npmi_obj.get_filenames()
 
     def load_or_prepare_zipf(self, load_only=False):
