@@ -582,8 +582,8 @@ class DatasetStatisticsCacheClass:
         return tokenized_df
 
     def load_or_prepare_npmi(self, load_only=False):
-        npmi_obj = npmi.DMTHelper(self, IDENTITY_TERMS, use_cache=self.use_cache, save=self.save)
-        npmi_obj.run_DMT_processing(load_only=load_only)
+        npmi_obj = npmi.DMTHelper(self, IDENTITY_TERMS, load_only=load_only, use_cache=self.use_cache, save=self.save)
+        npmi_obj.run_DMT_processing()
         self.npmi_results = npmi_obj.results_dict
         self.npmi_files = npmi_obj.get_filenames()
 
