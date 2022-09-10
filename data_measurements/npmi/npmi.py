@@ -287,25 +287,45 @@ class nPMI:
         return id_results
 
     def calc_cooccurrences(self, subgroup, subgroup_idx):
-        # Big computation here!  Should only happen once per subgroup.
+        initialize = True
+        coo_df = None
+        # Big computation here!  Should only happen once.
         logs.debug(
-            "Approaching big computation! Here, we binarize all words in the "
-            "sentences, making a sparse matrix of sentences."
+            "Approaching big computation! Here, we binarize all words in the sentences, making a sparse matrix of sentences."
         )
-        coo_series = []
-        for batch_num in range(len(self.word_cnt_per_sentence)):
-            self._write_debug_msg(batch_num, msg_type="batching")
-            # Sparse-matrix sentences (columns=all vocabulary items) in batch
-            batch_sentence_row = self.word_cnt_per_sentence[batch_num]
-            # Co-occurrence counts
-            batch_coo_df = self._transpose_counts(batch_num, batch_sentence_row,
-                                                  subgroup, subgroup_idx)
-            coo_series += [batch_coo_df]
-        # Just get those terms that co-occur with the subgroup term (eg cooc>0).
-        count_df = self._isolate_subgroup_coo(coo_series)
+        for batch_id in range(len(self.mlb_list)):
+            # Every 100 batches, print out the progress.
+            if not batch_id % 100:
+                logs.debug(
+                    "%s of %s co-occurrence count batches"
+                    % (str(batch_id), str(len(self.mlb_list)))
+                )
+            # List of all the sentences (list of vocab) in that batch
+            batch_sentence_row = self.mlb_list[batch_id]
+            # Dataframe of # sentences in batch x vocabulary size
+            sent_batch_df = pd.DataFrame(batch_sentence_row)
+            # logs.info('sent batch df is')
+            # logs.info(sent_batch_df)
+            # Subgroup counts per-sentence for the given batch
+            subgroup_df = sent_batch_df[subgroup_idx]
+            subgroup_df.columns = [subgroup]
+            # Remove the sentences where the count of the subgroup is 0.
+            # This way we have less computation & resources needs.
+            subgroup_df = subgroup_df[subgroup_df > 0]
+            mlb_subgroup_only = sent_batch_df[sent_batch_df[subgroup_idx] > 0]
+            # Create cooccurrence matrix for the given subgroup and all words.
+            batch_coo_df = pd.DataFrame(mlb_subgroup_only.T.dot(subgroup_df))
+
+            # Creates a batch-sized dataframe of co-occurrence counts.
+            # Note these could just be summed rather than be batch size.
+            if initialize:
+                coo_df = batch_coo_df
+            else:
+                coo_df = coo_df.add(batch_coo_df, fill_value=0)
+            initialize = False
         logs.debug("Returning co-occurrence matrix")
-        logs.debug(count_df)
-        return count_df
+        logs.debug(coo_df)
+        return pd.DataFrame(coo_df)
 
     def _sum_coo(self, batch_coo_df, coo_list):
         """
