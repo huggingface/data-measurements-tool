@@ -214,8 +214,7 @@ class DatasetStatisticsCacheClass:
         self.text_nan_count = 0
 
         # nPMI
-        # Holds a nPMIStatisticsCacheClass object
-        self.npmi_stats = None
+        self.npmi_obj = None
         # The minimum amount of times a word should occur to be included in
         # word-count-based calculations (currently just relevant to nPMI)
         self.min_vocab_count = MIN_VOCAB_COUNT
@@ -584,6 +583,7 @@ class DatasetStatisticsCacheClass:
     def load_or_prepare_npmi(self, load_only=False):
         npmi_obj = npmi.DMTHelper(self, IDENTITY_TERMS, load_only=load_only, use_cache=self.use_cache, save=self.save)
         npmi_obj.run_DMT_processing()
+        self.npmi_obj = npmi_obj
         self.npmi_results = npmi_obj.results_dict
         self.npmi_files = npmi_obj.get_filenames()
 
