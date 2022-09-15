@@ -11,18 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import argparse
 import logging
 import streamlit as st
 from os import mkdir
 from os.path import isdir
-from data_measurements import dataset_statistics
+from pathlib import Path
+from data_measurements.dataset_statistics import DatasetStatisticsCacheClass as dmt_cls
 import utils
 from utils import dataset_utils
 from utils import streamlit_utils as st_utils
 
 logs = utils.prepare_logging(__file__)
 
+# Utility for sidebar description and selection of the dataset
+DATASET_NAME_TO_DICT = dataset_utils.get_dataset_info_dicts()
+
+
+# Set up the basic interface of the app.
 st.set_page_config(
     page_title="Demo to showcase dataset metrics",
     page_icon="https://huggingface.co/front/assets/huggingface_logo.svg",
@@ -30,228 +37,139 @@ st.set_page_config(
     initial_sidebar_state="auto",
 )
 
-# colorblind-friendly colors
-colors = [
-    "#332288",
-    "#117733",
-    "#882255",
-    "#AA4499",
-    "#CC6677",
-    "#44AA99",
-    "#DDCC77",
-    "#88CCEE",
-]
-
-CACHE_DIR = dataset_utils.CACHE_DIR
-# String names we are using (not coming from the stored dataset).
-OUR_TEXT_FIELD = dataset_utils.OUR_TEXT_FIELD
-TOKENIZED_FIELD = dataset_utils.TOKENIZED_FIELD
-EMBEDDING_FIELD = dataset_utils.EMBEDDING_FIELD
-LENGTH_FIELD = dataset_utils.LENGTH_FIELD
-# TODO: Allow users to specify this.
-_SHOW_TOP_N_WORDS = 10
-
-
-@st.cache(
-    hash_funcs={
-        dataset_statistics.DatasetStatisticsCacheClass: lambda dstats: dstats.cache_path
-    },
-    allow_output_mutation=True,
-)
-def load_or_prepare(ds_args, show_embeddings, show_perplexities, use_cache=False):
+def get_widgets(dstats):
     """
-    Takes the dataset arguments from the GUI and uses them to load a dataset from the Hub or, if
-    a cache for those arguments is available, to load it from the cache.
-    Args:
-        ds_args (dict): the dataset arguments defined via the streamlit app GUI
-        show_embeddings (Bool): whether embeddings should we loaded and displayed for this dataset
-        show_perplexities (Bool): whether perplexities should be loaded and displayed for this dataset
-        use_cache (Bool) : whether the cache is used by default or not
-    Returns:
-        dstats: the computed dataset statistics (from the dataset_statistics class)
+    # A measurement widget requires 2 things:
+    # - A load or prepare function
+    # - A display function
+    # We define these here; any widget can be trivially added in this way
+    # and the rest of the app logic will work.
     """
-    if not isdir(CACHE_DIR):
-        logs.warning("Creating cache")
-        # We need to preprocess everything.
-        # This should eventually all go into a prepare_dataset CLI
-        mkdir(CACHE_DIR)
-    if use_cache:
-        logs.warning("Using cache")
-    dstats = dataset_statistics.DatasetStatisticsCacheClass(CACHE_DIR, **ds_args, use_cache=use_cache)
-    if pull_cache_from_hub:
-        logs.warning(dataset_utils.pull_cache_from_hub(dstats.cache_path, dstats.dataset_cache_dir))
+    # Measurement calculation:
+    # Add any additional modules and their load-prepare function here.
+    load_prepare_list = [("general stats", dstats.load_or_prepare_general_stats),
+                         ("label distribution", dstats.load_or_prepare_labels),
+                         ("text_lengths", dstats.load_or_prepare_text_lengths),
+                         ("duplicates", dstats.load_or_prepare_text_duplicates),
+                         ("npmi", dstats.load_or_prepare_npmi),
+                         ("zipf", dstats.load_or_prepare_zipf)]
+    # Measurement interface:
+    # Add the graphic interfaces for any new measurements here.
+    display_list = [("general stats", st_utils.expander_general_stats),
+                    ("label distribution", st_utils.expander_label_distribution),
+                    ("text_lengths", st_utils.expander_text_lengths),
+                    ("duplicates", st_utils.expander_text_duplicates),
+                    ("npmi", st_utils.npmi_widget),
+                    ("zipf", st_utils.expander_zipf)]
 
-    logs.warning("Loading dataset")
-    dstats.load_or_prepare_dataset()
-    logs.warning("Loading labels")
-    dstats.load_or_prepare_labels()
-    logs.warning("Loading text lengths")
-    dstats.load_or_prepare_text_lengths()
-    logs.warning("Loading duplicates")
-    dstats.load_or_prepare_text_duplicates()
-    logs.warning("Loading vocabulary")
-    dstats.load_or_prepare_vocab()
-    logs.warning("Loading general statistics...")
-    dstats.load_or_prepare_general_stats()
-    if show_embeddings:
-        logs.warning("Loading Embeddings")
-        dstats.load_or_prepare_embeddings()
-    if show_perplexities:
-        logs.warning("Loading Text Perplexities")
-        dstats.load_or_prepare_text_perplexities()
-    logs.warning("Loading nPMI")
-    dstats.load_or_prepare_npmi()
-    logs.warning("Loading Zipf")
-    dstats.load_or_prepare_zipf()
-    return dstats
+    return load_prepare_list, display_list
 
-@st.cache(
-    hash_funcs={
-        dataset_statistics.DatasetStatisticsCacheClass: lambda dstats: dstats.cache_path
-    },
-    allow_output_mutation=True,
-)
-def load_or_prepare_widgets(ds_args, show_embeddings, show_perplexities, live=True, pull_cache_from_hub=False, use_cache=False):
-    """
-    Loader specifically for the widgets used in the app.
-    Args:
-        ds_args:
-        show_embeddings:
-        show_perplexities:
-        use_cache:
+def display_title(dstats):
+    title_str = f"### Showing: {dstats.dset_name} - {dstats.dset_config} - {dstats.split_name} - {'-'.join(dstats.text_field)}"
+    st.markdown(title_str)
+    logs.info("showing header")
 
-    Returns:
-
-    """
-    # When we're "live", cache is used.
-    if live:
-        use_cache = True
-    if use_cache:
-        logs.warning("Using cache")
-    dstats = dataset_statistics.DatasetStatisticsCacheClass(CACHE_DIR, **ds_args, use_cache=use_cache)
-
-    if pull_cache_from_hub:
-        logs.warning(dataset_utils.pull_cache_from_hub(dstats.cache_path, dstats.dataset_cache_dir))
-
-    if live:
-        # checks whether the cache_dir exists in deployment mode
-        if isdir(dstats.cache_path):
-            try:
-                # Header widget
-                dstats.load_or_prepare_dset_peek(load_only=True)
-            except:
-                logs.warning("Issue with %s." % "dataset peek")
-            try:
-                dstats.load_or_prepare_vocab(load_only=True)
-            except:
-                logs.warning("Issue with %s." % "vocabulary statistics")
-            try:
-                # General stats widget
-                dstats.load_or_prepare_general_stats(load_only=True)
-            except:
-                logs.warning("Issue with %s." % "general statistics")
-            try:
-                # Labels widget
-                dstats.load_or_prepare_labels(load_only=True)
-            except:
-                logs.warning("Issue with %s." % "label statistics")
-            try:
-                # Text lengths widget
-                dstats.load_or_prepare_text_lengths(load_only=True)
-            except:
-                logs.warning("Issue with %s." % "text length statistics")
-            # TODO: If these are cached, can't we just show them by default?
-            # It won't take up computation time.
-            if show_embeddings:
-                try:
-                    # Embeddings widget
-                    dstats.load_or_prepare_embeddings(load_only=True)
-                except:
-                    logs.warning("Issue with %s." % "embeddings")
-            # TODO: If these are cached, can't we just show them by default?
-            # It won't take up computation time.
-            if show_perplexities:
-                try:
-                    dstats.load_or_prepare_text_perplexities(load_only=True)
-                except:
-                    logs.warning("Issue with %s." % "perplexities")
-            try:
-                dstats.load_or_prepare_text_duplicates(load_only=True)
-            except:
-                logs.warning("Issue with %s." % "text duplicates")
-            try:
-                dstats.load_or_prepare_npmi(load_only=True)
-            except:
-                logs.warning("Issue with %s." % "nPMI statistics")
-            try:
-                dstats.load_or_prepare_zipf(load_only=True)
-            except:
-                logs.warning("Issue with %s." % "Zipf statistics")
-    # Calculates and creates cache_dir
+def display_measurements(dataset_args, display_list, loaded_dstats,
+                         show_perplexities):
+    """Displays the measurement results in the UI"""
+    if isdir(loaded_dstats.dataset_cache_dir):
+        show_column(loaded_dstats, display_list, show_perplexities)
     else:
-        dstats.load_or_prepare_dset_peek()
-        dstats.load_or_prepare_vocab()
-        dstats.load_or_prepare_general_stats()
-        dstats.load_or_prepare_labels()
-        dstats.load_or_prepare_text_lengths()
-        if show_embeddings:
-            dstats.load_or_prepare_embeddings()
-        if show_perplexities:
-            dstats.load_or_prepare_text_perplexities()
-        dstats.load_or_prepare_text_duplicates()
-        dstats.load_or_prepare_npmi()
-        dstats.load_or_prepare_zipf()
+        st.markdown("### Missing pre-computed data measures!")
+        st.write(dataset_args)
+
+def display_initial_UI():
+    """Displays the header in the UI"""
+    st.title("Data Measurements Tool")
+    # Write out the sidebar details
+    st_utils.sidebar_header()
+    # Extract the selected arguments
+    dataset_args = st_utils.sidebar_selection(DATASET_NAME_TO_DICT)
+    return dataset_args
+
+def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=True, pull_cache_from_hub=False):
+    """
+     Takes the dataset arguments from the GUI and uses them to load a dataset from the Hub or, if
+     a cache for those arguments is available, to load it from the cache.
+     Widget data is loaded only when the system is live (deployed for users).
+     Otherwise, the data is prepared if it doesn't yet exist.
+     Args:
+         ds_args (dict): the dataset arguments defined via the streamlit app GUI
+         load_prepare_list (list): List of (widget_name, widget_load_or_prepare_function)
+         show_perplexities (Bool): whether perplexities should be loaded and displayed for this dataset
+         live (Bool): Whether the system is deployed for live use by users.
+         pull_cache_from_hub (Bool): Whether the cache should be pulled from the hub (vs locally)
+     Returns:
+         dstats: the computed dataset statistics (from the dataset_statistics class)
+     """
+
+    # When we're "live" (tool is being used by users on our servers),
+    # cache is used and the f'ns are instructed to only try to load cache,
+    # not to prepare/compute anything anew.
+    if live:
+        # Only use what's cached; don't prepare anything
+        load_only = True
+        logs.info("Only using cache.")
+    else:
+        # Prepare things anew and cache them if we're not live.
+        load_only = False
+        logs.info("Making new calculations if cache is not there.")
+    if pull_cache_from_hub:
+        dataset_utils.pull_cache_from_hub(dstats.cache_path, dstats.dataset_cache_dir)
+
+    # Data common across DMT:
+    # Includes the dataset, the dataset tokenized, and the vocabulary
+    dstats.load_or_prepare_dataset(load_only=load_only)
+    dstats.load_or_prepare_dset_peek(load_only=load_only)
+    # Tokenized dataset
+    dstats.load_or_prepare_tokenized_df(load_only=load_only)
+    # Vocabulary (uses tokenized dataset)
+    dstats.load_or_prepare_vocab(load_only=load_only)
+    # Custom widgets
+    for widget_tuple in load_prepare_list:
+        widget_name = widget_tuple[0]
+        widget_fn = widget_tuple[1]
+        try:
+            widget_fn(load_only=load_only)
+        except Exception as e:
+            logs.warning("Issue with %s." % widget_name)
+            logs.exception(e)
+    # TODO: If these are cached, can't we just show them by default?
+    # It won't take up computation time.
+    if show_perplexities:
+        try:
+            dstats.load_or_prepare_text_perplexities(load_only=load_only)
+        except Exception as e:
+            logs.warning("Issue with %s." % "perplexities")
+            logs.exception(e)
     return dstats
 
 
-def show_column(dstats, ds_name_to_dict, show_embeddings, show_perplexities, column_id):
+def show_column(dstats, display_list, show_perplexities, column_id=""):
     """
-    Function for displaying the elements in the right column of the streamlit app.
+    Function for displaying the elements in the streamlit app.
     Args:
-        ds_name_to_dict (dict): the dataset name and options in dictionary form
-        show_embeddings (Bool): whether embeddings should we loaded and displayed for this dataset
-        show_perplexities (Bool): whether perplexities should be loaded and displayed for this dataset
-        column_id (str): what column of the dataset the analysis is done on
-    Returns:
-        The function displays the information using the functions defined in the st_utils class.
+        dstats (class): The dataset_statistics.py DatasetStatisticsCacheClass
+        display_list (list): List of tuples for (widget_name, widget_display_function)
+        show_perplexities (Bool): Whether perplexities should be loaded and displayed for this dataset
+        column_id (str): Which column of the dataset the analysis is done on [DEPRECATED for v1]
     """
-    # Note that at this point we assume we can use cache; default value is True.
-    widget_dict = {1: ("general stats", st_utils.expander_general_stats), 2: (
-    "label distribution", st_utils.expander_label_distribution),
-                   3: ("text_lengths", st_utils.expander_text_lengths),
-                   4: ("duplcates", st_utils.expander_text_duplicates),
-                   5: ("npmi", st_utils.npmi_widget),
-                   6: ("zipf", st_utils.expander_zipf)}
 
     # start showing stuff
-    title_str = f"### Showing{column_id}: {dstats.dset_name} - {dstats.dset_config} - {dstats.split_name} - {'-'.join(dstats.text_field)}"
-    st.markdown(title_str)
-    logs.info("showing header.")
-    st_utils.expander_header(dstats, ds_name_to_dict, column_id)
-    for widget_num, widget_call in sorted(widget_dict.items()):
-        widget_type = widget_call[0]
-        widget_fn = widget_call[1]
+    st_utils.expander_header(dstats, DATASET_NAME_TO_DICT)
+    for widget_tuple in display_list:
+        widget_type = widget_tuple[0]
+        widget_fn = widget_tuple[1]
         logs.info("showing %s." % widget_type)
         try:
             widget_fn(dstats, column_id)
         except Exception as e:
-            logs.info("Jk jk jk. There was an issue.")
-            logs.warning("Issue with %s" % widget_type)
-            logs.warning(e)
-    # TODO: Can this be incorporated into the dictionary?
+            logs.warning("Jk jk jk. There was an issue with %s:" % widget_type)
+            logs.exception(e)
+    # TODO: Fix how this is a weird outlier.
     if show_perplexities:
         st_utils.expander_text_perplexities(dstats, column_id)
-    # TODO: Deprecate
-    if show_embeddings:
-        st_utils.expander_text_embeddings(
-            dstats.text_dset,
-            dstats.fig_tree,
-            dstats.node_list,
-            dstats.embeddings,
-            OUR_TEXT_FIELD,
-            column_id,
-        )
-
+    logs.info("Have finished displaying the widgets.")
 
 def main():
     parser = argparse.ArgumentParser()
@@ -262,55 +180,30 @@ def main():
     arguments = parser.parse_args()
     live = arguments.live
     pull_cache_from_hub = arguments.pull_cache_from_hub
-    # Sidebar description and selection
-    ds_name_to_dict = dataset_utils.get_dataset_info_dicts()
-    st.title("Data Measurements Tool")
-    # Get the sidebar details
-    st_utils.sidebar_header()
-    # Set up naming, configs, and cache path.
-    compare_mode = st.sidebar.checkbox("Comparison mode")
 
-    # When using the app, try to use cache by default.
-    use_cache = True
-    # TODO: deprecate
-    show_embeddings = st.sidebar.checkbox("Show text clusters")
+    # Initialize the interface and grab the UI-provided arguments
+    dataset_args = display_initial_UI()
+
+    # TODO: Make this less of a weird outlier.
     show_perplexities = st.sidebar.checkbox("Show text perplexities")
-    # List of datasets for which embeddings are hard to compute:
 
-    if compare_mode:
-        logs.warning("Using Comparison Mode")
-        dataset_args_left = st_utils.sidebar_selection(ds_name_to_dict, " A")
-        dataset_args_right = st_utils.sidebar_selection(ds_name_to_dict, " B")
-        left_col, _, right_col = st.columns([10, 1, 10])
-        dstats_left = load_or_prepare_widgets(
-            dataset_args_left, show_embeddings, show_perplexities, pull_cache_from_hub=pull_cache_from_hub, use_cache=use_cache
-        )
-        with left_col:
-            if isdir(dstats_left.cache_path):
-                show_column(dstats_left, ds_name_to_dict, show_embeddings, show_perplexities," A")
-            else:
-                st.markdown("### Missing pre-computed data measures!")
-                st.write(dataset_args_left)
-        dstats_right = load_or_prepare_widgets(
-            dataset_args_right, show_embeddings, show_perplexities, pull_cache_from_hub=pull_cache_from_hub, use_cache=use_cache
-        )
-        with right_col:
-            if isdir(dstats_right.cache_path):
-                show_column(dstats_right, ds_name_to_dict, show_embeddings, show_perplexities, " B")
-            else:
-                st.markdown("### Missing pre-computed data measures!")
-                st.write(dataset_args_right)
-    else:
-        logs.warning("Using Single Dataset Mode")
-        dataset_args = st_utils.sidebar_selection(ds_name_to_dict, "")
-        dstats = load_or_prepare_widgets(dataset_args, show_embeddings, show_perplexities, live=live, pull_cache_from_hub=pull_cache_from_hub, use_cache=use_cache)
-        if isdir(dstats.cache_path):
-            logs.warning(dstats.cache_path)
-            show_column(dstats, ds_name_to_dict, show_embeddings, show_perplexities, "")
-        else:
-            st.markdown("### Missing pre-computed data measures!")
-            st.write(dataset_args)
-
+    # Initialize the main DMT class with the UI-provided arguments
+    # When using the app (this file), try to use cache by default.
+    dstats = dmt_cls(**dataset_args, use_cache=True)
+    display_title(dstats)
+    # Get the widget functionality for the different measurements.
+    load_prepare_list, display_list = get_widgets(dstats)
+    # Load/Prepare the DMT widgets.
+    loaded_dstats = load_or_prepare_widgets(dstats, load_prepare_list,
+                                            show_perplexities, live=live,
+                                            pull_cache_from_hub=pull_cache_from_hub)
+    # After the load_or_prepare functions are run,
+    # we should have a cache for each measurement widget --
+    # either because it was there already,
+    # or we computed them (which we do when not live).
+    # Write out on the UI what we have.
+    display_measurements(dataset_args, display_list, loaded_dstats,
+                         show_perplexities)
 
 if __name__ == "__main__":
     main()

@@ -142,8 +142,8 @@ class Zipf:
         """
         logs.info("Getting predicted counts.")
         if not self.alpha:
-            print("Have not yet fit -- need the alpha value.")
-            print("Fitting now...")
+            logs.warning("Have not yet fit -- need the alpha value.")
+            logs.warning("Fitting now...")
             self.calc_fit()
         logs.info(self.word_counts_unique)
         logs.info(self.xmin)
