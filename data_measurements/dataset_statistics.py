@@ -416,8 +416,6 @@ class DatasetStatisticsCacheClass:
 
     def load_vocab(self):
         self.vocab_counts_df = ds_utils.read_df(self.vocab_counts_df_fid)
-        # Handling for changes in how the index is saved.
-        #self.vocab_counts_df = _set_idx_col_names(self.vocab_counts_df)
 
     def load_or_prepare_text_duplicates(self, load_only=False, save=True, list_duplicates=True):
         """Uses a text duplicates library, which
@@ -617,15 +615,8 @@ class DatasetStatisticsCacheClass:
         self.z.calc_fit()
         self.zipf_fig = zipf.make_zipf_fig(self.z)
 
-def _set_idx_col_names(input_vocab_df):
-    if input_vocab_df.index.name != VOCAB and VOCAB in input_vocab_df.columns:
-        input_vocab_df = input_vocab_df.set_index([VOCAB])
-        input_vocab_df[VOCAB] = input_vocab_df.index
-    return input_vocab_df
-
 def dummy(doc):
     return doc
-
 
 def count_vocab_frequencies(tokenized_df):
     """
