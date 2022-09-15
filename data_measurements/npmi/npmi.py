@@ -12,18 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import warnings
-import utils
-import utils.dataset_utils as ds_utils
-from utils.dataset_utils import (CNT, TOKENIZED_FIELD)
-from collections import defaultdict
-
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import MultiLabelBinarizer
+import sys
+import utils
+import utils.dataset_utils as ds_utils
+import warnings
+from collections import defaultdict
 from os.path import exists
 from os.path import join as pjoin
+from sklearn.preprocessing import MultiLabelBinarizer
+from utils.dataset_utils import (CNT, TOKENIZED_FIELD)
 
 # Might be nice to print to log instead? Happens when we drop closed class.
 warnings.filterwarnings(action="ignore", category=UserWarning)
@@ -41,10 +40,12 @@ DIFF = "biases"
 # Used in the figures we show in DMT
 DMT = "combined"
 
+
 def _make_bias_str(measure):
     """Utility function so that the key we use for association biases
     # is always the same w/o having to type it over and over."""
     return measure + "-bias"
+
 
 def pair_terms(id_terms):
     """Creates alphabetically ordered paired terms based on the given terms."""
@@ -58,13 +59,15 @@ def pair_terms(id_terms):
             pairs += [pair]
     return pairs
 
+
 class DMTHelper:
     """Helper class for the Data Measurements Tool.
     This allows us to keep all variables and functions related to labels
     in one file.
     """
 
-    def __init__(self, dstats, identity_terms, load_only=False, use_cache=False, save=True):
+    def __init__(self, dstats, identity_terms, load_only=False, use_cache=False,
+                 save=True):
         # The data measurements tool settings (dataset, config, etc.)
         self.dstats = dstats
         # Whether we can use caching (when live, no).
@@ -81,13 +84,14 @@ class DMTHelper:
         # Cutoff for the number of times something must occur to be included
         self.min_count = dstats.min_vocab_count
         self.cache_path = pjoin(dstats.dataset_cache_dir, SING)
-        self.avail_terms_json_fid = pjoin(self.cache_path, "identity_terms.json")
+        self.avail_terms_json_fid = pjoin(self.cache_path,
+                                          "identity_terms.json")
         # TODO: Users ideally can type in whatever words they want.
         # This is the full list of terms.
         self.identity_terms = identity_terms
         logs.info("Using term list:")
         logs.info(self.identity_terms)
-        # identity_terms terms that are available more than MIN_VOCAB_COUNT times
+        # identity_terms terms that are available more than MIN_VOCAB_COUNT
         self.avail_identity_terms = []
         # TODO: Let users specify
         self.open_class_only = True
@@ -98,7 +102,8 @@ class DMTHelper:
         # Dataframes used in displays.
         self.bias_dfs_dict = defaultdict(dict)
         # Results of the single word associations and their paired bias values.
-        # Formatted as {pair: {pd.DataFrame({(s1,s2)):diffs, s1:assoc, s2:assoc})}}
+        # Formatted as:
+        # {(s1,s2)): {pd.DataFrame({s1-s2:diffs, s1:assoc, s2:assoc})}}
         self.results_dict = defaultdict(lambda: defaultdict(dict))
         # Filenames for cache, based on the results
         self.filenames_dict = defaultdict(dict)
@@ -107,12 +112,7 @@ class DMTHelper:
         # The identity terms that can be used
         self.load_or_prepare_avail_identity_terms()
         # Association measurements & pair-wise differences for identity terms.
-        # TODO: Provide functionality for more association measures
-        measure = "npmi"
-        # Single identity term scores
-        #self.load_or_prepare_association_results(measure=measure)
-        # Paired identity term score differences.
-        self.load_or_prepare_dmt_results(measure=measure)
+        self.load_or_prepare_dmt_results()
 
     def load_or_prepare_avail_identity_terms(self):
         """
@@ -126,7 +126,7 @@ class DMTHelper:
             self.avail_identity_terms = self._load_identity_cache()
             if self.avail_identity_terms:
                 logs.info(
-                    "Loaded identity terms that occur > %s times" % self.min_count)
+                    "Loaded identity terms occuring >%s times" % self.min_count)
         # Figure out the identity terms if we're not just loading from cache
         if not self.load_only:
             if not self.avail_identity_terms:
@@ -161,28 +161,7 @@ class DMTHelper:
         logs.debug(avail_identity_terms)
         return avail_identity_terms
 
-    #def load_or_prepare_association_results(self, measure="npmi"):
-    #    # Filenames for caching and saving
-    #    # Format is {measure:{subgroup:{term1:val, term2:val}...}}}
-    #    self._make_fids()
-    #    # If we're trying to use the cache of already computed results
-    #    if self.use_cache:
-    #        # Loads the association results and the dataframes
-    #        # used in the display.
-    #        logs.debug("Trying to load...")
-    #        self.assoc_results_dict = self._load_assoc_results_cache(measure=measure)
-    #    # Compute results if we're not just loading from cache or the cache didn't have the results.
-    #    if not self.load_only:
-    #        if not self.assoc_results_dict:
-    #            # Does the actual computations
-    #            # Creates the scores for each identity term
-    #            # defines self.assoc_results_dict and self.bias_results_dict
-    #            self.prepare_results()
-    #        # Finish
-    #        if self.save:
-    #            self._write_measurements_cache()
-
-    def load_or_prepare_dmt_results(self, measure="npmi"):
+    def load_or_prepare_dmt_results(self):
         # Initialize with no results (reset).
         self.results_dict = {}
         # Filenames for caching and saving
@@ -191,41 +170,25 @@ class DMTHelper:
         if self.use_cache:
             # Loads the association results and dataframes used in the display.
             logs.debug("Trying to load...")
-            self.results_dict = self._load_dmt_cache(measure=measure)
+            self.results_dict = self._load_dmt_cache()
         # Compute results if we can
         if not self.load_only:
             # If there isn't a solution using cache
             if not self.results_dict:
                 # Does the actual computations
                 self.prepare_results()
-                # Combines identity terms and pairs into one dataframe.
-                # {pair: {pd.DataFrame({(s1,s2)):diffs, s1:assoc, s2:assoc})}
-                #self.results_dict = self._prepare_dmt_dfs()
             # Finish
             if self.save:
                 # Writes the paired & singleton dataframe out.
                 self._write_dmt_cache()
 
-    def _load_dmt_cache(self, measure="npmi"):
+    def _load_dmt_cache(self):
         """
-        Loads three different chace types:
-        - Singular identity term word associations
-        -
-        self.results_dict holds {single/pair/combined:{subgroup:{measure:{word:value}}}}
+        Loads dataframe with paired differences and individual item scores.
         """
         results_dict = defaultdict(lambda: defaultdict(dict))
-        bias_str = _make_bias_str(measure)
         pairs = pair_terms(self.avail_identity_terms)
-        #for subgroup in self.avail_identity_terms:
-        #    fid = self.results_fid_dict[SING][subgroup][measure]
-        #    if exists(fid):
-        #        self.assoc_results_dict[subgroup][measure] = ds_utils.read_json(fid)
-        #        results_dict[SING][subgroup][measure] = self.assoc_results_dict[subgroup][measure]
         for pair in pairs:
-        #    bias_fid = self.results_fid_dict[DIFF][pair][bias_str]
-        #    if exists(bias_fid):
-        #        self.bias_results_dict[pair][bias_str] = ds_utils.read_json(bias_fid)
-        #        results_dict[DIFF][pair][bias_str] = self.bias_results_dict[pair][bias_str]
             combined_fid = self.filenames_dict[DMT][pair]
             if exists(combined_fid):
                 results_dict[pair] = ds_utils.read_df(combined_fid)
@@ -244,7 +207,6 @@ class DMTHelper:
         the npmi scores for each paired identity term and the difference between
         them. The difference between them is the "bias".
         """
-        bias_str = _make_bias_str(measure)
         # Paired identity terms, associations and differences, in one dataframe.
         bias_dfs_dict = defaultdict(dict)
         logs.debug("bias results dict is")
@@ -259,9 +221,10 @@ class DMTHelper:
             combined_df[s1] = pd.DataFrame(self.assoc_results_dict[s1][measure])
             # Single identity term 2, values
             combined_df[s2] = pd.DataFrame(self.assoc_results_dict[s2][measure])
-            # Full dataframe with scores per-term, as well as the difference between.
+            # Full dataframe with scores per-term,
+            # as well as the difference between.
             bias_dfs_dict[pair] = combined_df
-        # {pair: {pd.DataFrame({(s1,s2)):diffs, s1:assoc, s2:assoc})}}
+        # {pair: {pd.DataFrame({(s1,s2)):diffs, s1:assocs, s2:assocs})}}
         logs.debug("combined df is")
         logs.debug(bias_dfs_dict)
         return bias_dfs_dict
@@ -269,26 +232,10 @@ class DMTHelper:
     def _write_term_cache(self):
         ds_utils.make_path(self.cache_path)
         if self.avail_identity_terms:
-            ds_utils.write_json(self.avail_identity_terms, self.avail_terms_json_fid)
-
-    def _write_measurements_cache(self, measure="npmi"):
-        ds_utils.make_path(pjoin(self.cache_path, measure))
-        bias_str = _make_bias_str(measure)
-        logs.debug("fid dict is")
-        logs.debug(self.filenames_dict)
-        logs.debug("assoc results dict is")
-        logs.debug(self.assoc_results_dict)
-        for subgroup, measure_cache_dict in self.filenames_dict[SING].items():
-            fid = measure_cache_dict[measure]
-            logs.debug(subgroup)
-            logs.debug(measure)
-            logs.debug(self.assoc_results_dict[subgroup][measure])
-            ds_utils.write_json(self.assoc_results_dict[subgroup][measure], fid)
-        for subgroup_pair, fid in self.filenames_dict[DIFF].items():
-            ds_utils.write_json(self.bias_results_dict[subgroup_pair], fid)
+            ds_utils.write_json(self.avail_identity_terms,
+                                self.avail_terms_json_fid)
 
     def _write_dmt_cache(self, measure="npmi"):
-        bias_str = _make_bias_str(measure)
         ds_utils.make_path(pjoin(self.cache_path, measure))
         for pair, bias_df in self.results_dict.items():
             logs.debug("Results for pair is:")
@@ -305,7 +252,7 @@ class DMTHelper:
         the DMT, which is a dataframe that has:
         (term1, term2) difference, term1 (scores), term2 (scores)
         """
-        self.filenames_dict = {SING:{},DIFF:{},DMT:{}}
+        self.filenames_dict = {SING: {}, DIFF: {}, DMT: {}}
         # When we have the available identity terms,
         # we can make cache filenames for them.
         for id_term in self.avail_identity_terms:
@@ -325,7 +272,7 @@ class DMTHelper:
             self.filenames_dict[DMT][id_term_tuple] = json_fid
 
     def get_display(self, s1, s2):
-        pair = tuple(sorted([s1,s2]))
+        pair = tuple(sorted([s1, s2]))
         display_df = self.results_dict[pair]
         logs.debug(self.results_dict)
         display_df.columns = ["bias", s1, s2]
@@ -350,10 +297,10 @@ class nPMI:
         self.vocabulary = list(vocab_counts_df.index)
         self.vocab_counts = pd.DataFrame([0] * len(self.vocabulary))
         logs.debug("vocabulary is is")
-        #logs.debug(self.vocab_counts_df)
+        logs.debug(self.vocab_counts_df)
         self.tokenized_sentence_df = tokenized_sentence_df
-        logs.debug("tokenized dataframe is")
-        #logs.debug(self.tokenized_sentence_df)
+        logs.debug("tokenized sentences are")
+        logs.debug(self.tokenized_sentence_df)
         self.given_id_terms = given_id_terms
         logs.info("identity terms are")
         logs.info(self.given_id_terms)
@@ -362,24 +309,23 @@ class nPMI:
 
         # Matrix of # sentences x vocabulary size
         self.word_cnts_per_sentence = self.count_words_per_sentence()
-        #logs.debug(self.word_cnts_per_sentence)
         logs.info("Calculating results...")
         # Formatted as {subgroup:{"count":{...},"npmi":{...}}}
         self.assoc_results_dict = self.calc_measures()
-        # Formatted as {(subgroup1,subgroup2):{term1:score,term2:score...}}}
+        # Dictionary keyed by pair tuples. Each value is a dataframe with
+        # vocab terms as the index, and columns of paired difference and
+        # individual scores for the two identity terms.
         self.bias_results_dict = self.calc_bias(self.assoc_results_dict)
-
 
     def count_words_per_sentence(self):
         # Counts the number of each vocabulary item per-sentence in batches.
         logs.info("Creating co-occurrence matrix for nPMI calculations.")
         word_cnts_per_sentence = []
-        #logs.debug(self.vocab_counts)
         logs.info(self.tokenized_sentence_df)
         batches = np.linspace(0, self.tokenized_sentence_df.shape[0],
                               NUM_BATCHES).astype(int)
         # Creates matrix of size # batches x # sentences
-        for batch_num in range(len(batches)-1):
+        for batch_num in range(len(batches) - 1):
             # Makes matrix shape: batch size (# sentences) x # words,
             # with the occurrence of each word per sentence.
             # vocab_counts_df.index is the vocabulary.
@@ -387,13 +333,13 @@ class nPMI:
             if batch_num % 100 == 0:
                 logs.debug(
                     "%s of %s sentence binarize batches." % (
-                    str(batch_num), str(len(batches)))
+                        str(batch_num), str(len(batches)))
                 )
             # Per-sentence word counts
-            sentence_batch = self.tokenized_sentence_df[batches[batch_num]:batches[batch_num + 1]]
+            sentence_batch = self.tokenized_sentence_df[
+                             batches[batch_num]:batches[batch_num + 1]]
             mlb_series = mlb.fit_transform(sentence_batch)
             word_cnts_per_sentence.append(mlb_series)
-            #print(np.sum(mlb_series, axis=0))
         return word_cnts_per_sentence
 
     def calc_measures(self):
@@ -426,7 +372,8 @@ class nPMI:
         coo_df = None
         # Big computation here!  Should only happen once.
         logs.debug(
-            "Approaching big computation! Here, we binarize all words in the sentences, making a sparse matrix of sentences."
+            "Approaching big computation! Here, we binarize all words in the "
+            "sentences, making a sparse matrix of sentences."
         )
         for batch_id in range(len(self.word_cnts_per_sentence)):
             # Every 100 batches, print out the progress.
@@ -439,8 +386,6 @@ class nPMI:
             batch_sentence_row = self.word_cnts_per_sentence[batch_id]
             # Dataframe of # sentences in batch x vocabulary size
             sent_batch_df = pd.DataFrame(batch_sentence_row)
-            # logs.info('sent batch df is')
-            # logs.info(sent_batch_df)
             # Subgroup counts per-sentence for the given batch
             subgroup_df = sent_batch_df[subgroup_idx]
             subgroup_df.columns = [subgroup]
@@ -463,53 +408,7 @@ class nPMI:
         count_df = coo_df.set_index(self.vocab_counts_df.index)
         count_df.columns = ["count"]
         count_df["count"] = count_df["count"].astype(int)
-        print("Now it is:")
-        print(count_df)
         return count_df
-
-    #def _sum_coo(self, batch_coo_df, coo_list):
-    #    """
-    #    Creates a row of co-occurrence counts with the subgroup term for the
-    #    given batch.
-    #    """
-    #    #print(batch_coo_df)
-    #    coo_sums = batch_coo_df.sum()
-    #    #print(coo_sums)
-    #    coo_list += coo_sums
-    #    return coo_list
-
-    #def _transpose_counts(self, batch_id, batch_sentence_row, subgroup,
-    #                      subgroup_idx):
-    #    # TODO: You add the vocab counts here by summing the columns.
-    #    # Dataframe of # sentences in batch x vocabulary size
-    #    sent_batch_df = pd.DataFrame(batch_sentence_row)
-    #    # Size is # sentences x 1.
-    #    # identity term count per-sentence for the given batch
-    #    subgroup_df = self._isolate_subgroup_sentences(sent_batch_df,
-    #                                                   subgroup,
-    #                                                   subgroup_idx)
-    #    # Size is # sentences x # vocab
-    #    subgroup_sentences = sent_batch_df[sent_batch_df[subgroup_idx] > 0]
-    #    # Debugging messages
-    #    self._write_debug_msg(batch_id, subgroup_df, subgroup_sentences, msg_type="transpose")
-    #    # Create cooccurrence matrix for the given subgroup and all words.
-    #    batch_coo_df = pd.DataFrame(subgroup_sentences.T.dot(subgroup_df))
-    #    return batch_coo_df
-
-    #def _isolate_subgroup_coo(self, coo_list):
-    #    count_df = pd.DataFrame(coo_list, index=self.vocabulary)
-    #    count_df = count_df.loc[~(count_df == 0).all(axis=1)]
-     #   return count_df
-
-    #def _isolate_subgroup_sentences(self, sent_batch_df, subgroup, subgroup_idx):
-    #    subgroup_df = sent_batch_df[subgroup_idx]
-    #    subgroup_df.columns = [subgroup]
-    #    # Remove the sentences where the count of the subgroup is 0.
-    #    # This way we have less computation & resources needs.
-    #    # Note however that we could use this to get the counts of each
-    #    # vocab item, making the use of the vocab_counts df unnecessary.
-    #    subgroup_df = subgroup_df[subgroup_df > 0]
-    #    return subgroup_df
 
     def calc_PMI(self, vocab_cooc_df, subgroup):
         """A
@@ -528,7 +427,8 @@ class nPMI:
         # Because the indices match (the vocab words),
         # this division doesn't need to specify the index (I think?!)
         vocab_cooc_df.columns = ["cooc"]
-        p_subgroup_g_word = (vocab_cooc_df["cooc"]/self.vocab_counts_df["count"])
+        p_subgroup_g_word = (
+                    vocab_cooc_df["cooc"] / self.vocab_counts_df["count"])
         logs.info("p_subgroup_g_word is")
         logs.info(p_subgroup_g_word)
         pmi_df = pd.DataFrame()
