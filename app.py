@@ -118,10 +118,12 @@ def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=T
         dataset_utils.pull_cache_from_hub(dstats.cache_path, dstats.dataset_cache_dir)
 
     # Data common across DMT:
-    # Includes the dataset
-    # and the vocabulary
+    # Includes the dataset, the dataset tokenized, and the vocabulary
     dstats.load_or_prepare_dataset(load_only=load_only)
     dstats.load_or_prepare_dset_peek(load_only=load_only)
+    # Tokenized dataset
+    dstats.load_or_prepare_tokenized_df(load_only=load_only)
+    # Vocabulary (uses tokenized dataset)
     dstats.load_or_prepare_vocab(load_only=load_only)
     # Custom widgets
     for widget_tuple in load_prepare_list:

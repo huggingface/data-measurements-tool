@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import warnings
 import utils
 import utils.dataset_utils as ds_utils
@@ -21,6 +22,7 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MultiLabelBinarizer
+from os.path import exists
 from os.path import join as pjoin
 
 # Might be nice to print to log instead? Happens when we drop closed class.
@@ -37,7 +39,7 @@ SING = "associations"
 # For the difference between the associations of identity terms
 DIFF = "biases"
 # Used in the figures we show in DMT
-COMBINED = "combined"
+DMT = "combined"
 
 def _make_bias_str(measure):
     """Utility function so that the key we use for association biases
@@ -90,25 +92,27 @@ class DMTHelper:
         # TODO: Let users specify
         self.open_class_only = True
         # Single-word associations
-        self.assoc_results_dict = {}
+        self.assoc_results_dict = defaultdict(dict)
         # Paired term association bias
-        self.bias_results_dict = {}
-        # Results of the single word associations and their paired bias values.
-        self.results_dict = {}
-        # Filenames for cache, based on the results
-        self.results_fid_dict = {SING:defaultdict(dict), DIFF:defaultdict(dict)}
-        # Filenames for the combined dataframes used in display.
-        self.combined_fid_dict = defaultdict(dict)
+        self.bias_results_dict = defaultdict(dict)
         # Dataframes used in displays.
-        self.combined_dfs_dict = None
+        self.bias_dfs_dict = defaultdict(dict)
+        # Results of the single word associations and their paired bias values.
+        # Formatted as {pair: {pd.DataFrame({(s1,s2)):diffs, s1:assoc, s2:assoc})}}
+        self.results_dict = defaultdict(lambda: defaultdict(dict))
+        # Filenames for cache, based on the results
+        self.filenames_dict = defaultdict(dict)
 
     def run_DMT_processing(self):
         # The identity terms that can be used
         self.load_or_prepare_avail_identity_terms()
         # Association measurements & pair-wise differences for identity terms.
-        # TODO: Provide functionality for more assoiation measures
+        # TODO: Provide functionality for more association measures
         measure = "npmi"
-        self.load_or_prepare_association_results(measure=measure)
+        # Single identity term scores
+        #self.load_or_prepare_association_results(measure=measure)
+        # Paired identity term score differences.
+        self.load_or_prepare_dmt_results(measure=measure)
 
     def load_or_prepare_avail_identity_terms(self):
         """
@@ -133,7 +137,7 @@ class DMTHelper:
 
     def _load_identity_cache(self):
         if exists(self.avail_terms_json_fid):
-            avail_identity_terms = json.load(open(self.avail_terms_json_fid))
+            avail_identity_terms = ds_utils.read_json(self.avail_terms_json_fid)
             return avail_identity_terms
         return []
 
@@ -157,130 +161,179 @@ class DMTHelper:
         logs.debug(avail_identity_terms)
         return avail_identity_terms
 
-    def load_or_prepare_association_results(self, measure="npmi"):
+    #def load_or_prepare_association_results(self, measure="npmi"):
+    #    # Filenames for caching and saving
+    #    # Format is {measure:{subgroup:{term1:val, term2:val}...}}}
+    #    self._make_fids()
+    #    # If we're trying to use the cache of already computed results
+    #    if self.use_cache:
+    #        # Loads the association results and the dataframes
+    #        # used in the display.
+    #        logs.debug("Trying to load...")
+    #        self.assoc_results_dict = self._load_assoc_results_cache(measure=measure)
+    #    # Compute results if we're not just loading from cache or the cache didn't have the results.
+    #    if not self.load_only:
+    #        if not self.assoc_results_dict:
+    #            # Does the actual computations
+    #            # Creates the scores for each identity term
+    #            # defines self.assoc_results_dict and self.bias_results_dict
+    #            self.prepare_results()
+    #        # Finish
+    #        if self.save:
+    #            self._write_measurements_cache()
+
+    def load_or_prepare_dmt_results(self, measure="npmi"):
+        # Initialize with no results (reset).
+        self.results_dict = {}
         # Filenames for caching and saving
-        # Format is {measure:{subgroup:{term1:val, term2:val}...}}}
         self._make_fids()
         # If we're trying to use the cache of already computed results
         if self.use_cache:
-            # Loads the association results and the dataframes
-            # used in the display.
-           self.results_dict = self._load_results_cache(measure=measure)
-        # Compute results if we're not just loading from cache or the cache didn't have the results.
+            # Loads the association results and dataframes used in the display.
+            logs.debug("Trying to load...")
+            self.results_dict = self._load_dmt_cache(measure=measure)
+        # Compute results if we can
         if not self.load_only:
+            # If there isn't a solution using cache
             if not self.results_dict:
                 # Does the actual computations
-                self.results_dict = self._prepare_assoc_results()
+                self.prepare_results()
                 # Combines identity terms and pairs into one dataframe.
-                self.results_dict[COMBINED] = self._prepare_combined_dfs()
+                # {pair: {pd.DataFrame({(s1,s2)):diffs, s1:assoc, s2:assoc})}
+                #self.results_dict = self._prepare_dmt_dfs()
             # Finish
             if self.save:
-                self._write_results_cache()
-                self._write_combined_cache()
+                # Writes the paired & singleton dataframe out.
+                self._write_dmt_cache()
 
-    def _load_results_cache(self, measure="npmi"):
+    def _load_dmt_cache(self, measure="npmi"):
         """
+        Loads three different chace types:
+        - Singular identity term word associations
+        -
         self.results_dict holds {single/pair/combined:{subgroup:{measure:{word:value}}}}
         """
-        results_dict = {}
+        results_dict = defaultdict(lambda: defaultdict(dict))
         bias_str = _make_bias_str(measure)
         pairs = pair_terms(self.avail_identity_terms)
-        for subgroup in self.avail_identity_terms:
-            fid = self.results_fid_dict[SING][subgroup][measure]
-            if exists(fid):
-                self.assoc_results_dict[subgroup][measure] = ds_utils.read_json(fid)
+        #for subgroup in self.avail_identity_terms:
+        #    fid = self.results_fid_dict[SING][subgroup][measure]
+        #    if exists(fid):
+        #        self.assoc_results_dict[subgroup][measure] = ds_utils.read_json(fid)
+        #        results_dict[SING][subgroup][measure] = self.assoc_results_dict[subgroup][measure]
         for pair in pairs:
-            bias_fid = self.results_fid_dict[DIFF][pair][bias_str]
-            if exists(bias_fid):
-                self.bias_results_dict[pair][bias_str] = ds_utils.read_json(bias_fid)
-            combined_fid = self.combined_fid_dict[pair][bias_str]
+        #    bias_fid = self.results_fid_dict[DIFF][pair][bias_str]
+        #    if exists(bias_fid):
+        #        self.bias_results_dict[pair][bias_str] = ds_utils.read_json(bias_fid)
+        #        results_dict[DIFF][pair][bias_str] = self.bias_results_dict[pair][bias_str]
+            combined_fid = self.filenames_dict[DMT][pair]
             if exists(combined_fid):
-                self.combined_df_dict[pair][bias_str] = ds_utils.read_df(combined_fid)
-        results_dict[SING] = self.assoc_results_dict
-        results_dict[DIFF] = self.bias_results_dict
-        results_dict[COMBINED] = self.combined_dfs_dict
+                results_dict[pair] = ds_utils.read_df(combined_fid)
         return results_dict
 
-    def _prepare_assoc_results(self):
+    def prepare_results(self):
         assoc_obj = nPMI(self.dstats.vocab_counts_df,
                          self.tokenized_sentence_df,
                          self.avail_identity_terms)
         self.assoc_results_dict = assoc_obj.assoc_results_dict
-        self.bias_results_dict = assoc_obj.bias_results_dict
-        results_dict = {SING: self.assoc_results_dict,
-                        DIFF: self.bias_results_dict}
-        return results_dict
+        self.results_dict = assoc_obj.bias_results_dict
 
-    def _prepare_combined_dfs(self, measure="npmi"):
+    def _prepare_dmt_dfs(self, measure="npmi"):
+        """
+        Create the main dataframe that is used in the DMT, which lists
+        the npmi scores for each paired identity term and the difference between
+        them. The difference between them is the "bias".
+        """
         bias_str = _make_bias_str(measure)
-        combined_dfs_dict = defaultdict(dict)
+        # Paired identity terms, associations and differences, in one dataframe.
+        bias_dfs_dict = defaultdict(dict)
+        logs.debug("bias results dict is")
+        logs.debug(self.bias_results_dict)
         for pair in sorted(self.bias_results_dict):
             combined_df = pd.DataFrame()
-            combined_df[pair] = pd.DataFrame(self.bias_results_dict[pair][bias_str])
+            # Paired identity terms, values are the the difference between them.
+            combined_df[pair] = pd.DataFrame(self.bias_results_dict[pair])
             s1 = pair[0]
             s2 = pair[1]
+            # Single identity term 1, values
             combined_df[s1] = pd.DataFrame(self.assoc_results_dict[s1][measure])
+            # Single identity term 2, values
             combined_df[s2] = pd.DataFrame(self.assoc_results_dict[s2][measure])
-            combined_dfs_dict[pair][bias_str] = combined_df
-        # {pair: bias_str : {pd.DataFrame({pair:diffs, s1:assoc, s2:assoc})}}
-        return combined_dfs_dict
+            # Full dataframe with scores per-term, as well as the difference between.
+            bias_dfs_dict[pair] = combined_df
+        # {pair: {pd.DataFrame({(s1,s2)):diffs, s1:assoc, s2:assoc})}}
+        logs.debug("combined df is")
+        logs.debug(bias_dfs_dict)
+        return bias_dfs_dict
 
     def _write_term_cache(self):
         ds_utils.make_path(self.cache_path)
         if self.avail_identity_terms:
             ds_utils.write_json(self.avail_identity_terms, self.avail_terms_json_fid)
 
-    def _write_results_cache(self, measure="npmi"):
+    def _write_measurements_cache(self, measure="npmi"):
         ds_utils.make_path(pjoin(self.cache_path, measure))
-        bias_measure = _make_bias_str(measure)
+        bias_str = _make_bias_str(measure)
         logs.debug("fid dict is")
-        logs.debug(self.results_fid_dict)
+        logs.debug(self.filenames_dict)
         logs.debug("assoc results dict is")
         logs.debug(self.assoc_results_dict)
-        for subgroup, measure_cache_dict in self.results_fid_dict[SING].items():
+        for subgroup, measure_cache_dict in self.filenames_dict[SING].items():
             fid = measure_cache_dict[measure]
-            ds_utils.write_json(self.assoc_results_dict[subgroup][measure].to_json(), fid)
-        for subgroup_pair, measure_cache_dict in self.results_fid_dict[DIFF].items():
-            fid = measure_cache_dict[bias_measure]
-            ds_utils.write_json(self.bias_results_dict[subgroup_pair][bias_measure].to_json(), fid)
+            logs.debug(subgroup)
+            logs.debug(measure)
+            logs.debug(self.assoc_results_dict[subgroup][measure])
+            ds_utils.write_json(self.assoc_results_dict[subgroup][measure], fid)
+        for subgroup_pair, fid in self.filenames_dict[DIFF].items():
+            ds_utils.write_json(self.bias_results_dict[subgroup_pair], fid)
 
-    def _write_combined_cache(self, measure="npmi"):
+    def _write_dmt_cache(self, measure="npmi"):
         bias_str = _make_bias_str(measure)
         ds_utils.make_path(pjoin(self.cache_path, measure))
-        for pair, measure_dict in self.combined_dfs_dict.items():
-            df = measure_dict[bias_str]
-            fid = self.combined_fid_dict[pair][bias_str]
-            ds_utils.write_df(df, fid)
+        for pair, bias_df in self.results_dict.items():
+            logs.debug("Results for pair is:")
+            logs.debug(bias_df)
+            fid = self.filenames_dict[DMT][pair]
+            logs.debug("Writing to %s" % fid)
+            ds_utils.write_df(bias_df, fid)
 
     def _make_fids(self, measure="npmi"):
-        bias_str = _make_bias_str(measure)
+        """
+        Utility function to create filename/path strings for the different
+        result caches. This include single identity term results as well
+        as the difference between them. Also includes the datastructure used in
+        the DMT, which is a dataframe that has:
+        (term1, term2) difference, term1 (scores), term2 (scores)
+        """
+        self.filenames_dict = {SING:{},DIFF:{},DMT:{}}
         # When we have the available identity terms,
         # we can make cache filenames for them.
         for id_term in self.avail_identity_terms:
             filename = SING + "-" + id_term + ".json"
             json_fid = pjoin(self.cache_path, measure, filename)
-            self.results_fid_dict[SING][id_term][measure] = json_fid
+            self.filenames_dict[SING][id_term] = json_fid
         paired_terms = pair_terms(self.avail_identity_terms)
         for id_term_tuple in paired_terms:
+            # The paired association results (bias) are stored with these files.
             id_term_str = '-'.join(id_term_tuple)
             filename = DIFF + "-" + id_term_str + ".json"
             json_fid = pjoin(self.cache_path, measure, filename)
-            self.results_fid_dict[DIFF][id_term_tuple][bias_str] = json_fid
-            # The images are created for each pair.
-            combined_filename = id_term_str + ".feather"
-            feather_fid = pjoin(self.cache_path, measure, combined_filename)
-            self.combined_fid_dict[id_term_tuple][bias_str] = feather_fid
+            self.filenames_dict[DIFF][id_term_tuple] = json_fid
+            # The display dataframes in the DMT are stored with these files.
+            filename = DMT + "-" + id_term_str + ".json"
+            json_fid = pjoin(self.cache_path, measure, filename)
+            self.filenames_dict[DMT][id_term_tuple] = json_fid
 
-    def load_combined_df(self, pair, measure="npmi"):
-        """Returns the dataframe used in the DMT streamlit app to display the results"""
-        bias_str = _make_bias_str(measure)
-        combined_df = self.combined_dfs_dict[pair][bias_str]
-        return combined_df
+    def get_display(self, s1, s2):
+        pair = tuple(sorted([s1,s2]))
+        display_df = self.results_dict[pair]
+        logs.debug(self.results_dict)
+        display_df.columns = ["bias", s1, s2]
+        return display_df
 
     def get_filenames(self):
         filenames = {"available terms": self.avail_terms_json_fid,
-                     "results": self.results_fid_dict,
-                     "dataframes for streamlit display": self.combined_fid_dict}
+                     "results": self.filenames_dict}
         return filenames
 
 
@@ -313,7 +366,7 @@ class nPMI:
         logs.info("Calculating results...")
         # Formatted as {subgroup:{"count":{...},"npmi":{...}}}
         self.assoc_results_dict = self.calc_measures()
-        # Formatted as {(subgroup1,subgroup2):{"npmi bias":{...}}}
+        # Formatted as {(subgroup1,subgroup2):{term1:score,term2:score...}}}
         self.bias_results_dict = self.calc_bias(self.assoc_results_dict)
 
 
@@ -508,32 +561,21 @@ class nPMI:
         """Uses the subgroup dictionaries to compute the differences across pairs.
         Uses dictionaries rather than dataframes due to the fact that dicts seem
         to be preferred amongst evaluate users so far.
-        :return: Dict of (id_term1, id_term2):{measure-bias:{term1:diff, term2:diff ...}}"""
-        bias_measure = measure + "-bias"
+        :return: Dict of (id_term1, id_term2):{term1:diff, term2:diff ...}"""
         paired_results_dict = {}
-        logs.debug("measurements dict is")
-        logs.debug(measurements_dict)
         for pair in self.paired_terms:
-            logs.debug("pair is")
-            logs.debug(pair)
-            paired_results_dict[pair] = {}
+            paired_results = pd.DataFrame()
             s1 = pair[0]
             s2 = pair[1]
             s1_results = measurements_dict[s1][measure]
-            logs.debug("s1 results are")
-            logs.debug(s1_results)
             s2_results = measurements_dict[s2][measure]
-            #shared_words = set(s1_results).intersection(s2_results)
-            #logs.debug("Shared words are")
-            #logs.debug(shared_words)
-            # This is the final result of all the work!
+            # !!! This is the final result of all the work !!!
             word_diffs = s1_results[s1] - s2_results[s2]
-            word_diffs.columns = [("%s - %s") % (s1, s2)]
-            logs.debug("word diffs are")
-            logs.debug(word_diffs)
-            #word_diffs = {word: s1_results[word] - s2_results[word] for word in shared_words}
-            paired_results_dict[pair][bias_measure] = word_diffs.dropna()
-        logs.debug("Paired results are ")
+            paired_results[("%s - %s" % (s1, s2))] = word_diffs
+            paired_results[s1] = s1_results
+            paired_results[s2] = s2_results
+            paired_results_dict[pair] = paired_results.dropna()
+        logs.debug("Paired bias results from the main nPMI class are ")
         logs.debug(paired_results_dict)
         return paired_results_dict
 

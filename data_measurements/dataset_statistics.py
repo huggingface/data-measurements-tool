@@ -221,20 +221,20 @@ class DatasetStatisticsCacheClass:
         self.cvec = _CVEC
 
         self.hf_dset_cache_dir = pjoin(self.dataset_cache_dir, "base_dset")
-        self.tokenized_df_fid = pjoin(self.dataset_cache_dir, "tokenized_df.feather")
+        self.tokenized_df_fid = pjoin(self.dataset_cache_dir, "tokenized_df.json")
 
         self.text_dset_fid = pjoin(self.dataset_cache_dir, "text_dset")
         self.dset_peek_json_fid = pjoin(self.dataset_cache_dir, "dset_peek.json")
 
         ## Length cache files
-        self.length_df_fid = pjoin(self.dataset_cache_dir, "length_df.feather")
+        self.length_df_fid = pjoin(self.dataset_cache_dir, "length_df.json")
         self.length_stats_json_fid = pjoin(self.dataset_cache_dir, "length_stats.json")
 
         self.vocab_counts_df_fid = pjoin(self.dataset_cache_dir,
-                                         "vocab_counts.feather")
-        self.dup_counts_df_fid = pjoin(self.dataset_cache_dir, "dup_counts_df.feather")
+                                         "vocab_counts.json")
+        self.dup_counts_df_fid = pjoin(self.dataset_cache_dir, "dup_counts_df.json")
         self.perplexities_df_fid = pjoin(self.dataset_cache_dir,
-                                         "perplexities_df.feather")
+                                         "perplexities_df.json")
         self.fig_tok_length_fid = pjoin(self.dataset_cache_dir, "fig_tok_length.png")
 
         ## General text stats
@@ -242,7 +242,7 @@ class DatasetStatisticsCacheClass:
                                             "general_stats_dict.json")
         # Needed for UI
         self.sorted_top_vocab_df_fid = pjoin(
-            self.dataset_cache_dir, "sorted_top_vocab.feather"
+            self.dataset_cache_dir, "sorted_top_vocab.json"
         )
         # Set the HuggingFace dataset object with the given arguments.
         self.dset = self.get_dataset()
@@ -398,8 +398,9 @@ class DatasetStatisticsCacheClass:
             self.load_vocab()
             self.vocab_counts_filtered_df = filter_vocab(self.vocab_counts_df)
         elif not load_only:
-            # Building the vocabulary starts with tokenizing.
-            self.load_or_prepare_tokenized_df(load_only=False)
+            if self.tokenized_df is None:
+                # Building the vocabulary starts with tokenizing.
+                self.load_or_prepare_tokenized_df(load_only=False)
             logs.info("Calculating vocab afresh")
             word_count_df = count_vocab_frequencies(self.tokenized_df)
             logs.info("Making dfs with proportion.")
@@ -414,10 +415,9 @@ class DatasetStatisticsCacheClass:
         logs.info(self.vocab_counts_filtered_df)
 
     def load_vocab(self):
-        with open(self.vocab_counts_df_fid, "rb") as f:
-            self.vocab_counts_df = ds_utils.read_df(f)
+        self.vocab_counts_df = ds_utils.read_df(self.vocab_counts_df_fid)
         # Handling for changes in how the index is saved.
-        self.vocab_counts_df = _set_idx_col_names(self.vocab_counts_df)
+        #self.vocab_counts_df = _set_idx_col_names(self.vocab_counts_df)
 
     def load_or_prepare_text_duplicates(self, load_only=False, save=True, list_duplicates=True):
         """Uses a text duplicates library, which
@@ -435,8 +435,7 @@ class DatasetStatisticsCacheClass:
 
     def load_or_prepare_text_perplexities(self, load_only=False):
         if self.use_cache and exists(self.perplexities_df_fid):
-            with open(self.perplexities_df_fid, "rb") as f:
-                self.perplexities_df = ds_utils.read_df(f)
+            self.perplexities_df = ds_utils.read_df(self.perplexities_df_fid)
         elif not load_only:
             self.prepare_text_perplexities()
             if self.save:
@@ -447,8 +446,7 @@ class DatasetStatisticsCacheClass:
         self.general_stats_dict = json.load(
             open(self.general_stats_json_fid, encoding="utf-8")
         )
-        with open(self.sorted_top_vocab_df_fid, "rb") as f:
-            self.sorted_top_vocab_df = ds_utils.read_df(f)
+        self.sorted_top_vocab_df = ds_utils.read_df(self.sorted_top_vocab_df_fid)
         self.text_nan_count = self.general_stats_dict[TEXT_NAN_CNT]
         self.dups_frac = self.general_stats_dict[td.DUPS_FRAC]
         self.total_words = self.general_stats_dict[TOT_WORDS]
