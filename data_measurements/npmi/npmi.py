@@ -40,13 +40,6 @@ DIFF = "biases"
 # Used in the figures we show in DMT
 DMT = "combined"
 
-
-def _make_bias_str(measure):
-    """Utility function so that the key we use for association biases
-    # is always the same w/o having to type it over and over."""
-    return measure + "-bias"
-
-
 def pair_terms(id_terms):
     """Creates alphabetically ordered paired terms based on the given terms."""
     pairs = []
