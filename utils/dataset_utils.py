@@ -396,18 +396,18 @@ def df_to_write_html(input_df, html_fid):
     input_df.to_HTML(html_fid)
 
 def read_df(df_fid):
-    df = feather.read_feather(df_fid)
-    return df
-
+    return pd.DataFrame.from_dict(read_json(df_fid), orient="index")
 
 def write_df(df, df_fid):
-    feather.write_feather(df, df_fid)
-
+    """In order to preserve the index of our dataframes, we can't
+    use the compressed pandas dataframe file format .feather.
+    There's a preference for json amongst HF devs, so we use that here."""
+    df_dict = df.to_dict('index')
+    write_json(df_dict, df_fid)
 
 def write_json(json_dict, json_fid):
     with open(json_fid, "w", encoding="utf-8") as f:
         json.dump(json_dict, f)
-
 
 def read_json(json_fid):
     json_dict = json.load(open(json_fid, encoding="utf-8"))

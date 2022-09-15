@@ -98,24 +98,34 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
     if do_all or calculation == "labels":
         logs.info("\n* Calculating label statistics.")
         dstats.load_or_prepare_labels()
-        label_fid_dict = dstats.label_files
-        logs.info("If all went well, then results are in the following files:")
-        for key, value in label_fid_dict.items():
-            logs.info("%s: %s" % (key, value))
+        npmi_fid_dict = dstats.label_files
+        print("If all went well, then results are in the following files:")
+        for key, value in npmi_fid_dict.items():
+            print("%s: %s" % (key, value))
+        print()
 
     if do_all or calculation == "npmi":
-        logs.info("\n* Preparing nPMI.")
-        npmi_stats = dataset_statistics.nPMIStatisticsCacheClass(
-            dstats, use_cache=use_cache
-        )
-        do_npmi(npmi_stats)
-        logs.info("Done!")
-        logs.info(
-            "nPMI results now available in %s for all identity terms that "
-            "occur more than 10 times and all words that "
-            "co-occur with both terms."
-            % npmi_stats.pmi_dataset_cache_dir
-        )
+        print("\n* Preparing nPMI.")
+        dstats.load_or_prepare_npmi()
+        npmi_fid_dict = dstats.npmi_files
+        print("If all went well, then results are in the following files:")
+        for key, value in npmi_fid_dict.items():
+            if isinstance(value, dict):
+                print(key + ":")
+                for key2, value2 in value.items():
+                    print("\t%s: %s" % (key2, value2))
+            else:
+                print("%s: %s" % (key, value))
+        print()
+
+        #do_npmi(npmi_stats, use_cache=use_cache)
+        #print("Done!")
+        #print(
+        #    "nPMI results now available in %s for all identity terms that "
+        #    "occur more than 10 times and all words that "
+        #    "co-occur with both terms."
+        #    % npmi_stats.pmi_cache_path
+        #)
 
     if do_all or calculation == "zipf":
         logs.info("\n* Preparing Zipf.")
@@ -344,7 +354,7 @@ def main():
                             "Subject: Data Measurements Computed!\n\n" + computed_message)
             logs.info(computed_message)
     except Exception as e:
-        logs.warning(e)
+        logs.exception(e)
         error_message = f"An error occurred in computing data measurements " \
                         f"for dataset with arguments: {args}. " \
                         f"Feel free to make an issue here: " \

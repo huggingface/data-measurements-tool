@@ -30,6 +30,8 @@ st.set_option('deprecation.showPyplotGlobalUse', False)
 # ["#332288", "#117733", "#882255", "#AA4499", "#CC6677", "#44AA99", "#DDCC77",
 # "#88CCEE"]
 
+pd.options.display.float_format = "{:,.3f}".format # '{:20,.2f}'.format
+
 def sidebar_header():
     st.sidebar.markdown("""This demo showcases the 
     [dataset metrics as we develop them](https://huggingface.co/blog/data-measurements-tool).
@@ -176,9 +178,10 @@ def expander_text_lengths(dstats, column_id=""):
             "your dataset:"
         )
         try:
-            st.image(dstats.fig_tok_length_png)
+            st.image(dstats.fig_tok_length)
         except Exception as e:
             logs.warning("Hit exception for length %s " % e)
+            # Must be a matplotlib figure.
             st.pyplot(dstats.fig_tok_length, use_container_width=True)
         st.markdown(
             "The average length of text instances is **"
@@ -373,64 +376,59 @@ def npmi_widget(dstats, column_id=""):
     :return:
     """
     min_vocab = dstats.min_vocab_count
-    npmi_stats = dstats.npmi_stats
+    npmi_stats = dstats.npmi_obj
+    available_terms = npmi_stats.avail_identity_terms
     with st.expander(f"Word Association{column_id}: nPMI", expanded=False):
-        if npmi_stats and len(npmi_stats.available_terms) > 0:
+        if npmi_stats and len(available_terms) > 0:
             expander_npmi_description(min_vocab)
             st.markdown("-----")
             term1 = st.selectbox(
                 f"What is the first term you want to select?{column_id}",
-                npmi_stats.available_terms,
+                available_terms,
             )
             term2 = st.selectbox(
                 f"What is the second term you want to select?{column_id}",
-                reversed(npmi_stats.available_terms),
+                reversed(available_terms),
             )
-            # We calculate/grab nPMI data based on a canonical (alphabetic)
-            # subgroup ordering.
-            subgroup_pair = sorted([term1, term2])
             try:
-                joint_npmi_df = npmi_stats.load_or_prepare_joint_npmi(
-                    subgroup_pair)
+                joint_npmi_df = npmi_stats.get_display(term1, term2)
                 npmi_show(joint_npmi_df)
-            except KeyError:
+            except Exception as e:
+                logs.exception(e)
                 st.markdown(
                     "**WARNING!** The nPMI for these terms has not been"
                     " pre-computed, please re-run caching."
                 )
         else:
-            st.markdown(
-                "No words found co-occurring with both of the selected identity"
-                " terms."
-            )
+            st.markdown("No words found co-occurring with both of the selected identity"
+                " terms.")
 
 
 def npmi_show(paired_results):
     if paired_results.empty:
         st.markdown(
-            "No words that co-occur enough times for results!  Or there's a 🐛."
+            "No words that co-occur enough times for results! Or there's a 🐛."
             "  Or we're still computing this one. 🤷")
     else:
+        logs.debug("Results to be shown in streamlit are")
+        logs.debug(paired_results)
         s = pd.DataFrame(
-            paired_results.sort_values(by="npmi-bias", ascending=True))
+            paired_results.sort_values(paired_results.columns[0], ascending=True))
         s.index.name = "word"
-        npmi_cols = s.filter(like="npmi").columns
-        count_cols = s.filter(like="count").columns
+        bias_col = s.filter(like="bias").columns
+        #count_cols = s.filter(like="count").columns
+        # Keep the dataframe from being crazy big.
         if s.shape[0] > 10000:
-            bias_thres = max(abs(s["npmi-bias"][5000]),
-                             abs(s["npmi-bias"][-5000]))
+            bias_thres = max(abs(s[s[0]][5000]),
+                             abs(s[s[0]][-5000]))
             logs.info(f"filtering with bias threshold: {bias_thres}")
-            s_filtered = s[s["npmi-bias"].abs() > bias_thres]
+            s_filtered = s[s[0].abs() > bias_thres]
         else:
             s_filtered = s
         cm = sns.palplot(sns.diverging_palette(270, 36, s=99, l=48, n=16))
-        out_df = (s_filtered.style.background_gradient(subset=npmi_cols,
-                                                       cmap=cm).format(
-            subset=npmi_cols, formatter="{:,.3f}").format(subset=count_cols,
-                                                          formatter=int).set_properties(
-            subset=count_cols,
-            **{"width": "10em", "text-align": "center"}).set_properties(
-            **{"align": "center"}).set_caption(
-            "nPMI scores and co-occurence counts between the selected identity terms and the words they both co-occur with"))
-        st.write("### Here is your dataset's nPMI results:")
+        out_df = s_filtered.style.background_gradient(subset=bias_col, cmap=cm).format(formatter="{:,.3f}").set_properties(**{"align": "center", "width":"100em"}).set_caption("nPMI scores between the selected identity terms and the words they both co-occur with")
+        #set_properties(subset=count_cols, **{"width": "10em", "text-align": "center"}).
+        # .format(subset=count_cols, formatter=int).
+        #.format(subset=bias_col, formatter="{:,.3f}")
+        st.write("### Here is your dataset's bias results:")
         st.dataframe(out_df)
