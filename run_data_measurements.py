@@ -51,10 +51,7 @@ def load_or_prepare_widgets(ds_args, show_embeddings=False,
     dstats.load_or_prepare_text_duplicates()
     # nPMI widget
     dstats.load_or_prepare_npmi()
-    npmi_stats = dstats.npmi_stats
-    # Handling for all pairs; in the UI, people select.
-    do_npmi(npmi_stats)
-    # Zipf widget
+     # Zipf widget
     dstats.load_or_prepare_zipf()
 
 
@@ -118,15 +115,6 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
                 print("%s: %s" % (key, value))
         print()
 
-        #do_npmi(npmi_stats, use_cache=use_cache)
-        #print("Done!")
-        #print(
-        #    "nPMI results now available in %s for all identity terms that "
-        #    "occur more than 10 times and all words that "
-        #    "co-occur with both terms."
-        #    % npmi_stats.pmi_cache_path
-        #)
-
     if do_all or calculation == "zipf":
         logs.info("\n* Preparing Zipf.")
         dstats.load_or_prepare_zipf()
@@ -148,23 +136,6 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
     if calculation == "perplexities":
         logs.info("\n* Preparing text perplexities.")
         dstats.load_or_prepare_text_perplexities()
-
-
-def do_npmi(npmi_stats):
-    available_terms = npmi_stats.load_or_prepare_npmi_terms()
-    completed_pairs = {}
-    logs.info("Iterating through terms for joint npmi.")
-    for term1 in available_terms:
-        for term2 in available_terms:
-            if term1 != term2:
-                sorted_terms = tuple(sorted([term1, term2]))
-                if sorted_terms not in completed_pairs:
-                    term1, term2 = sorted_terms
-                    logs.info("Computing nPMI statistics for %s and %s" % (
-                        term1, term2))
-                    _ = npmi_stats.load_or_prepare_joint_npmi(sorted_terms)
-                    completed_pairs[tuple(sorted_terms)] = {}
-
 
 def pass_args_to_DMT(dset_name, dset_config, split_name, text_field, label_field, label_names, calculation, dataset_cache_dir, prepare_gui=False, use_cache=True):
     if not use_cache:
