@@ -39,13 +39,9 @@ class DMTHelper:
             dstats.load_or_prepare_text_dset()
             self.dset = dstats.text_dset
         self.duplicates_results = dstats.duplicates_results
-<<<<<<< HEAD
-        self.cache_path = dstats.cache_path
-=======
         self.cache_dir = dstats.dataset_cache_dir
         self.save = save
         self.load_only = load_only
->>>>>>> main
         # Filenames
         self.dups_dir = "text_duplicates"
         dups_json = "text_duplicates.json"
