@@ -49,18 +49,18 @@ def get_widgets(dstats):
     # Add any additional modules and their load-prepare function here.
     load_prepare_list = [("general stats", dstats.load_or_prepare_general_stats),
                          ("label distribution", dstats.load_or_prepare_labels),
-                         ("text_lengths", dstats.load_or_prepare_text_lengths),
-                         ("duplicates", dstats.load_or_prepare_text_duplicates),
-                         ("npmi", dstats.load_or_prepare_npmi),
-                         ("zipf", dstats.load_or_prepare_zipf)]
+                         ("text_lengths", dstats.load_or_prepare_text_lengths)]
+                         #("duplicates", dstats.load_or_prepare_text_duplicates),
+                         #("npmi", dstats.load_or_prepare_npmi),
+                         #("zipf", dstats.load_or_prepare_zipf)]
     # Measurement interface:
     # Add the graphic interfaces for any new measurements here.
     display_list = [("general stats", st_utils.expander_general_stats),
                     ("label distribution", st_utils.expander_label_distribution),
-                    ("text_lengths", st_utils.expander_text_lengths),
-                    ("duplicates", st_utils.expander_text_duplicates),
-                    ("npmi", st_utils.npmi_widget),
-                    ("zipf", st_utils.expander_zipf)]
+                    ("text_lengths", st_utils.expander_text_lengths)]
+                    #("duplicates", st_utils.expander_text_duplicates),
+                    #("npmi", st_utils.npmi_widget),
+                    #("zipf", st_utils.expander_zipf)]
 
     return load_prepare_list, display_list
 

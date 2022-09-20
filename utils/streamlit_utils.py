@@ -177,11 +177,7 @@ def expander_text_lengths(dstats, column_id=""):
             "### Here is the relative frequency of different text lengths in "
             "your dataset:"
         )
-        try:
-            st.image(dstats.length_obj.fig_lengths)
-        except:
-            logs.warning("Hit exception for length %s " % e)
-            st.pyplot(dstats.length_obj.fig_lengths, use_container_width=True)
+        st.pyplot(dstats.length_obj.fig_lengths, use_container_width=True)
         st.markdown(
             "The average length of text instances is **"
             + str(round(dstats.length_obj.avg_length, 2))
