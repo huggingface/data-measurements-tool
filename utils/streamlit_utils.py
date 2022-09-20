@@ -15,6 +15,7 @@
 import logging
 import numpy as np
 import pandas as pd
+from matplotlib.figure import Figure
 import seaborn as sns
 import statistics
 import streamlit as st
@@ -174,10 +175,21 @@ def expander_text_lengths(dstats, column_id=""):
             "identify instances you want to remove or augment."
         )
         st.markdown(
-            "### Here is the relative frequency of different text lengths in "
+            "### Here is the count of different text lengths in "
             "your dataset:"
         )
-        st.pyplot(dstats.length_obj.fig_lengths, use_container_width=True)
+        # When matplotlib first creates this, it's a Figure.
+        # Once it's saved, then read back in,
+        # it's an ndarray that must be displayed using st.image
+        # (I know, lame).
+        if isinstance(dstats.length_obj.fig_lengths, Figure):
+            st.pyplot(dstats.length_obj.fig_lengths, use_container_width=True)
+        else:
+            try:
+                st.image(dstats.length_obj.fig_lengths)
+            except Exception as e:
+                logs.exception("Hit exception for lengths figure:")
+                logs.exception(e)
         st.markdown(
             "The average length of text instances is **"
             + str(round(dstats.length_obj.avg_length, 2))
