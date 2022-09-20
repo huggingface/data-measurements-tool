@@ -633,11 +633,3 @@ def filter_vocab(vocab_counts_df):
     filtered_count_denom = float(sum(filtered_vocab_counts_df[CNT]))
     filtered_vocab_counts_df[PROP] = filtered_count / filtered_count_denom
     return filtered_vocab_counts_df
-
-
-## Figures ##
-def make_fig_lengths(tokenized_df, length_field):
-    fig_tok_length, axs = plt.subplots(figsize=(15, 6), dpi=150)
-    sns.histplot(data=tokenized_df[length_field], kde=True, bins=100, ax=axs)
-    sns.rugplot(data=tokenized_df[length_field], ax=axs)
-    return fig_tok_length
