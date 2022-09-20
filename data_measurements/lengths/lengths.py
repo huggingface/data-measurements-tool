@@ -31,7 +31,7 @@ def make_fig_lengths(lengths_df):
     plt.xlabel("Number of tokens")
     plt.title("Binned counts of text lengths, with kernel density estimate and ticks for each instance.")
     sns.histplot(data=lengths_df, kde=True, ax=axs, x=LENGTH_FIELD, legend=False)
-    sns.rugplot(data=lengths_df, ax=axs, color="r")
+    sns.rugplot(data=lengths_df, ax=axs)
     return fig_tok_lengths
 
 class DMTHelper:
