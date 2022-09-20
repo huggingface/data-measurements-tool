@@ -591,3 +591,543 @@
 2022-09-13 18:34:10,738:Using Single Dataset Mode
 2022-09-13 19:04:49,520:Using Single Dataset Mode
 2022-09-13 19:04:49,520:Using Single Dataset Mode
+2022-09-13 19:11:59,172:Using Single Dataset Mode
+2022-09-13 19:11:59,172:Using Single Dataset Mode
+2022-09-13 19:11:59,210:Using cache
+2022-09-13 19:11:59,210:Using cache
+2022-09-13 19:11:59,252:Using Single Dataset Mode
+2022-09-13 19:11:59,252:Using Single Dataset Mode
+2022-09-13 19:11:59,340:Using cache
+2022-09-13 19:11:59,340:Using cache
+2022-09-13 19:12:00,977:Missing a cache for zipf
+2022-09-13 19:12:00,977:Missing a cache for zipf
+2022-09-13 19:12:00,985:Missing a cache for zipf
+2022-09-13 19:12:00,985:Missing a cache for zipf
+2022-09-13 19:12:58,008:Using Single Dataset Mode
+2022-09-13 19:12:58,008:Using Single Dataset Mode
+2022-09-13 19:12:58,033:Using cache
+2022-09-13 19:12:58,033:Using cache
+2022-09-13 19:14:46,428:Missing a cache for prepare labels
+2022-09-13 19:14:46,428:Missing a cache for prepare labels
+2022-09-13 19:15:38,930:Using Single Dataset Mode
+2022-09-13 19:15:38,930:Using Single Dataset Mode
+2022-09-13 19:15:38,960:Using cache
+2022-09-13 19:15:38,960:Using cache
+2022-09-13 19:16:40,216:Missing a cache for prepare labels
+2022-09-13 19:16:40,216:Missing a cache for prepare labels
+2022-09-13 19:17:44,085:Using Single Dataset Mode
+2022-09-13 19:17:44,085:Using Single Dataset Mode
+2022-09-13 19:55:37,582:Using Single Dataset Mode
+2022-09-13 19:58:32,243:Using Single Dataset Mode
+2022-09-13 20:00:18,109:Using Single Dataset Mode
+2022-09-13 20:03:09,535:Using Single Dataset Mode
+2022-09-13 23:29:18,586:Using Single Dataset Mode
+2022-09-14 10:38:35,851:Using Single Dataset Mode
+2022-09-14 11:07:08,602:Using Single Dataset Mode
+2022-09-14 11:20:40,617:Using Single Dataset Mode
+2022-09-14 11:25:47,741:Using Single Dataset Mode
+2022-09-14 13:43:50,415:Using Single Dataset Mode
+2022-09-14 13:49:19,382:Using Single Dataset Mode
+2022-09-14 14:06:44,016:Using Single Dataset Mode
+2022-09-14 14:10:07,788:Using Single Dataset Mode
+2022-09-14 14:13:51,578:Using Single Dataset Mode
+2022-09-14 14:17:34,849:Using Single Dataset Mode
+2022-09-14 14:21:17,715:Using Single Dataset Mode
+2022-09-14 14:25:06,674:Using Single Dataset Mode
+2022-09-14 14:27:36,862:Using Single Dataset Mode
+2022-09-14 14:29:44,726:Using Single Dataset Mode
+2022-09-14 14:33:37,766:Using Single Dataset Mode
+2022-09-14 14:36:48,660:Using Single Dataset Mode
+2022-09-14 14:38:53,712:Using Single Dataset Mode
+2022-09-14 14:43:22,171:Using Single Dataset Mode
+2022-09-14 14:46:43,673:Using Single Dataset Mode
+2022-09-14 14:48:43,383:Using Single Dataset Mode
+2022-09-14 14:50:23,647:Using Single Dataset Mode
+2022-09-14 14:50:23,718:showing header
+2022-09-14 14:50:23,718:Only using cache.
+2022-09-14 14:50:25,237:showing header
+2022-09-14 14:57:50,718:Using Single Dataset Mode
+2022-09-14 14:57:50,735:showing header
+2022-09-14 14:57:50,735:Only using cache.
+2022-09-14 14:57:51,210:showing header
+2022-09-15 15:03:11,315:Using Single Dataset Mode
+2022-09-15 15:03:11,412:showing header
+2022-09-15 15:03:11,412:Only using cache.
+2022-09-15 15:03:12,020:showing header
+2022-09-19 19:43:35,758:Using Single Dataset Mode
+2022-09-19 19:43:35,793:showing header
+2022-09-19 19:43:35,793:Only using cache.
+2022-09-19 19:43:36,402:Using Single Dataset Mode
+2022-09-19 19:43:36,411:showing header
+2022-09-19 19:43:36,412:Only using cache.
+2022-09-19 19:43:37,456:showing header
+2022-09-19 19:43:37,456:showing header
+2022-09-19 22:24:11,479:Using Single Dataset Mode
+2022-09-19 22:24:11,658:showing header
+2022-09-19 22:24:11,658:Only using cache.
+2022-09-19 22:24:12,386:showing header
+2022-09-19 22:24:16,807:Using Single Dataset Mode
+2022-09-19 22:24:16,818:showing header
+2022-09-19 22:24:16,819:Only using cache.
+2022-09-19 22:24:17,194:showing header
+2022-09-20 12:09:48,719:Using Single Dataset Mode
+2022-09-20 12:09:48,761:showing header
+2022-09-20 12:09:48,762:Making new calculations if cache is not there.
+2022-09-20 12:09:49,992:showing header
+2022-09-20 12:17:21,287:Using Single Dataset Mode
+2022-09-20 12:17:21,297:showing header
+2022-09-20 12:17:21,297:Making new calculations if cache is not there.
+2022-09-20 12:17:21,666:showing header
+2022-09-20 12:23:20,967:Using Single Dataset Mode
+2022-09-20 12:23:20,981:showing header
+2022-09-20 12:23:20,982:Making new calculations if cache is not there.
+2022-09-20 12:23:21,354:showing header
+2022-09-20 12:25:37,147:Using Single Dataset Mode
+2022-09-20 12:25:37,160:showing header
+2022-09-20 12:25:37,161:Making new calculations if cache is not there.
+2022-09-20 12:25:37,509:showing header
+2022-09-20 12:25:37,529:showing general stats
+2022-09-20 12:25:38,061:showing npmi widget
+2022-09-20 12:28:53,665:Using Single Dataset Mode
+2022-09-20 12:28:53,681:showing header
+2022-09-20 12:28:53,681:Making new calculations if cache is not there.
+2022-09-20 12:28:54,039:showing header
+2022-09-20 12:28:54,042:showing general stats
+2022-09-20 12:28:54,488:showing npmi widget
+2022-09-20 12:31:57,581:Using Single Dataset Mode
+2022-09-20 12:31:57,591:showing header
+2022-09-20 12:31:57,591:Making new calculations if cache is not there.
+2022-09-20 12:31:57,991:showing header
+2022-09-20 12:31:57,994:showing general stats
+2022-09-20 12:31:58,455:showing npmi widget
+2022-09-20 12:39:07,358:Using Single Dataset Mode
+2022-09-20 12:39:07,372:showing header
+2022-09-20 12:39:07,372:Making new calculations if cache is not there.
+2022-09-20 12:39:07,720:showing header
+2022-09-20 12:39:07,723:showing general stats
+2022-09-20 12:39:08,166:showing npmi widget
+2022-09-20 12:46:36,060:Using Single Dataset Mode
+2022-09-20 12:46:36,070:showing header
+2022-09-20 12:46:36,071:Making new calculations if cache is not there.
+2022-09-20 12:46:36,459:showing header
+2022-09-20 12:46:36,463:showing general stats
+2022-09-20 12:46:37,038:showing npmi widget
+2022-09-20 12:46:37,039:showing zipf
+2022-09-20 12:48:51,621:Using Single Dataset Mode
+2022-09-20 12:48:51,632:showing header
+2022-09-20 12:48:51,633:Making new calculations if cache is not there.
+2022-09-20 12:48:51,998:showing header
+2022-09-20 12:48:52,001:showing general stats
+2022-09-20 12:48:52,530:showing npmi widget
+2022-09-20 12:48:52,531:showing zipf
+2022-09-20 12:48:52,532:showing general stats
+2022-09-20 12:48:52,533:showing npmi widget
+2022-09-20 12:48:52,533:showing zipf
+2022-09-20 12:50:25,663:Using Single Dataset Mode
+2022-09-20 12:50:25,680:showing header
+2022-09-20 12:50:25,681:Making new calculations if cache is not there.
+2022-09-20 12:50:26,065:showing header
+2022-09-20 12:50:26,068:showing general stats
+2022-09-20 12:50:26,525:showing npmi widget
+2022-09-20 12:50:26,525:showing zipf
+2022-09-20 12:50:26,526:showing general stats
+2022-09-20 12:50:26,526:showing npmi widget
+2022-09-20 12:50:26,527:showing zipf
+2022-09-20 12:50:26,527:showing general stats.
+2022-09-20 12:50:26,576:showing label distribution.
+2022-09-20 12:50:26,577:Jk jk jk. There was an issue with label distribution:
+2022-09-20 12:50:26,578:The `figure_or_data` positional argument must be `dict`-like, `list`-like, or an instance of plotly.graph_objs.Figure
+Traceback (most recent call last):
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/app.py", line 277, in show_column
+    widget_fn(dstats, column_id)
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/utils/streamlit_utils.py", line 201, in expander_label_distribution
+    st.plotly_chart(fig_labels, use_container_width=True)
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/plotly_chart.py", line 140, in plotly_chart
+    marshall(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/plotly_chart.py", line 172, in marshall
+    figure = plotly.tools.return_figure_from_figure_or_data(
+  File "/usr/local/lib/python3.9/site-packages/plotly/tools.py", line 544, in return_figure_from_figure_or_data
+    raise exceptions.PlotlyError(
+_plotly_utils.exceptions.PlotlyError: The `figure_or_data` positional argument must be `dict`-like, `list`-like, or an instance of plotly.graph_objs.Figure
+2022-09-20 12:50:26,585:showing text_lengths.
+2022-09-20 12:50:27,144:Jk jk jk. There was an issue with text_lengths:
+2022-09-20 12:50:27,144:There are multiple identical `st.selectbox` widgets with
+`key='select_show_length_'`.
+
+To fix this, please make sure that the `key` argument is unique for
+each `st.selectbox` you create.
+Traceback (most recent call last):
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/app.py", line 277, in show_column
+    widget_fn(dstats, column_id)
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/utils/streamlit_utils.py", line 239, in expander_text_lengths
+    start_id_show_lengths = st.selectbox(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/selectbox.py", line 99, in selectbox
+    return self._selectbox(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/selectbox.py", line 162, in _selectbox
+    widget_state = register_widget(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/runtime/state/widgets.py", line 199, in register_widget
+    raise DuplicateWidgetID(
+streamlit.errors.DuplicateWidgetID: There are multiple identical `st.selectbox` widgets with
+`key='select_show_length_'`.
+
+To fix this, please make sure that the `key` argument is unique for
+each `st.selectbox` you create.
+2022-09-20 12:50:27,152:showing duplicates.
+2022-09-20 12:50:27,158:showing npmi.
+2022-09-20 12:50:27,410:showing zipf.
+2022-09-20 12:50:27,437:Have finished displaying the widgets.
+2022-09-20 12:52:40,851:Using Single Dataset Mode
+2022-09-20 12:52:40,867:showing header
+2022-09-20 12:52:40,867:Making new calculations if cache is not there.
+2022-09-20 12:52:41,249:showing header
+2022-09-20 12:52:41,252:showing general stats
+2022-09-20 12:52:41,744:showing npmi widget
+2022-09-20 12:52:41,746:showing zipf
+2022-09-20 12:52:41,771:showing general stats
+2022-09-20 12:52:41,771:showing npmi widget
+2022-09-20 12:52:41,772:showing zipf
+2022-09-20 12:52:41,773:showing general stats.
+2022-09-20 12:52:41,778:showing label distribution.
+2022-09-20 12:52:41,779:Jk jk jk. There was an issue with label distribution:
+2022-09-20 12:52:41,780:The `figure_or_data` positional argument must be `dict`-like, `list`-like, or an instance of plotly.graph_objs.Figure
+Traceback (most recent call last):
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/app.py", line 277, in show_column
+    widget_fn(dstats, column_id)
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/utils/streamlit_utils.py", line 201, in expander_label_distribution
+    st.plotly_chart(fig_labels, use_container_width=True)
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/plotly_chart.py", line 140, in plotly_chart
+    marshall(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/plotly_chart.py", line 172, in marshall
+    figure = plotly.tools.return_figure_from_figure_or_data(
+  File "/usr/local/lib/python3.9/site-packages/plotly/tools.py", line 544, in return_figure_from_figure_or_data
+    raise exceptions.PlotlyError(
+_plotly_utils.exceptions.PlotlyError: The `figure_or_data` positional argument must be `dict`-like, `list`-like, or an instance of plotly.graph_objs.Figure
+2022-09-20 12:52:41,787:showing text_lengths.
+2022-09-20 12:52:42,344:Jk jk jk. There was an issue with text_lengths:
+2022-09-20 12:52:42,344:There are multiple identical `st.selectbox` widgets with
+`key='select_show_length_'`.
+
+To fix this, please make sure that the `key` argument is unique for
+each `st.selectbox` you create.
+Traceback (most recent call last):
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/app.py", line 277, in show_column
+    widget_fn(dstats, column_id)
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/utils/streamlit_utils.py", line 239, in expander_text_lengths
+    start_id_show_lengths = st.selectbox(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/selectbox.py", line 99, in selectbox
+    return self._selectbox(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/selectbox.py", line 162, in _selectbox
+    widget_state = register_widget(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/runtime/state/widgets.py", line 199, in register_widget
+    raise DuplicateWidgetID(
+streamlit.errors.DuplicateWidgetID: There are multiple identical `st.selectbox` widgets with
+`key='select_show_length_'`.
+
+To fix this, please make sure that the `key` argument is unique for
+each `st.selectbox` you create.
+2022-09-20 12:52:42,345:showing duplicates.
+2022-09-20 12:52:42,350:showing npmi.
+2022-09-20 12:52:42,563:showing zipf.
+2022-09-20 12:52:42,586:Have finished displaying the widgets.
+2022-09-20 13:04:30,887:Using Single Dataset Mode
+2022-09-20 13:05:34,872:showing header
+2022-09-20 13:05:34,873:Making new calculations if cache is not there.
+2022-09-20 15:06:36,541:Using Single Dataset Mode
+2022-09-20 15:06:37,032:showing header
+2022-09-20 15:06:37,032:Making new calculations if cache is not there.
+2022-09-20 15:14:21,661:Issue with label distribution.
+2022-09-20 15:14:21,661:tuple index out of range
+Traceback (most recent call last):
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/app.py", line 178, in load_or_prepare_widgets
+    widget_fn(load_only=load_only)
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py", line 384, in load_or_prepare_labels
+    label_obj.run_DMT_processing()
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/labels/labels.py", line 123, in run_DMT_processing
+    self.label_results = self._prepare_labels()
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/labels/labels.py", line 154, in _prepare_labels
+    label_field = self.label_field[0]
+IndexError: tuple index out of range
+2022-09-20 15:23:47,718:Issue with label distribution.
+2022-09-20 15:23:47,718:tuple index out of range
+Traceback (most recent call last):
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/app.py", line 178, in load_or_prepare_widgets
+    widget_fn(load_only=load_only)
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py", line 384, in load_or_prepare_labels
+    label_obj.run_DMT_processing()
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/labels/labels.py", line 123, in run_DMT_processing
+    self.label_results = self._prepare_labels()
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/labels/labels.py", line 154, in _prepare_labels
+    label_field = self.label_field[0]
+IndexError: tuple index out of range
+2022-09-20 15:23:53,836:showing header
+2022-09-20 15:23:53,859:showing general stats
+2022-09-20 15:23:54,312:showing npmi widget
+2022-09-20 15:23:54,313:showing zipf
+2022-09-20 15:23:54,871:showing general stats
+2022-09-20 15:23:54,871:showing npmi widget
+2022-09-20 15:23:54,872:showing zipf
+2022-09-20 15:23:54,872:showing general stats.
+2022-09-20 15:23:54,878:showing label distribution.
+2022-09-20 15:23:54,878:Jk jk jk. There was an issue with label distribution:
+2022-09-20 15:23:54,879:The `figure_or_data` positional argument must be `dict`-like, `list`-like, or an instance of plotly.graph_objs.Figure
+Traceback (most recent call last):
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/app.py", line 277, in show_column
+    widget_fn(dstats, column_id)
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/utils/streamlit_utils.py", line 201, in expander_label_distribution
+    st.plotly_chart(fig_labels, use_container_width=True)
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/plotly_chart.py", line 140, in plotly_chart
+    marshall(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/plotly_chart.py", line 172, in marshall
+    figure = plotly.tools.return_figure_from_figure_or_data(
+  File "/usr/local/lib/python3.9/site-packages/plotly/tools.py", line 544, in return_figure_from_figure_or_data
+    raise exceptions.PlotlyError(
+_plotly_utils.exceptions.PlotlyError: The `figure_or_data` positional argument must be `dict`-like, `list`-like, or an instance of plotly.graph_objs.Figure
+2022-09-20 15:23:54,881:showing text_lengths.
+2022-09-20 15:23:55,369:Jk jk jk. There was an issue with text_lengths:
+2022-09-20 15:23:55,371:There are multiple identical `st.selectbox` widgets with
+`key='select_show_length_'`.
+
+To fix this, please make sure that the `key` argument is unique for
+each `st.selectbox` you create.
+Traceback (most recent call last):
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/app.py", line 277, in show_column
+    widget_fn(dstats, column_id)
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/utils/streamlit_utils.py", line 239, in expander_text_lengths
+    start_id_show_lengths = st.selectbox(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/selectbox.py", line 99, in selectbox
+    return self._selectbox(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/selectbox.py", line 162, in _selectbox
+    widget_state = register_widget(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/runtime/state/widgets.py", line 199, in register_widget
+    raise DuplicateWidgetID(
+streamlit.errors.DuplicateWidgetID: There are multiple identical `st.selectbox` widgets with
+`key='select_show_length_'`.
+
+To fix this, please make sure that the `key` argument is unique for
+each `st.selectbox` you create.
+2022-09-20 15:23:55,389:showing duplicates.
+2022-09-20 15:23:55,393:showing npmi.
+2022-09-20 15:32:45,202:showing zipf.
+2022-09-20 15:32:45,860:Have finished displaying the widgets.
+2022-09-20 15:39:34,769:Using Single Dataset Mode
+2022-09-20 15:40:59,673:showing header
+2022-09-20 15:40:59,674:Making new calculations if cache is not there.
+2022-09-20 15:56:32,491:Using Single Dataset Mode
+2022-09-20 16:02:18,850:Using Single Dataset Mode
+2022-09-20 16:04:01,223:Using Single Dataset Mode
+2022-09-20 16:06:07,709:Using Single Dataset Mode
+2022-09-20 16:06:07,722:showing header
+2022-09-20 16:06:07,722:Making new calculations if cache is not there.
+2022-09-20 16:06:08,910:showing header
+2022-09-20 16:06:08,917:showing general stats
+2022-09-20 16:06:09,424:showing npmi widget
+2022-09-20 16:06:09,425:showing zipf
+2022-09-20 16:06:09,443:showing general stats
+2022-09-20 16:06:09,444:showing npmi widget
+2022-09-20 16:06:09,444:showing zipf
+2022-09-20 16:06:09,444:showing general stats.
+2022-09-20 16:06:09,447:showing label distribution.
+2022-09-20 16:06:09,449:Jk jk jk. There was an issue with label distribution:
+2022-09-20 16:06:09,449:The `figure_or_data` positional argument must be `dict`-like, `list`-like, or an instance of plotly.graph_objs.Figure
+Traceback (most recent call last):
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/app.py", line 277, in show_column
+    widget_fn(dstats, column_id)
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/utils/streamlit_utils.py", line 202, in expander_label_distribution
+    st.plotly_chart(fig_labels, use_container_width=True)
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/plotly_chart.py", line 140, in plotly_chart
+    marshall(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/plotly_chart.py", line 172, in marshall
+    figure = plotly.tools.return_figure_from_figure_or_data(
+  File "/usr/local/lib/python3.9/site-packages/plotly/tools.py", line 544, in return_figure_from_figure_or_data
+    raise exceptions.PlotlyError(
+_plotly_utils.exceptions.PlotlyError: The `figure_or_data` positional argument must be `dict`-like, `list`-like, or an instance of plotly.graph_objs.Figure
+2022-09-20 16:06:09,455:showing text_lengths.
+2022-09-20 16:06:09,967:Jk jk jk. There was an issue with text_lengths:
+2022-09-20 16:06:09,967:There are multiple identical `st.selectbox` widgets with
+`key='select_show_length_'`.
+
+To fix this, please make sure that the `key` argument is unique for
+each `st.selectbox` you create.
+Traceback (most recent call last):
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/app.py", line 277, in show_column
+    widget_fn(dstats, column_id)
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/utils/streamlit_utils.py", line 240, in expander_text_lengths
+    start_id_show_lengths = st.selectbox(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/selectbox.py", line 99, in selectbox
+    return self._selectbox(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/selectbox.py", line 162, in _selectbox
+    widget_state = register_widget(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/runtime/state/widgets.py", line 199, in register_widget
+    raise DuplicateWidgetID(
+streamlit.errors.DuplicateWidgetID: There are multiple identical `st.selectbox` widgets with
+`key='select_show_length_'`.
+
+To fix this, please make sure that the `key` argument is unique for
+each `st.selectbox` you create.
+2022-09-20 16:06:09,972:showing duplicates.
+2022-09-20 16:06:09,976:showing npmi.
+2022-09-20 16:06:10,239:showing zipf.
+2022-09-20 16:29:10,581:Using Single Dataset Mode
+2022-09-20 16:29:10,591:showing header
+2022-09-20 16:29:10,591:Making new calculations if cache is not there.
+2022-09-20 16:29:11,001:showing header
+2022-09-20 16:29:11,004:showing general stats
+2022-09-20 16:29:11,504:showing npmi widget
+2022-09-20 16:29:11,505:showing zipf
+2022-09-20 16:29:11,526:showing general stats
+2022-09-20 16:29:11,526:showing npmi widget
+2022-09-20 16:29:11,527:showing zipf
+2022-09-20 16:29:11,527:showing general stats.
+2022-09-20 16:29:11,529:showing label distribution.
+2022-09-20 16:29:11,530:Jk jk jk. There was an issue with label distribution:
+2022-09-20 16:29:11,530:The `figure_or_data` positional argument must be `dict`-like, `list`-like, or an instance of plotly.graph_objs.Figure
+Traceback (most recent call last):
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/app.py", line 277, in show_column
+    widget_fn(dstats, column_id)
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/utils/streamlit_utils.py", line 202, in expander_label_distribution
+    st.plotly_chart(fig_labels, use_container_width=True)
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/plotly_chart.py", line 140, in plotly_chart
+    marshall(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/plotly_chart.py", line 172, in marshall
+    figure = plotly.tools.return_figure_from_figure_or_data(
+  File "/usr/local/lib/python3.9/site-packages/plotly/tools.py", line 544, in return_figure_from_figure_or_data
+    raise exceptions.PlotlyError(
+_plotly_utils.exceptions.PlotlyError: The `figure_or_data` positional argument must be `dict`-like, `list`-like, or an instance of plotly.graph_objs.Figure
+2022-09-20 16:29:11,537:showing text_lengths.
+2022-09-20 16:29:12,172:Jk jk jk. There was an issue with text_lengths:
+2022-09-20 16:29:12,172:There are multiple identical `st.selectbox` widgets with
+`key='select_show_length_'`.
+
+To fix this, please make sure that the `key` argument is unique for
+each `st.selectbox` you create.
+Traceback (most recent call last):
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/app.py", line 277, in show_column
+    widget_fn(dstats, column_id)
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/utils/streamlit_utils.py", line 240, in expander_text_lengths
+    start_id_show_lengths = st.selectbox(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/selectbox.py", line 99, in selectbox
+    return self._selectbox(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/selectbox.py", line 162, in _selectbox
+    widget_state = register_widget(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/runtime/state/widgets.py", line 199, in register_widget
+    raise DuplicateWidgetID(
+streamlit.errors.DuplicateWidgetID: There are multiple identical `st.selectbox` widgets with
+`key='select_show_length_'`.
+
+To fix this, please make sure that the `key` argument is unique for
+each `st.selectbox` you create.
+2022-09-20 16:29:12,175:showing duplicates.
+2022-09-20 16:29:12,180:showing npmi.
+2022-09-20 16:29:12,397:showing zipf.
+2022-09-20 16:55:47,930:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:339
+Using Single Dataset Mode
+2022-09-20 16:55:47,961:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:103
+showing header
+2022-09-20 16:55:47,961:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:163
+Making new calculations if cache is not there.
+2022-09-20 16:56:28,422:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:213
+showing header
+2022-09-20 16:56:28,430:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:216
+showing general stats
+2022-09-20 17:00:02,270:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:339
+Using Single Dataset Mode
+2022-09-20 17:00:02,283:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:103
+showing header
+2022-09-20 17:00:02,284:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:163
+Making new calculations if cache is not there.
+2022-09-20 17:00:04,672:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:213
+showing header
+2022-09-20 17:00:04,676:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:216
+showing general stats
+2022-09-20 17:04:29,797:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:339
+Using Single Dataset Mode
+2022-09-20 17:04:29,806:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:103
+showing header
+2022-09-20 17:04:29,806:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:163
+Making new calculations if cache is not there.
+2022-09-20 17:04:32,649:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:213
+showing header
+2022-09-20 17:04:32,653:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:216
+showing general stats
+2022-09-20 17:20:42,821:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:339
+Using Single Dataset Mode
+2022-09-20 17:20:42,839:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:103
+showing header
+2022-09-20 17:20:42,839:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:163
+Making new calculations if cache is not there.
+2022-09-20 17:20:46,075:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:213
+showing header
+2022-09-20 17:20:46,078:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:216
+showing general stats
+2022-09-20 17:20:46,693:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:228
+showing npmi widget
+2022-09-20 17:20:46,693:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:232
+showing zipf
+2022-09-20 17:20:46,719:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:250
+showing general stats
+2022-09-20 17:20:46,719:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:256
+showing npmi widget
+2022-09-20 17:20:46,719:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:258
+showing zipf
+2022-09-20 17:20:46,719:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:277
+showing general stats.
+2022-09-20 17:20:46,724:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:277
+showing label distribution.
+2022-09-20 17:20:46,724:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:281
+Jk jk jk. There was an issue with label distribution:
+2022-09-20 17:20:46,725:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:282
+The `figure_or_data` positional argument must be `dict`-like, `list`-like, or an instance of plotly.graph_objs.Figure
+Traceback (most recent call last):
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/app.py", line 279, in show_column
+    widget_fn(dstats, column_id)
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/utils/streamlit_utils.py", line 204, in expander_label_distribution
+    st.plotly_chart(fig_labels, use_container_width=True)
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/plotly_chart.py", line 140, in plotly_chart
+    marshall(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/plotly_chart.py", line 172, in marshall
+    figure = plotly.tools.return_figure_from_figure_or_data(
+  File "/usr/local/lib/python3.9/site-packages/plotly/tools.py", line 544, in return_figure_from_figure_or_data
+    raise exceptions.PlotlyError(
+_plotly_utils.exceptions.PlotlyError: The `figure_or_data` positional argument must be `dict`-like, `list`-like, or an instance of plotly.graph_objs.Figure
+2022-09-20 17:20:46,731:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:277
+showing text_lengths.
+2022-09-20 17:20:47,377:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:281
+Jk jk jk. There was an issue with text_lengths:
+2022-09-20 17:20:47,377:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:282
+There are multiple identical `st.selectbox` widgets with
+`key='select_show_length_'`.
+
+To fix this, please make sure that the `key` argument is unique for
+each `st.selectbox` you create.
+Traceback (most recent call last):
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/app.py", line 279, in show_column
+    widget_fn(dstats, column_id)
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/utils/streamlit_utils.py", line 244, in expander_text_lengths
+    start_id_show_lengths = st.selectbox(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/selectbox.py", line 99, in selectbox
+    return self._selectbox(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/selectbox.py", line 162, in _selectbox
+    widget_state = register_widget(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/runtime/state/widgets.py", line 199, in register_widget
+    raise DuplicateWidgetID(
+streamlit.errors.DuplicateWidgetID: There are multiple identical `st.selectbox` widgets with
+`key='select_show_length_'`.
+
+To fix this, please make sure that the `key` argument is unique for
+each `st.selectbox` you create.
+2022-09-20 17:20:47,379:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:277
+showing duplicates.
+2022-09-20 17:20:47,384:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:277
+showing npmi.
+2022-09-20 17:20:47,384:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:281
+Jk jk jk. There was an issue with npmi:
+2022-09-20 17:20:47,384:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:282
+'DatasetStatisticsCacheClass' object has no attribute 'npmi_stats'
+Traceback (most recent call last):
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/app.py", line 279, in show_column
+    widget_fn(dstats, column_id)
+  File "/Users/ezi/Desktop/DMT/data-measurements-tool/utils/streamlit_utils.py", line 525, in npmi_widget
+    npmi_stats = dstats.npmi_stats
+AttributeError: 'DatasetStatisticsCacheClass' object has no attribute 'npmi_stats'
+2022-09-20 17:20:47,385:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:277
+showing zipf.

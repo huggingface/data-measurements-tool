@@ -20,7 +20,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import powerlaw
 from os.path import join as pjoin
-from pathlib import Path
+import utils
 from scipy.stats import ks_2samp
 from scipy.stats import zipf as zipf_lib
 
@@ -28,27 +28,7 @@ from scipy.stats import zipf as zipf_lib
 
 pd.set_option("use_inf_as_na", True)
 
-logs = logging.getLogger(__name__)
-logs.setLevel(logging.INFO)
-logs.propagate = False
-
-if not logs.handlers:
-    Path("./log_files").mkdir(exist_ok=True)
-
-    # Logging info to log file
-    file = logging.FileHandler("./log_files/zipf.log")
-    fileformat = logging.Formatter("%(asctime)s:%(message)s")
-    file.setLevel(logging.INFO)
-    file.setFormatter(fileformat)
-
-    # Logging debug messages to stream
-    stream = logging.StreamHandler()
-    streamformat = logging.Formatter("[data_measurements_tool] %(message)s")
-    stream.setLevel(logging.WARNING)
-    stream.setFormatter(streamformat)
-
-    logs.addHandler(file)
-    logs.addHandler(stream)
+logs = utils.prepare_logging(__file__)
 
 
 class Zipf:
@@ -162,8 +142,8 @@ class Zipf:
         """
         logs.info("Getting predicted counts.")
         if not self.alpha:
-            print("Have not yet fit -- need the alpha value.")
-            print("Fitting now...")
+            logs.warning("Have not yet fit -- need the alpha value.")
+            logs.warning("Fitting now...")
             self.calc_fit()
         logs.info(self.word_counts_unique)
         logs.info(self.xmin)

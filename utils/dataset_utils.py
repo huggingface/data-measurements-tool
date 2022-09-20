@@ -14,14 +14,19 @@
 
 import json
 import os
-from dataclasses import asdict
-from os.path import exists
+import pandas as pd
 import plotly
 import pyarrow.feather as feather
-import pandas as pd
+import utils
+from dataclasses import asdict
 from datasets import Dataset, get_dataset_infos, load_dataset, load_from_disk, \
     NamedSplit
+from dotenv import load_dotenv
+from huggingface_hub import Repository, list_datasets
 from json2html import *
+from os import getenv
+from os.path import exists, isdir, join as pjoin
+from pathlib import Path
 
 # treating inf values as NaN as well
 pd.set_option("use_inf_as_na", True)
@@ -68,20 +73,100 @@ _STREAMABLE_DATASET_LIST = [
 
 _MAX_ROWS = 200000
 
+logs = utils.prepare_logging(__file__)
+
+def _load_dotenv_for_cache_on_hub():
+    """
+    This function loads and returns the organization name that you've set up on the
+    hub for storing your data measurements cache on the hub. It also loads the associated
+    access token. It expects you to have HUB_CACHE_ORGANIZATION=<the organization you've set up on the hub to store your cache>
+    and HF_TOKEN=<your hf token> on separate lines in a file named .env at the root of this repo.
+
+    Returns:
+        tuple of strings: hub_cache_organization, hf_token
+    """
+    if Path(".env").is_file():
+        load_dotenv(".env")
+    hf_token = getenv("HF_TOKEN")
+    hub_cache_organization = getenv("HUB_CACHE_ORGANIZATION")
+    return hub_cache_organization, hf_token
+
+def get_cache_dir_naming(out_dir, dataset, config, split, feature):
+    feature_text = hyphenated(feature)
+    dataset_cache_name = f"{dataset}_{config}_{split}_{feature_text}"
+    local_dataset_cache_dir = out_dir + "/" + dataset_cache_name
+    return dataset_cache_name, local_dataset_cache_dir
+
+def initialize_cache_hub_repo(local_cache_dir, dataset_cache_name):
+    """
+    This function tries to initialize a dataset cache on the huggingface hub. The
+    function expects you to have HUB_CACHE_ORGANIZATION=<the organization you've set up on the hub to store your cache>
+    and HF_TOKEN=<your hf token> on separate lines in a file named .env at the root of this repo.
+
+    Args:
+        local_cache_dir (string):
+            The path to the local dataset cache.
+        dataset_cache_name (string):
+            The name of the dataset repo on the huggingface hub that you want.
+    """
+
+    hub_cache_organization, hf_token = _load_dotenv_for_cache_on_hub()
+    clone_source = pjoin(hub_cache_organization, dataset_cache_name)
+    repo = Repository(local_dir=local_cache_dir,
+                      clone_from=clone_source,
+                      repo_type="dataset", use_auth_token=hf_token)
+    repo.lfs_track(["*.feather"])
+    return repo
+
+def pull_cache_from_hub(cache_path, dataset_cache_dir):
+    """
+    This function tries to pull a datasets cache from the huggingface hub if a
+    cache for the dataset does not already exist locally. The function expects you
+    to have you HUB_CACHE_ORGANIZATION=<the organization you've set up on the hub to store your cache>
+    and HF_TOKEN=<your hf token> on separate lines in a file named .env at the root of this repo.
+
+    Args:
+        cache_path (string):
+            The path to the local dataset cache that you want.
+        dataset_cache_dir (string):
+            The name of the dataset repo on the huggingface hub.
+
+    """
+
+    hub_cache_organization, hf_token = _load_dotenv_for_cache_on_hub()
+    clone_source = pjoin(hub_cache_organization, dataset_cache_dir)
+
+    if isdir(cache_path):
+        logs.warning("Already a local cache for the dataset, so not pulling from the hub.")
+    else:
+        # Here, dataset_info.id is of the form: <hub cache organization>/<dataset cache dir>
+        if dataset_cache_dir in [
+            dataset_info.id.split("/")[-1] for dataset_info in
+            list_datasets(author=hub_cache_organization,
+                          use_auth_token=hf_token)]:
+            Repository(local_dir=cache_path,
+                       clone_from=clone_source,
+                       repo_type="dataset", use_auth_token=hf_token)
+            logs.info("Pulled cache from hub!")
+        else:
+            logs.warning("Asking to pull cache from hub but cannot find cached repo on the hub.")
+
 
 def load_truncated_dataset(
     dataset_name,
     config_name,
     split_name,
     num_rows=_MAX_ROWS,
-    cache_name=None,
     use_cache=True,
+    cache_dir=CACHE_DIR,
     use_streaming=True,
+    save=True,
 ):
     """
     This function loads the first `num_rows` items of a dataset for a
     given `config_name` and `split_name`.
-    If `cache_name` exists, the truncated dataset is loaded from `cache_name`.
+    If `use_cache` and `cache_name` exists, the truncated dataset is loaded from
+    `cache_name`.
     Otherwise, a new truncated dataset is created and immediately saved
     to `cache_name`.
     When the dataset is streamable, we iterate through the first
@@ -98,21 +183,22 @@ def load_truncated_dataset(
             dataset configuration
         split_name (string):
             split name
-        num_rows (int):
+        num_rows (int) [optional]:
             number of rows to truncate the dataset to
-        cache_name (string):
+        cache_dir (string):
             name of the cache directory
         use_cache (bool):
-            whether to load form the cache if it exists
+            whether to load from the cache if it exists
         use_streaming (bool):
             whether to use streaming when the dataset supports it
+        save (bool):
+            whether to save the dataset locally
     Returns:
-        Dataset: the truncated dataset as a Dataset object
+        Dataset: the (truncated if specified) dataset as a Dataset object
     """
-    if cache_name is None:
-        cache_name = f"{dataset_name}_{config_name}_{split_name}_{num_rows}"
-    if exists(cache_name):
-        dataset = load_from_disk(cache_name)
+    logs.info("Loading or preparing dataset saved in %s " % cache_dir)
+    if use_cache and exists(cache_dir):
+        dataset = load_from_disk(cache_dir)
     else:
         if use_streaming and dataset_name in _STREAMABLE_DATASET_LIST:
             iterable_dataset = load_dataset(
@@ -137,30 +223,17 @@ def load_truncated_dataset(
             )
             if len(full_dataset) >= num_rows:
                 dataset = full_dataset.select(range(num_rows))
+                # Make the directory name clear that it's not the full dataset.
+                cache_dir = pjoin(cache_dir, ("_%s" % num_rows))
             else:
                 dataset = full_dataset
-        dataset.save_to_disk(cache_name)
+        if save:
+            dataset.save_to_disk(cache_dir)
     return dataset
 
-
-def intersect_dfs(df_dict):
-    started = 0
-    new_df = None
-    for key, df in df_dict.items():
-        if df is None:
-            continue
-        for key2, df2 in df_dict.items():
-            if df2 is None:
-                continue
-            if key == key2:
-                continue
-            if started:
-                new_df = new_df.join(df2, how="inner", lsuffix="1", rsuffix="2")
-            else:
-                new_df = df.join(df2, how="inner", lsuffix="1", rsuffix="2")
-                started = 1
-    return new_df.copy()
-
+def hyphenated(features):
+    """When multiple features are asked for, hyphenate them together when they're used for filenames or titles"""
+    return '-'.join(features)
 
 def get_typed_features(features, ftype="string", parents=None):
     """
@@ -298,13 +371,13 @@ def extract_field(examples, field_path, new_field_name=None):
     ]
     return {new_field_name: field_list}
 
-def make_cache_path(cache_path):
-    os.makedirs(cache_path, exist_ok=True)
+def make_path(path):
+    os.makedirs(path, exist_ok=True)
 
 def counter_dict_to_df(dict_input):
     df_output = pd.DataFrame(dict_input, index=[0]).T
     df_output.columns = ["count"]
-    return df_output
+    return df_output.sort_values(by="count", ascending=False)
 
 def write_plotly(fig, fid):
     write_json(plotly.io.to_json(fig), fid)
@@ -323,18 +396,18 @@ def df_to_write_html(input_df, html_fid):
     input_df.to_HTML(html_fid)
 
 def read_df(df_fid):
-    df = feather.read_feather(df_fid)
-    return df
-
+    return pd.DataFrame.from_dict(read_json(df_fid), orient="index")
 
 def write_df(df, df_fid):
-    feather.write_feather(df, df_fid)
-
+    """In order to preserve the index of our dataframes, we can't
+    use the compressed pandas dataframe file format .feather.
+    There's a preference for json amongst HF devs, so we use that here."""
+    df_dict = df.to_dict('index')
+    write_json(df_dict, df_fid)
 
 def write_json(json_dict, json_fid):
     with open(json_fid, "w", encoding="utf-8") as f:
         json.dump(json_dict, f)
-
 
 def read_json(json_fid):
     json_dict = json.load(open(json_fid, encoding="utf-8"))

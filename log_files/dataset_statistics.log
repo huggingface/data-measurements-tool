@@ -82,3 +82,1314 @@
 2022-09-13 16:23:10,279:Loaded dataset from disk
 2022-09-13 16:23:10,427:Cannot find cached repo on the hub.
 2022-09-13 16:23:10,430:Loaded dataset from disk
+2022-09-13 19:11:59,297:Cannot find cached repo on the hub.
+2022-09-13 19:11:59,343:Cannot find cached repo on the hub.
+2022-09-13 19:11:59,359:Loaded dataset from disk
+2022-09-13 19:11:59,359:Loaded dataset from disk
+2022-09-13 19:12:58,624:Cannot find cached repo on the hub.
+2022-09-13 19:12:58,625:Creating cache directory cache_dir/squad_v2_squad_v2_train_title.
+2022-09-13 19:14:08,237:Saving dataset to disk
+2022-09-13 19:14:55,281:Creating pmi cache directory cache_dir/squad_v2_squad_v2_train_title/pmi_files.
+2022-09-13 19:15:39,509:Cannot find cached repo on the hub.
+2022-09-13 19:15:39,509:Creating cache directory cache_dir/squad_v2_squad_v2_train_answers.text.
+2022-09-13 19:15:49,784:Saving dataset to disk
+2022-09-13 19:16:47,710:Creating pmi cache directory cache_dir/squad_v2_squad_v2_train_answers.text/pmi_files.
+2022-09-14 14:50:23,719:Doing text dset.
+2022-09-14 14:50:23,734:Loaded dataset from disk
+2022-09-14 14:50:23,734:Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-14 14:50:23,735:Reading vocab from cache
+2022-09-14 14:50:23,927:unfiltered vocab
+2022-09-14 14:50:23,928:              count  proportion         vocab
+vocab                                        
+the            6770    0.037380           the
+to             4703    0.025967            to
+i              4577    0.025272             i
+and            4317    0.023836           and
+a              4006    0.022119             a
+...             ...         ...           ...
+hose              1    0.000006          hose
+hospitalised      1    0.000006  hospitalised
+hospitality       1    0.000006   hospitality
+hostages          1    0.000006      hostages
+采用左眼专利技术          1    0.000006      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-14 14:50:23,968:filtered vocab
+2022-09-14 14:50:23,968:              count  proportion         vocab
+vocab                                        
+white          1273    0.013615         white
+like            793    0.008481          like
+people          617    0.006599        people
+one             521    0.005572           one
+youtube         516    0.005519       youtube
+...             ...         ...           ...
+hose              1    0.000011          hose
+hospitalised      1    0.000011  hospitalised
+hospitality       1    0.000011   hospitality
+hostages          1    0.000011      hostages
+采用左眼专利技术          1    0.000011      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-14 14:50:24,026:Duplicates results:
+2022-09-14 14:50:24,027:{'duplicate_fraction': 0.016812865497076057}
+2022-09-14 14:50:24,028:Loading cached general stats
+2022-09-14 14:50:25,115:['man', 'woman', 'non-binary', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-14 14:50:25,115:Looking for cached terms in cache_dir/hate_speech18_default_train_text/npmi_terms.json
+2022-09-14 14:57:50,735:Doing text dset.
+2022-09-14 14:57:50,745:Loaded dataset from disk
+2022-09-14 14:57:50,745:Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-14 14:57:50,746:Reading vocab from cache
+2022-09-14 14:57:50,796:unfiltered vocab
+2022-09-14 14:57:50,797:              count  proportion         vocab
+vocab                                        
+the            6770    0.037380           the
+to             4703    0.025967            to
+i              4577    0.025272             i
+and            4317    0.023836           and
+a              4006    0.022119             a
+...             ...         ...           ...
+hose              1    0.000006          hose
+hospitalised      1    0.000006  hospitalised
+hospitality       1    0.000006   hospitality
+hostages          1    0.000006      hostages
+采用左眼专利技术          1    0.000006      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-14 14:57:50,847:filtered vocab
+2022-09-14 14:57:50,847:              count  proportion         vocab
+vocab                                        
+white          1273    0.013615         white
+like            793    0.008481          like
+people          617    0.006599        people
+one             521    0.005572           one
+youtube         516    0.005519       youtube
+...             ...         ...           ...
+hose              1    0.000011          hose
+hospitalised      1    0.000011  hospitalised
+hospitality       1    0.000011   hospitality
+hostages          1    0.000011      hostages
+采用左眼专利技术          1    0.000011      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-14 14:57:50,911:Duplicates results:
+2022-09-14 14:57:50,911:{'duplicate_fraction': 0.016812865497076057}
+2022-09-14 14:57:50,911:Loading cached general stats
+2022-09-14 14:57:51,112:['man', 'woman', 'non-binary', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-14 14:57:51,112:Looking for cached terms in cache_dir/hate_speech18_default_train_text/npmi_terms.json
+2022-09-15 15:03:11,412:Doing text dset.
+2022-09-15 15:03:11,429:Loaded dataset from disk
+2022-09-15 15:03:11,429:Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-15 15:03:11,430:Reading vocab from cache
+2022-09-15 15:03:11,557:unfiltered vocab
+2022-09-15 15:03:11,557:              count  proportion         vocab
+vocab                                        
+the            6770    0.037380           the
+to             4703    0.025967            to
+i              4577    0.025272             i
+and            4317    0.023836           and
+a              4006    0.022119             a
+...             ...         ...           ...
+hose              1    0.000006          hose
+hospitalised      1    0.000006  hospitalised
+hospitality       1    0.000006   hospitality
+hostages          1    0.000006      hostages
+采用左眼专利技术          1    0.000006      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-15 15:03:11,605:filtered vocab
+2022-09-15 15:03:11,605:              count  proportion         vocab
+vocab                                        
+white          1273    0.013615         white
+like            793    0.008481          like
+people          617    0.006599        people
+one             521    0.005572           one
+youtube         516    0.005519       youtube
+...             ...         ...           ...
+hose              1    0.000011          hose
+hospitalised      1    0.000011  hospitalised
+hospitality       1    0.000011   hospitality
+hostages          1    0.000011      hostages
+采用左眼专利技术          1    0.000011      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-15 15:03:11,662:Duplicates results:
+2022-09-15 15:03:11,663:{'duplicate_fraction': 0.016812865497076057}
+2022-09-15 15:03:11,663:Loading cached general stats
+2022-09-15 15:03:11,910:['man', 'woman', 'non-binary', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-15 15:03:11,911:Looking for cached terms in cache_dir/hate_speech18_default_train_text/npmi_terms.json
+2022-09-19 19:43:35,794:Doing text dset.
+2022-09-19 19:43:35,802:Loaded dataset from disk
+2022-09-19 19:43:35,802:Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-19 19:43:35,803:Reading vocab from cache
+2022-09-19 19:43:35,867:unfiltered vocab
+2022-09-19 19:43:35,868:              count  proportion         vocab
+vocab                                        
+the            6770    0.037380           the
+to             4703    0.025967            to
+i              4577    0.025272             i
+and            4317    0.023836           and
+a              4006    0.022119             a
+...             ...         ...           ...
+hose              1    0.000006          hose
+hospitalised      1    0.000006  hospitalised
+hospitality       1    0.000006   hospitality
+hostages          1    0.000006      hostages
+采用左眼专利技术          1    0.000006      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-19 19:43:35,923:filtered vocab
+2022-09-19 19:43:35,924:              count  proportion         vocab
+vocab                                        
+white          1273    0.013615         white
+like            793    0.008481          like
+people          617    0.006599        people
+one             521    0.005572           one
+youtube         516    0.005519       youtube
+...             ...         ...           ...
+hose              1    0.000011          hose
+hospitalised      1    0.000011  hospitalised
+hospitality       1    0.000011   hospitality
+hostages          1    0.000011      hostages
+采用左眼专利技术          1    0.000011      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-19 19:43:35,990:Duplicates results:
+2022-09-19 19:43:35,990:{'duplicate_fraction': 0.016812865497076057}
+2022-09-19 19:43:35,991:Loading cached general stats
+2022-09-19 19:43:36,412:Doing text dset.
+2022-09-19 19:43:36,417:Loaded dataset from disk
+2022-09-19 19:43:36,417:Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-19 19:43:36,418:Reading vocab from cache
+2022-09-19 19:43:36,436:unfiltered vocab
+2022-09-19 19:43:36,437:              count  proportion         vocab
+vocab                                        
+the            6770    0.037380           the
+to             4703    0.025967            to
+i              4577    0.025272             i
+and            4317    0.023836           and
+a              4006    0.022119             a
+...             ...         ...           ...
+hose              1    0.000006          hose
+hospitalised      1    0.000006  hospitalised
+hospitality       1    0.000006   hospitality
+hostages          1    0.000006      hostages
+采用左眼专利技术          1    0.000006      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-19 19:43:36,462:filtered vocab
+2022-09-19 19:43:36,463:              count  proportion         vocab
+vocab                                        
+white          1273    0.013615         white
+like            793    0.008481          like
+people          617    0.006599        people
+one             521    0.005572           one
+youtube         516    0.005519       youtube
+...             ...         ...           ...
+hose              1    0.000011          hose
+hospitalised      1    0.000011  hospitalised
+hospitality       1    0.000011   hospitality
+hostages          1    0.000011      hostages
+采用左眼专利技术          1    0.000011      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-19 19:43:36,518:Duplicates results:
+2022-09-19 19:43:36,518:{'duplicate_fraction': 0.016812865497076057}
+2022-09-19 19:43:36,520:Loading cached general stats
+2022-09-19 19:43:37,233:['man', 'woman', 'non-binary', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-19 19:43:37,233:Looking for cached terms in cache_dir/hate_speech18_default_train_text/npmi_terms.json
+2022-09-19 19:43:37,234:['man', 'woman', 'non-binary', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-19 19:43:37,234:Looking for cached terms in cache_dir/hate_speech18_default_train_text/npmi_terms.json
+2022-09-19 22:24:11,658:Doing text dset.
+2022-09-19 22:24:11,675:Loaded dataset from disk
+2022-09-19 22:24:11,675:Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-19 22:24:11,680:Reading vocab from cache
+2022-09-19 22:24:11,846:unfiltered vocab
+2022-09-19 22:24:11,847:              count  proportion         vocab
+vocab                                        
+the            6770    0.037380           the
+to             4703    0.025967            to
+i              4577    0.025272             i
+and            4317    0.023836           and
+a              4006    0.022119             a
+...             ...         ...           ...
+hose              1    0.000006          hose
+hospitalised      1    0.000006  hospitalised
+hospitality       1    0.000006   hospitality
+hostages          1    0.000006      hostages
+采用左眼专利技术          1    0.000006      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-19 22:24:11,888:filtered vocab
+2022-09-19 22:24:11,888:              count  proportion         vocab
+vocab                                        
+white          1273    0.013615         white
+like            793    0.008481          like
+people          617    0.006599        people
+one             521    0.005572           one
+youtube         516    0.005519       youtube
+...             ...         ...           ...
+hose              1    0.000011          hose
+hospitalised      1    0.000011  hospitalised
+hospitality       1    0.000011   hospitality
+hostages          1    0.000011      hostages
+采用左眼专利技术          1    0.000011      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-19 22:24:11,957:Duplicates results:
+2022-09-19 22:24:11,957:{'duplicate_fraction': 0.016812865497076057}
+2022-09-19 22:24:11,957:Loading cached general stats
+2022-09-19 22:24:12,281:['man', 'woman', 'non-binary', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-19 22:24:12,281:Looking for cached terms in cache_dir/hate_speech18_default_train_text/npmi_terms.json
+2022-09-19 22:24:16,819:Doing text dset.
+2022-09-19 22:24:16,824:Loaded dataset from disk
+2022-09-19 22:24:16,824:Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-19 22:24:16,825:Reading vocab from cache
+2022-09-19 22:24:16,849:unfiltered vocab
+2022-09-19 22:24:16,849:              count  proportion         vocab
+vocab                                        
+the            6770    0.037380           the
+to             4703    0.025967            to
+i              4577    0.025272             i
+and            4317    0.023836           and
+a              4006    0.022119             a
+...             ...         ...           ...
+hose              1    0.000006          hose
+hospitalised      1    0.000006  hospitalised
+hospitality       1    0.000006   hospitality
+hostages          1    0.000006      hostages
+采用左眼专利技术          1    0.000006      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-19 22:24:16,870:filtered vocab
+2022-09-19 22:24:16,870:              count  proportion         vocab
+vocab                                        
+white          1273    0.013615         white
+like            793    0.008481          like
+people          617    0.006599        people
+one             521    0.005572           one
+youtube         516    0.005519       youtube
+...             ...         ...           ...
+hose              1    0.000011          hose
+hospitalised      1    0.000011  hospitalised
+hospitality       1    0.000011   hospitality
+hostages          1    0.000011      hostages
+采用左眼专利技术          1    0.000011      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-19 22:24:16,912:Duplicates results:
+2022-09-19 22:24:16,912:{'duplicate_fraction': 0.016812865497076057}
+2022-09-19 22:24:16,912:Loading cached general stats
+2022-09-19 22:24:17,076:['man', 'woman', 'non-binary', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-19 22:24:17,076:Looking for cached terms in cache_dir/hate_speech18_default_train_text/npmi_terms.json
+2022-09-20 12:09:48,764:Doing text dset.
+2022-09-20 12:09:48,773:Loaded dataset from disk
+2022-09-20 12:09:48,774:Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-20 12:09:48,775:Reading vocab from cache
+2022-09-20 12:09:48,835:unfiltered vocab
+2022-09-20 12:09:48,835:              count  proportion         vocab
+vocab                                        
+the            6770    0.037380           the
+to             4703    0.025967            to
+i              4577    0.025272             i
+and            4317    0.023836           and
+a              4006    0.022119             a
+...             ...         ...           ...
+hose              1    0.000006          hose
+hospitalised      1    0.000006  hospitalised
+hospitality       1    0.000006   hospitality
+hostages          1    0.000006      hostages
+采用左眼专利技术          1    0.000006      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-20 12:09:48,860:filtered vocab
+2022-09-20 12:09:48,861:              count  proportion         vocab
+vocab                                        
+white          1273    0.013615         white
+like            793    0.008481          like
+people          617    0.006599        people
+one             521    0.005572           one
+youtube         516    0.005519       youtube
+...             ...         ...           ...
+hose              1    0.000011          hose
+hospitalised      1    0.000011  hospitalised
+hospitality       1    0.000011   hospitality
+hostages          1    0.000011      hostages
+采用左眼专利技术          1    0.000011      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-20 12:09:48,917:Duplicates results:
+2022-09-20 12:09:48,918:{'duplicate_fraction': 0.016812865497076057}
+2022-09-20 12:09:48,919:Loading cached general stats
+2022-09-20 12:09:49,897:['man', 'woman', 'non-binary', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-20 12:09:49,897:Looking for cached terms in cache_dir/hate_speech18_default_train_text/npmi_terms.json
+2022-09-20 12:17:21,297:Doing text dset.
+2022-09-20 12:17:21,310:Loaded dataset from disk
+2022-09-20 12:17:21,310:Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-20 12:17:21,311:Reading vocab from cache
+2022-09-20 12:17:21,345:unfiltered vocab
+2022-09-20 12:17:21,345:              count  proportion         vocab
+vocab                                        
+the            6770    0.037380           the
+to             4703    0.025967            to
+i              4577    0.025272             i
+and            4317    0.023836           and
+a              4006    0.022119             a
+...             ...         ...           ...
+hose              1    0.000006          hose
+hospitalised      1    0.000006  hospitalised
+hospitality       1    0.000006   hospitality
+hostages          1    0.000006      hostages
+采用左眼专利技术          1    0.000006      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-20 12:17:21,379:filtered vocab
+2022-09-20 12:17:21,382:              count  proportion         vocab
+vocab                                        
+white          1273    0.013615         white
+like            793    0.008481          like
+people          617    0.006599        people
+one             521    0.005572           one
+youtube         516    0.005519       youtube
+...             ...         ...           ...
+hose              1    0.000011          hose
+hospitalised      1    0.000011  hospitalised
+hospitality       1    0.000011   hospitality
+hostages          1    0.000011      hostages
+采用左眼专利技术          1    0.000011      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-20 12:17:21,433:Duplicates results:
+2022-09-20 12:17:21,433:{'duplicate_fraction': 0.016812865497076057}
+2022-09-20 12:17:21,433:Loading cached general stats
+2022-09-20 12:17:21,596:['man', 'woman', 'non-binary', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-20 12:17:21,596:Looking for cached terms in cache_dir/hate_speech18_default_train_text/npmi_terms.json
+2022-09-20 12:23:20,983:Doing text dset.
+2022-09-20 12:23:20,996:Loaded dataset from disk
+2022-09-20 12:23:20,997:Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-20 12:23:20,997:Reading vocab from cache
+2022-09-20 12:23:21,027:unfiltered vocab
+2022-09-20 12:23:21,027:              count  proportion         vocab
+vocab                                        
+the            6770    0.037380           the
+to             4703    0.025967            to
+i              4577    0.025272             i
+and            4317    0.023836           and
+a              4006    0.022119             a
+...             ...         ...           ...
+hose              1    0.000006          hose
+hospitalised      1    0.000006  hospitalised
+hospitality       1    0.000006   hospitality
+hostages          1    0.000006      hostages
+采用左眼专利技术          1    0.000006      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-20 12:23:21,048:filtered vocab
+2022-09-20 12:23:21,048:              count  proportion         vocab
+vocab                                        
+white          1273    0.013615         white
+like            793    0.008481          like
+people          617    0.006599        people
+one             521    0.005572           one
+youtube         516    0.005519       youtube
+...             ...         ...           ...
+hose              1    0.000011          hose
+hospitalised      1    0.000011  hospitalised
+hospitality       1    0.000011   hospitality
+hostages          1    0.000011      hostages
+采用左眼专利技术          1    0.000011      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-20 12:23:21,094:Duplicates results:
+2022-09-20 12:23:21,094:{'duplicate_fraction': 0.016812865497076057}
+2022-09-20 12:23:21,094:Loading cached general stats
+2022-09-20 12:23:21,269:['man', 'woman', 'non-binary', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-20 12:23:21,269:Looking for cached terms in cache_dir/hate_speech18_default_train_text/npmi_terms.json
+2022-09-20 12:25:37,161:Doing text dset.
+2022-09-20 12:25:37,163:Loaded dataset from disk
+2022-09-20 12:25:37,163:Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-20 12:25:37,164:Reading vocab from cache
+2022-09-20 12:25:37,192:unfiltered vocab
+2022-09-20 12:25:37,192:              count  proportion         vocab
+vocab                                        
+the            6770    0.037380           the
+to             4703    0.025967            to
+i              4577    0.025272             i
+and            4317    0.023836           and
+a              4006    0.022119             a
+...             ...         ...           ...
+hose              1    0.000006          hose
+hospitalised      1    0.000006  hospitalised
+hospitality       1    0.000006   hospitality
+hostages          1    0.000006      hostages
+采用左眼专利技术          1    0.000006      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-20 12:25:37,217:filtered vocab
+2022-09-20 12:25:37,218:              count  proportion         vocab
+vocab                                        
+white          1273    0.013615         white
+like            793    0.008481          like
+people          617    0.006599        people
+one             521    0.005572           one
+youtube         516    0.005519       youtube
+...             ...         ...           ...
+hose              1    0.000011          hose
+hospitalised      1    0.000011  hospitalised
+hospitality       1    0.000011   hospitality
+hostages          1    0.000011      hostages
+采用左眼专利技术          1    0.000011      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-20 12:25:37,262:Duplicates results:
+2022-09-20 12:25:37,262:{'duplicate_fraction': 0.016812865497076057}
+2022-09-20 12:25:37,262:Loading cached general stats
+2022-09-20 12:25:37,434:['man', 'woman', 'non-binary', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-20 12:25:37,434:Looking for cached terms in cache_dir/hate_speech18_default_train_text/npmi_terms.json
+2022-09-20 12:28:53,681:Doing text dset.
+2022-09-20 12:28:53,695:Loaded dataset from disk
+2022-09-20 12:28:53,695:Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-20 12:28:53,697:Reading vocab from cache
+2022-09-20 12:28:53,717:unfiltered vocab
+2022-09-20 12:28:53,717:              count  proportion         vocab
+vocab                                        
+the            6770    0.037380           the
+to             4703    0.025967            to
+i              4577    0.025272             i
+and            4317    0.023836           and
+a              4006    0.022119             a
+...             ...         ...           ...
+hose              1    0.000006          hose
+hospitalised      1    0.000006  hospitalised
+hospitality       1    0.000006   hospitality
+hostages          1    0.000006      hostages
+采用左眼专利技术          1    0.000006      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-20 12:28:53,742:filtered vocab
+2022-09-20 12:28:53,742:              count  proportion         vocab
+vocab                                        
+white          1273    0.013615         white
+like            793    0.008481          like
+people          617    0.006599        people
+one             521    0.005572           one
+youtube         516    0.005519       youtube
+...             ...         ...           ...
+hose              1    0.000011          hose
+hospitalised      1    0.000011  hospitalised
+hospitality       1    0.000011   hospitality
+hostages          1    0.000011      hostages
+采用左眼专利技术          1    0.000011      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-20 12:28:53,786:Duplicates results:
+2022-09-20 12:28:53,786:{'duplicate_fraction': 0.016812865497076057}
+2022-09-20 12:28:53,787:Loading cached general stats
+2022-09-20 12:28:53,964:['man', 'woman', 'non-binary', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-20 12:28:53,964:Looking for cached terms in cache_dir/hate_speech18_default_train_text/npmi_terms.json
+2022-09-20 12:31:57,591:Doing text dset.
+2022-09-20 12:31:57,599:Loaded dataset from disk
+2022-09-20 12:31:57,599:Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-20 12:31:57,600:Reading vocab from cache
+2022-09-20 12:31:57,635:unfiltered vocab
+2022-09-20 12:31:57,635:              count  proportion         vocab
+vocab                                        
+the            6770    0.037380           the
+to             4703    0.025967            to
+i              4577    0.025272             i
+and            4317    0.023836           and
+a              4006    0.022119             a
+...             ...         ...           ...
+hose              1    0.000006          hose
+hospitalised      1    0.000006  hospitalised
+hospitality       1    0.000006   hospitality
+hostages          1    0.000006      hostages
+采用左眼专利技术          1    0.000006      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-20 12:31:57,697:filtered vocab
+2022-09-20 12:31:57,697:              count  proportion         vocab
+vocab                                        
+white          1273    0.013615         white
+like            793    0.008481          like
+people          617    0.006599        people
+one             521    0.005572           one
+youtube         516    0.005519       youtube
+...             ...         ...           ...
+hose              1    0.000011          hose
+hospitalised      1    0.000011  hospitalised
+hospitality       1    0.000011   hospitality
+hostages          1    0.000011      hostages
+采用左眼专利技术          1    0.000011      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-20 12:31:57,754:Duplicates results:
+2022-09-20 12:31:57,754:{'duplicate_fraction': 0.016812865497076057}
+2022-09-20 12:31:57,754:Loading cached general stats
+2022-09-20 12:31:57,922:['man', 'woman', 'non-binary', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-20 12:31:57,922:Looking for cached terms in cache_dir/hate_speech18_default_train_text/npmi_terms.json
+2022-09-20 12:39:07,372:Doing text dset.
+2022-09-20 12:39:07,385:Loaded dataset from disk
+2022-09-20 12:39:07,386:Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-20 12:39:07,386:Reading vocab from cache
+2022-09-20 12:39:07,411:unfiltered vocab
+2022-09-20 12:39:07,412:              count  proportion         vocab
+vocab                                        
+the            6770    0.037380           the
+to             4703    0.025967            to
+i              4577    0.025272             i
+and            4317    0.023836           and
+a              4006    0.022119             a
+...             ...         ...           ...
+hose              1    0.000006          hose
+hospitalised      1    0.000006  hospitalised
+hospitality       1    0.000006   hospitality
+hostages          1    0.000006      hostages
+采用左眼专利技术          1    0.000006      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-20 12:39:07,442:filtered vocab
+2022-09-20 12:39:07,442:              count  proportion         vocab
+vocab                                        
+white          1273    0.013615         white
+like            793    0.008481          like
+people          617    0.006599        people
+one             521    0.005572           one
+youtube         516    0.005519       youtube
+...             ...         ...           ...
+hose              1    0.000011          hose
+hospitalised      1    0.000011  hospitalised
+hospitality       1    0.000011   hospitality
+hostages          1    0.000011      hostages
+采用左眼专利技术          1    0.000011      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-20 12:39:07,480:Duplicates results:
+2022-09-20 12:39:07,480:{'duplicate_fraction': 0.016812865497076057}
+2022-09-20 12:39:07,480:Loading cached general stats
+2022-09-20 12:39:07,651:['man', 'woman', 'non-binary', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-20 12:39:07,651:Looking for cached terms in cache_dir/hate_speech18_default_train_text/npmi_terms.json
+2022-09-20 12:46:36,072:Doing text dset.
+2022-09-20 12:46:36,075:Loaded dataset from disk
+2022-09-20 12:46:36,075:Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-20 12:46:36,076:Reading vocab from cache
+2022-09-20 12:46:36,112:unfiltered vocab
+2022-09-20 12:46:36,113:              count  proportion         vocab
+vocab                                        
+the            6770    0.037380           the
+to             4703    0.025967            to
+i              4577    0.025272             i
+and            4317    0.023836           and
+a              4006    0.022119             a
+...             ...         ...           ...
+hose              1    0.000006          hose
+hospitalised      1    0.000006  hospitalised
+hospitality       1    0.000006   hospitality
+hostages          1    0.000006      hostages
+采用左眼专利技术          1    0.000006      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-20 12:46:36,149:filtered vocab
+2022-09-20 12:46:36,149:              count  proportion         vocab
+vocab                                        
+white          1273    0.013615         white
+like            793    0.008481          like
+people          617    0.006599        people
+one             521    0.005572           one
+youtube         516    0.005519       youtube
+...             ...         ...           ...
+hose              1    0.000011          hose
+hospitalised      1    0.000011  hospitalised
+hospitality       1    0.000011   hospitality
+hostages          1    0.000011      hostages
+采用左眼专利技术          1    0.000011      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-20 12:46:36,199:Duplicates results:
+2022-09-20 12:46:36,199:{'duplicate_fraction': 0.016812865497076057}
+2022-09-20 12:46:36,199:Loading cached general stats
+2022-09-20 12:46:36,376:['man', 'woman', 'non-binary', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-20 12:46:36,376:Looking for cached terms in cache_dir/hate_speech18_default_train_text/npmi_terms.json
+2022-09-20 12:48:51,633:Doing text dset.
+2022-09-20 12:48:51,655:Loaded dataset from disk
+2022-09-20 12:48:51,656:Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-20 12:48:51,657:Reading vocab from cache
+2022-09-20 12:48:51,697:unfiltered vocab
+2022-09-20 12:48:51,698:              count  proportion         vocab
+vocab                                        
+the            6770    0.037380           the
+to             4703    0.025967            to
+i              4577    0.025272             i
+and            4317    0.023836           and
+a              4006    0.022119             a
+...             ...         ...           ...
+hose              1    0.000006          hose
+hospitalised      1    0.000006  hospitalised
+hospitality       1    0.000006   hospitality
+hostages          1    0.000006      hostages
+采用左眼专利技术          1    0.000006      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-20 12:48:51,726:filtered vocab
+2022-09-20 12:48:51,727:              count  proportion         vocab
+vocab                                        
+white          1273    0.013615         white
+like            793    0.008481          like
+people          617    0.006599        people
+one             521    0.005572           one
+youtube         516    0.005519       youtube
+...             ...         ...           ...
+hose              1    0.000011          hose
+hospitalised      1    0.000011  hospitalised
+hospitality       1    0.000011   hospitality
+hostages          1    0.000011      hostages
+采用左眼专利技术          1    0.000011      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-20 12:48:51,764:Duplicates results:
+2022-09-20 12:48:51,765:{'duplicate_fraction': 0.016812865497076057}
+2022-09-20 12:48:51,766:Loading cached general stats
+2022-09-20 12:48:51,930:['man', 'woman', 'non-binary', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-20 12:48:51,930:Looking for cached terms in cache_dir/hate_speech18_default_train_text/npmi_terms.json
+2022-09-20 12:50:25,681:Doing text dset.
+2022-09-20 12:50:25,695:Loaded dataset from disk
+2022-09-20 12:50:25,695:Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-20 12:50:25,697:Reading vocab from cache
+2022-09-20 12:50:25,731:unfiltered vocab
+2022-09-20 12:50:25,731:              count  proportion         vocab
+vocab                                        
+the            6770    0.037380           the
+to             4703    0.025967            to
+i              4577    0.025272             i
+and            4317    0.023836           and
+a              4006    0.022119             a
+...             ...         ...           ...
+hose              1    0.000006          hose
+hospitalised      1    0.000006  hospitalised
+hospitality       1    0.000006   hospitality
+hostages          1    0.000006      hostages
+采用左眼专利技术          1    0.000006      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-20 12:50:25,756:filtered vocab
+2022-09-20 12:50:25,756:              count  proportion         vocab
+vocab                                        
+white          1273    0.013615         white
+like            793    0.008481          like
+people          617    0.006599        people
+one             521    0.005572           one
+youtube         516    0.005519       youtube
+...             ...         ...           ...
+hose              1    0.000011          hose
+hospitalised      1    0.000011  hospitalised
+hospitality       1    0.000011   hospitality
+hostages          1    0.000011      hostages
+采用左眼专利技术          1    0.000011      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-20 12:50:25,813:Duplicates results:
+2022-09-20 12:50:25,813:{'duplicate_fraction': 0.016812865497076057}
+2022-09-20 12:50:25,813:Loading cached general stats
+2022-09-20 12:50:25,995:['man', 'woman', 'non-binary', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-20 12:50:25,995:Looking for cached terms in cache_dir/hate_speech18_default_train_text/npmi_terms.json
+2022-09-20 12:50:27,162:Loading cached joint npmi
+2022-09-20 12:52:40,868:Doing text dset.
+2022-09-20 12:52:40,882:Loaded dataset from disk
+2022-09-20 12:52:40,883:Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-20 12:52:40,884:Reading vocab from cache
+2022-09-20 12:52:40,908:unfiltered vocab
+2022-09-20 12:52:40,908:              count  proportion         vocab
+vocab                                        
+the            6770    0.037380           the
+to             4703    0.025967            to
+i              4577    0.025272             i
+and            4317    0.023836           and
+a              4006    0.022119             a
+...             ...         ...           ...
+hose              1    0.000006          hose
+hospitalised      1    0.000006  hospitalised
+hospitality       1    0.000006   hospitality
+hostages          1    0.000006      hostages
+采用左眼专利技术          1    0.000006      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-20 12:52:40,930:filtered vocab
+2022-09-20 12:52:40,930:              count  proportion         vocab
+vocab                                        
+white          1273    0.013615         white
+like            793    0.008481          like
+people          617    0.006599        people
+one             521    0.005572           one
+youtube         516    0.005519       youtube
+...             ...         ...           ...
+hose              1    0.000011          hose
+hospitalised      1    0.000011  hospitalised
+hospitality       1    0.000011   hospitality
+hostages          1    0.000011      hostages
+采用左眼专利技术          1    0.000011      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-20 12:52:40,975:Duplicates results:
+2022-09-20 12:52:40,975:{'duplicate_fraction': 0.016812865497076057}
+2022-09-20 12:52:40,975:Loading cached general stats
+2022-09-20 12:52:41,182:['man', 'woman', 'non-binary', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-20 12:52:41,182:Looking for cached terms in cache_dir/hate_speech18_default_train_text/npmi_terms.json
+2022-09-20 12:52:42,352:Loading cached joint npmi
+2022-09-20 13:05:34,873:Doing text dset.
+2022-09-20 13:05:34,947:Dataset({
+    features: ['text', 'timestamp', 'url'],
+    num_rows: 200000
+})
+2022-09-20 13:05:38,644:Saving dataset to disk
+2022-09-20 13:08:38,718:Saving tokenized dataset to disk
+2022-09-20 13:09:02,581:Calculating vocab afresh
+2022-09-20 13:09:02,597:Fitting dummy tokenization to make matrix using the previous tokenization
+2022-09-20 13:10:11,067:0 of 2000 vocab batches
+2022-09-20 13:10:49,795:100 of 2000 vocab batches
+2022-09-20 13:11:29,057:200 of 2000 vocab batches
+2022-09-20 13:12:08,179:300 of 2000 vocab batches
+2022-09-20 13:12:46,518:400 of 2000 vocab batches
+2022-09-20 13:13:24,806:500 of 2000 vocab batches
+2022-09-20 13:14:02,170:600 of 2000 vocab batches
+2022-09-20 13:14:41,082:700 of 2000 vocab batches
+2022-09-20 13:15:19,157:800 of 2000 vocab batches
+2022-09-20 13:16:31,256:900 of 2000 vocab batches
+2022-09-20 13:44:32,069:1000 of 2000 vocab batches
+2022-09-20 14:23:50,026:1100 of 2000 vocab batches
+2022-09-20 15:06:16,998:1200 of 2000 vocab batches
+2022-09-20 15:06:37,032:Doing text dset.
+2022-09-20 15:06:37,113:Loaded dataset from disk
+2022-09-20 15:06:37,113:Dataset({
+    features: ['text'],
+    num_rows: 200000
+})
+2022-09-20 15:06:51,259:Calculating vocab afresh
+2022-09-20 15:06:51,260:Fitting dummy tokenization to make matrix using the previous tokenization
+2022-09-20 15:07:08,544:1300 of 2000 vocab batches
+2022-09-20 15:07:55,594:1400 of 2000 vocab batches
+2022-09-20 15:08:18,589:0 of 2000 vocab batches
+2022-09-20 15:08:44,476:1500 of 2000 vocab batches
+2022-09-20 15:09:04,968:100 of 2000 vocab batches
+2022-09-20 15:09:30,860:1600 of 2000 vocab batches
+2022-09-20 15:09:50,707:200 of 2000 vocab batches
+2022-09-20 15:10:16,978:1700 of 2000 vocab batches
+2022-09-20 15:10:37,673:300 of 2000 vocab batches
+2022-09-20 15:11:02,170:1800 of 2000 vocab batches
+2022-09-20 15:11:22,399:400 of 2000 vocab batches
+2022-09-20 15:11:48,360:1900 of 2000 vocab batches
+2022-09-20 15:12:07,237:500 of 2000 vocab batches
+2022-09-20 15:12:57,460:600 of 2000 vocab batches
+2022-09-20 15:14:01,315:Making dfs with proportion.
+2022-09-20 15:14:02,313:Writing out.
+2022-09-20 15:14:02,714:unfiltered vocab
+2022-09-20 15:14:02,714:                     count    proportion              vocab
+word                                                       
+the                3761220  5.077816e-02                the
+and                2167802  2.926630e-02                and
+to                 2048242  2.765219e-02                 to
+of                 1816777  2.452731e-02                 of
+a                  1626719  2.196144e-02                  a
+...                    ...           ...                ...
+hypostasised             1  1.350045e-08       hypostasised
+hyposplenism             1  1.350045e-08       hyposplenism
+hyposensitization        1  1.350045e-08  hyposensitization
+hyposensitive            1  1.350045e-08      hyposensitive
+𝚢𝚞𝚖𝚖𝚢                    1  1.350045e-08              𝚢𝚞𝚖𝚖𝚢
+
+[666541 rows x 3 columns]
+2022-09-20 15:14:02,745:filtered vocab
+2022-09-20 15:14:02,745:                    count    proportion              vocab
+word                                                      
+one                184811  4.484748e-03                one
+also               146601  3.557518e-03               also
+time               142383  3.455162e-03               time
+new                131117  3.181773e-03                new
+like               115276  2.797365e-03               like
+...                   ...           ...                ...
+hypostasised            1  2.426667e-08       hypostasised
+hyposplenism            1  2.426667e-08       hyposplenism
+hyposensitization       1  2.426667e-08  hyposensitization
+hyposensitive           1  2.426667e-08      hyposensitive
+𝚢𝚞𝚖𝚖𝚢                   1  2.426667e-08              𝚢𝚞𝚖𝚖𝚢
+
+[666362 rows x 3 columns]
+2022-09-20 15:14:15,616:700 of 2000 vocab batches
+2022-09-20 15:14:17,598:Duplicates results:
+2022-09-20 15:14:17,598:{'duplicate_fraction': 0.0}
+2022-09-20 15:14:17,599:Preparing general stats
+2022-09-20 15:14:47,289:Creating pmi cache directory cache_dir/c4_en_train_text/pmi_files.
+2022-09-20 15:14:47,290:['man', 'woman', 'non-binary', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-20 15:14:47,290:Looking for cached terms in cache_dir/c4_en_train_text/npmi_terms.json
+2022-09-20 15:14:47,291:['man', 'woman', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-20 15:15:11,107:800 of 2000 vocab batches
+2022-09-20 15:15:56,993:900 of 2000 vocab batches
+2022-09-20 15:16:34,117:1000 of 2000 vocab batches
+2022-09-20 15:17:11,142:1100 of 2000 vocab batches
+2022-09-20 15:17:48,472:1200 of 2000 vocab batches
+2022-09-20 15:18:25,433:1300 of 2000 vocab batches
+2022-09-20 15:19:02,467:1400 of 2000 vocab batches
+2022-09-20 15:19:39,136:1500 of 2000 vocab batches
+2022-09-20 15:20:15,878:1600 of 2000 vocab batches
+2022-09-20 15:20:53,010:1700 of 2000 vocab batches
+2022-09-20 15:21:29,629:1800 of 2000 vocab batches
+2022-09-20 15:22:06,443:1900 of 2000 vocab batches
+2022-09-20 15:23:37,693:Making dfs with proportion.
+2022-09-20 15:23:38,496:Writing out.
+2022-09-20 15:23:38,823:unfiltered vocab
+2022-09-20 15:23:38,823:                     count    proportion              vocab
+word                                                       
+the                3761220  5.077816e-02                the
+and                2167802  2.926630e-02                and
+to                 2048242  2.765219e-02                 to
+of                 1816777  2.452731e-02                 of
+a                  1626719  2.196144e-02                  a
+...                    ...           ...                ...
+hypostasised             1  1.350045e-08       hypostasised
+hyposplenism             1  1.350045e-08       hyposplenism
+hyposensitization        1  1.350045e-08  hyposensitization
+hyposensitive            1  1.350045e-08      hyposensitive
+𝚢𝚞𝚖𝚖𝚢                    1  1.350045e-08              𝚢𝚞𝚖𝚖𝚢
+
+[666541 rows x 3 columns]
+2022-09-20 15:23:38,847:filtered vocab
+2022-09-20 15:23:38,847:                    count    proportion              vocab
+word                                                      
+one                184811  4.484748e-03                one
+also               146601  3.557518e-03               also
+time               142383  3.455162e-03               time
+new                131117  3.181773e-03                new
+like               115276  2.797365e-03               like
+...                   ...           ...                ...
+hypostasised            1  2.426667e-08       hypostasised
+hyposplenism            1  2.426667e-08       hyposplenism
+hyposensitization       1  2.426667e-08  hyposensitization
+hyposensitive           1  2.426667e-08      hyposensitive
+𝚢𝚞𝚖𝚖𝚢                   1  2.426667e-08              𝚢𝚞𝚖𝚖𝚢
+
+[666362 rows x 3 columns]
+2022-09-20 15:23:47,702:Duplicates results:
+2022-09-20 15:23:47,702:{'duplicate_fraction': 0.0, 'duplicates_dict': {}}
+2022-09-20 15:23:47,702:Loading cached general stats
+2022-09-20 15:23:51,921:['man', 'woman', 'non-binary', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-20 15:23:51,921:Looking for cached terms in cache_dir/c4_en_train_text/npmi_terms.json
+2022-09-20 15:23:55,438:Calculating npmi statistics for herself
+2022-09-20 15:30:19,998:Calculating npmi statistics for man
+2022-09-20 15:40:59,674:Doing text dset.
+2022-09-20 15:40:59,841:Dataset({
+    features: ['text', 'timestamp', 'url'],
+    num_rows: 200000
+})
+2022-09-20 15:41:04,067:Saving dataset to disk
+2022-09-20 15:44:19,413:Saving tokenized dataset to disk
+2022-09-20 15:44:46,246:Calculating vocab afresh
+2022-09-20 15:44:46,248:Fitting dummy tokenization to make matrix using the previous tokenization
+2022-09-20 15:46:04,046:0 of 2000 vocab batches
+2022-09-20 15:46:48,687:100 of 2000 vocab batches
+2022-09-20 15:47:28,305:200 of 2000 vocab batches
+2022-09-20 15:48:09,868:300 of 2000 vocab batches
+2022-09-20 15:48:52,801:400 of 2000 vocab batches
+2022-09-20 15:49:32,626:500 of 2000 vocab batches
+2022-09-20 15:50:12,017:600 of 2000 vocab batches
+2022-09-20 15:50:50,404:700 of 2000 vocab batches
+2022-09-20 15:51:28,621:800 of 2000 vocab batches
+2022-09-20 15:52:12,373:900 of 2000 vocab batches
+2022-09-20 15:52:48,460:1000 of 2000 vocab batches
+2022-09-20 15:53:24,561:1100 of 2000 vocab batches
+2022-09-20 15:54:01,928:1200 of 2000 vocab batches
+2022-09-20 16:06:07,723:Doing text dset.
+2022-09-20 16:06:07,731:Loaded dataset from disk
+2022-09-20 16:06:07,731:Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-20 16:06:07,732:Reading vocab from cache
+2022-09-20 16:06:07,760:unfiltered vocab
+2022-09-20 16:06:07,760:              count  proportion         vocab
+vocab                                        
+the            6770    0.037380           the
+to             4703    0.025967            to
+i              4577    0.025272             i
+and            4317    0.023836           and
+a              4006    0.022119             a
+...             ...         ...           ...
+hose              1    0.000006          hose
+hospitalised      1    0.000006  hospitalised
+hospitality       1    0.000006   hospitality
+hostages          1    0.000006      hostages
+采用左眼专利技术          1    0.000006      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-20 16:06:07,794:filtered vocab
+2022-09-20 16:06:07,794:              count  proportion         vocab
+vocab                                        
+white          1273    0.013615         white
+like            793    0.008481          like
+people          617    0.006599        people
+one             521    0.005572           one
+youtube         516    0.005519       youtube
+...             ...         ...           ...
+hose              1    0.000011          hose
+hospitalised      1    0.000011  hospitalised
+hospitality       1    0.000011   hospitality
+hostages          1    0.000011      hostages
+采用左眼专利技术          1    0.000011      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-20 16:06:07,878:Duplicates results:
+2022-09-20 16:06:07,878:{'duplicate_fraction': 0.016812865497076057}
+2022-09-20 16:06:07,878:Loading cached general stats
+2022-09-20 16:06:08,816:['man', 'woman', 'non-binary', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-20 16:06:08,816:Looking for cached terms in cache_dir/hate_speech18_default_train_text/npmi_terms.json
+2022-09-20 16:06:09,979:Loading cached joint npmi
+2022-09-20 16:29:10,592:Doing text dset.
+2022-09-20 16:29:10,599:Loaded dataset from disk
+2022-09-20 16:29:10,599:Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-20 16:29:10,601:Reading vocab from cache
+2022-09-20 16:29:10,625:unfiltered vocab
+2022-09-20 16:29:10,625:              count  proportion         vocab
+vocab                                        
+the            6770    0.037380           the
+to             4703    0.025967            to
+i              4577    0.025272             i
+and            4317    0.023836           and
+a              4006    0.022119             a
+...             ...         ...           ...
+hose              1    0.000006          hose
+hospitalised      1    0.000006  hospitalised
+hospitality       1    0.000006   hospitality
+hostages          1    0.000006      hostages
+采用左眼专利技术          1    0.000006      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-20 16:29:10,645:filtered vocab
+2022-09-20 16:29:10,645:              count  proportion         vocab
+vocab                                        
+white          1273    0.013615         white
+like            793    0.008481          like
+people          617    0.006599        people
+one             521    0.005572           one
+youtube         516    0.005519       youtube
+...             ...         ...           ...
+hose              1    0.000011          hose
+hospitalised      1    0.000011  hospitalised
+hospitality       1    0.000011   hospitality
+hostages          1    0.000011      hostages
+采用左眼专利技术          1    0.000011      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-20 16:29:10,690:Duplicates results:
+2022-09-20 16:29:10,690:{'duplicate_fraction': 0.016812865497076057}
+2022-09-20 16:29:10,690:Loading cached general stats
+2022-09-20 16:29:10,909:['man', 'woman', 'non-binary', 'gay', 'lesbian', 'queer', 'trans', 'straight', 'cis', 'she', 'her', 'hers', 'he', 'him', 'his', 'they', 'them', 'their', 'theirs', 'himself', 'herself']
+2022-09-20 16:29:10,909:Looking for cached terms in cache_dir/hate_speech18_default_train_text/npmi_terms.json
+2022-09-20 16:29:12,183:Loading cached joint npmi
+2022-09-20 16:55:47,961:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:497
+Doing text dset.
+2022-09-20 16:55:47,970:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:528
+Loaded dataset from disk
+2022-09-20 16:55:47,970:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:529
+Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-20 16:55:49,270:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:520
+Saving tokenized dataset to disk
+2022-09-20 16:55:49,497:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:404
+Calculating vocab afresh
+2022-09-20 16:55:49,498:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:635
+Fitting dummy tokenization to make matrix using the previous tokenization
+2022-09-20 16:55:49,774:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+0 of 2000 vocab batches
+2022-09-20 16:55:49,809:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+100 of 2000 vocab batches
+2022-09-20 16:55:49,848:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+200 of 2000 vocab batches
+2022-09-20 16:55:49,883:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+300 of 2000 vocab batches
+2022-09-20 16:55:49,917:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+400 of 2000 vocab batches
+2022-09-20 16:55:49,951:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+500 of 2000 vocab batches
+2022-09-20 16:55:49,987:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+600 of 2000 vocab batches
+2022-09-20 16:55:50,022:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+700 of 2000 vocab batches
+2022-09-20 16:55:50,055:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+800 of 2000 vocab batches
+2022-09-20 16:55:50,096:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+900 of 2000 vocab batches
+2022-09-20 16:55:50,128:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+1000 of 2000 vocab batches
+2022-09-20 16:55:50,159:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+1100 of 2000 vocab batches
+2022-09-20 16:55:50,193:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+1200 of 2000 vocab batches
+2022-09-20 16:55:50,249:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+1300 of 2000 vocab batches
+2022-09-20 16:55:50,288:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+1400 of 2000 vocab batches
+2022-09-20 16:55:50,323:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+1500 of 2000 vocab batches
+2022-09-20 16:55:50,359:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+1600 of 2000 vocab batches
+2022-09-20 16:55:50,390:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+1700 of 2000 vocab batches
+2022-09-20 16:55:50,422:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+1800 of 2000 vocab batches
+2022-09-20 16:55:50,454:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+1900 of 2000 vocab batches
+2022-09-20 16:55:51,105:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:406
+Making dfs with proportion.
+2022-09-20 16:55:51,129:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:410
+Writing out.
+2022-09-20 16:55:51,291:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:412
+unfiltered vocab
+2022-09-20 16:55:51,291:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:413
+              count  proportion         vocab
+word                                         
+the            6770       0.037           the
+to             4703       0.026            to
+i              4577       0.025             i
+and            4317       0.024           and
+a              4006       0.022             a
+...             ...         ...           ...
+hose              1       0.000          hose
+hospitalised      1       0.000  hospitalised
+hospitality       1       0.000   hospitality
+hostages          1       0.000      hostages
+采用左眼专利技术          1       0.000      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-20 16:55:51,317:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:414
+filtered vocab
+2022-09-20 16:55:51,317:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:415
+              count  proportion         vocab
+word                                         
+white          1273       0.014         white
+like            793       0.008          like
+people          617       0.007        people
+one             521       0.006           one
+youtube         516       0.006       youtube
+...             ...         ...           ...
+hose              1       0.000          hose
+hospitalised      1       0.000  hospitalised
+hospitality       1       0.000   hospitality
+hostages          1       0.000      hostages
+采用左眼专利技术          1       0.000      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-20 16:55:51,354:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:282
+Duplicates results:
+2022-09-20 16:55:51,354:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:283
+{'duplicate_fraction': 0.016812865497076057}
+2022-09-20 16:55:51,355:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:294
+Preparing general stats
+2022-09-20 17:00:02,284:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:497
+Doing text dset.
+2022-09-20 17:00:02,289:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:528
+Loaded dataset from disk
+2022-09-20 17:00:02,289:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:529
+Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-20 17:00:02,397:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:397
+Reading vocab from cache
+2022-09-20 17:00:02,473:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:412
+unfiltered vocab
+2022-09-20 17:00:02,474:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:413
+              count  proportion         vocab
+the            6770       0.037           the
+to             4703       0.026            to
+i              4577       0.025             i
+and            4317       0.024           and
+a              4006       0.022             a
+...             ...         ...           ...
+hose              1       0.000          hose
+hospitalised      1       0.000  hospitalised
+hospitality       1       0.000   hospitality
+hostages          1       0.000      hostages
+采用左眼专利技术          1       0.000      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-20 17:00:02,486:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:414
+filtered vocab
+2022-09-20 17:00:02,487:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:415
+              count  proportion         vocab
+white          1273       0.014         white
+like            793       0.008          like
+people          617       0.007        people
+one             521       0.006           one
+youtube         516       0.006       youtube
+...             ...         ...           ...
+hose              1       0.000          hose
+hospitalised      1       0.000  hospitalised
+hospitality       1       0.000   hospitality
+hostages          1       0.000      hostages
+采用左眼专利技术          1       0.000      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-20 17:00:02,552:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:282
+Duplicates results:
+2022-09-20 17:00:02,553:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:283
+{'duplicate_fraction': 0.016812865497076057}
+2022-09-20 17:00:02,554:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:291
+Loading cached general stats
+2022-09-20 17:04:29,806:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:497
+Doing text dset.
+2022-09-20 17:04:29,810:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:528
+Loaded dataset from disk
+2022-09-20 17:04:29,811:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:529
+Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-20 17:04:29,935:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:397
+Reading vocab from cache
+2022-09-20 17:04:30,038:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:412
+unfiltered vocab
+2022-09-20 17:04:30,038:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:413
+              count  proportion         vocab
+the            6770       0.037           the
+to             4703       0.026            to
+i              4577       0.025             i
+and            4317       0.024           and
+a              4006       0.022             a
+...             ...         ...           ...
+hose              1       0.000          hose
+hospitalised      1       0.000  hospitalised
+hospitality       1       0.000   hospitality
+hostages          1       0.000      hostages
+采用左眼专利技术          1       0.000      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-20 17:04:30,052:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:414
+filtered vocab
+2022-09-20 17:04:30,052:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:415
+              count  proportion         vocab
+white          1273       0.014         white
+like            793       0.008          like
+people          617       0.007        people
+one             521       0.006           one
+youtube         516       0.006       youtube
+...             ...         ...           ...
+hose              1       0.000          hose
+hospitalised      1       0.000  hospitalised
+hospitality       1       0.000   hospitality
+hostages          1       0.000      hostages
+采用左眼专利技术          1       0.000      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-20 17:04:30,086:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:282
+Duplicates results:
+2022-09-20 17:04:30,087:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:283
+{'duplicate_fraction': 0.016812865497076057}
+2022-09-20 17:04:30,087:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:291
+Loading cached general stats
+2022-09-20 17:20:42,839:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:497
+Doing text dset.
+2022-09-20 17:20:42,848:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:528
+Loaded dataset from disk
+2022-09-20 17:20:42,848:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:529
+Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-20 17:20:42,954:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:397
+Reading vocab from cache
+2022-09-20 17:20:43,017:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:412
+unfiltered vocab
+2022-09-20 17:20:43,017:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:413
+              count  proportion         vocab
+the            6770       0.037           the
+to             4703       0.026            to
+i              4577       0.025             i
+and            4317       0.024           and
+a              4006       0.022             a
+...             ...         ...           ...
+hose              1       0.000          hose
+hospitalised      1       0.000  hospitalised
+hospitality       1       0.000   hospitality
+hostages          1       0.000      hostages
+采用左眼专利技术          1       0.000      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-20 17:20:43,028:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:414
+filtered vocab
+2022-09-20 17:20:43,028:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:415
+              count  proportion         vocab
+white          1273       0.014         white
+like            793       0.008          like
+people          617       0.007        people
+one             521       0.006           one
+youtube         516       0.006       youtube
+...             ...         ...           ...
+hose              1       0.000          hose
+hospitalised      1       0.000  hospitalised
+hospitality       1       0.000   hospitality
+hostages          1       0.000      hostages
+采用左眼专利技术          1       0.000      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-20 17:20:43,061:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:282
+Duplicates results:
+2022-09-20 17:20:43,061:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:283
+{'duplicate_fraction': 0.016812865497076057}
+2022-09-20 17:20:43,061:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:291
+Loading cached general stats
