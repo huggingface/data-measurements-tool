@@ -371,16 +371,6 @@ def extract_field(examples, field_path, new_field_name=None):
     ]
     return {new_field_name: field_list}
 
-def check_load_and_use_cache(load_only, use_cache):
-    if load_only:
-        try:
-            # If we can only load using cache, than using cache must be true.
-            assert (use_cache == load_only)
-        except AssertionError:
-            logs.warning("load_only specified; setting the Boolean use_cache variable to True.")
-            use_cache = True
-    return use_cache
-
 def make_path(path):
     os.makedirs(path, exist_ok=True)
 
