@@ -1393,3 +1393,104 @@ Duplicates results:
 {'duplicate_fraction': 0.016812865497076057}
 2022-09-20 17:20:43,061:/Users/ezi/Desktop/DMT/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:291
 Loading cached general stats
+2022-09-20 21:21:06,675:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:497
+Doing text dset.
+2022-09-20 21:21:06,683:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:528
+Loaded dataset from disk
+2022-09-20 21:21:06,684:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:529
+Dataset({
+    features: ['text'],
+    num_rows: 10944
+})
+2022-09-20 21:21:08,078:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:520
+Saving tokenized dataset to disk
+2022-09-20 21:21:08,315:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:404
+Calculating vocab afresh
+2022-09-20 21:21:08,316:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:635
+Fitting dummy tokenization to make matrix using the previous tokenization
+2022-09-20 21:21:08,605:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+0 of 2000 vocab batches
+2022-09-20 21:21:08,635:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+100 of 2000 vocab batches
+2022-09-20 21:21:08,663:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+200 of 2000 vocab batches
+2022-09-20 21:21:08,691:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+300 of 2000 vocab batches
+2022-09-20 21:21:08,721:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+400 of 2000 vocab batches
+2022-09-20 21:21:08,751:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+500 of 2000 vocab batches
+2022-09-20 21:21:08,780:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+600 of 2000 vocab batches
+2022-09-20 21:21:08,808:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+700 of 2000 vocab batches
+2022-09-20 21:21:08,836:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+800 of 2000 vocab batches
+2022-09-20 21:21:08,872:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+900 of 2000 vocab batches
+2022-09-20 21:21:08,911:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+1000 of 2000 vocab batches
+2022-09-20 21:21:08,940:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+1100 of 2000 vocab batches
+2022-09-20 21:21:08,975:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+1200 of 2000 vocab batches
+2022-09-20 21:21:09,005:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+1300 of 2000 vocab batches
+2022-09-20 21:21:09,039:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+1400 of 2000 vocab batches
+2022-09-20 21:21:09,068:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+1500 of 2000 vocab batches
+2022-09-20 21:21:09,097:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+1600 of 2000 vocab batches
+2022-09-20 21:21:09,126:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+1700 of 2000 vocab batches
+2022-09-20 21:21:09,157:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+1800 of 2000 vocab batches
+2022-09-20 21:21:09,184:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:646
+1900 of 2000 vocab batches
+2022-09-20 21:21:09,867:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:406
+Making dfs with proportion.
+2022-09-20 21:21:09,887:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:410
+Writing out.
+2022-09-20 21:21:10,104:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:412
+unfiltered vocab
+2022-09-20 21:21:10,105:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:413
+              count  proportion         vocab
+word                                         
+the            6770       0.037           the
+to             4703       0.026            to
+i              4577       0.025             i
+and            4317       0.024           and
+a              4006       0.022             a
+...             ...         ...           ...
+hose              1       0.000          hose
+hospitalised      1       0.000  hospitalised
+hospitality       1       0.000   hospitality
+hostages          1       0.000      hostages
+采用左眼专利技术          1       0.000      采用左眼专利技术
+
+[16372 rows x 3 columns]
+2022-09-20 21:21:10,136:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:414
+filtered vocab
+2022-09-20 21:21:10,137:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:415
+              count  proportion         vocab
+word                                         
+white          1273       0.014         white
+like            793       0.008          like
+people          617       0.007        people
+one             521       0.006           one
+youtube         516       0.006       youtube
+...             ...         ...           ...
+hose              1       0.000          hose
+hospitalised      1       0.000  hospitalised
+hospitality       1       0.000   hospitality
+hostages          1       0.000      hostages
+采用左眼专利技术          1       0.000      采用左眼专利技术
+
+[16204 rows x 3 columns]
+2022-09-20 21:21:10,190:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:282
+Duplicates results:
+2022-09-20 21:21:10,190:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:283
+{'duplicate_fraction': 0.016812865497076057}
+2022-09-20 21:21:10,190:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/data_measurements/dataset_statistics.py,  dataset_statistics:294
+Preparing general stats

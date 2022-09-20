@@ -1131,3 +1131,85 @@ Traceback (most recent call last):
 AttributeError: 'DatasetStatisticsCacheClass' object has no attribute 'npmi_stats'
 2022-09-20 17:20:47,385:/Users/ezi/Desktop/DMT/data-measurements-tool/app.py,  app:277
 showing zipf.
+2022-09-20 21:21:06,647:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py,  app:339
+Using Single Dataset Mode
+2022-09-20 21:21:06,675:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py,  app:103
+showing header
+2022-09-20 21:21:06,675:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py,  app:163
+Making new calculations if cache is not there.
+2022-09-20 21:21:48,927:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py,  app:213
+showing header
+2022-09-20 21:21:48,937:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py,  app:216
+showing general stats
+2022-09-20 21:21:49,874:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py,  app:228
+showing npmi widget
+2022-09-20 21:21:49,876:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py,  app:232
+showing zipf
+2022-09-20 21:21:49,919:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py,  app:250
+showing general stats
+2022-09-20 21:21:49,919:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py,  app:256
+showing npmi widget
+2022-09-20 21:21:49,920:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py,  app:258
+showing zipf
+2022-09-20 21:21:49,921:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py,  app:277
+showing general stats.
+2022-09-20 21:21:49,930:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py,  app:277
+showing label distribution.
+2022-09-20 21:21:49,933:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py,  app:281
+Jk jk jk. There was an issue with label distribution:
+2022-09-20 21:21:49,935:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py,  app:282
+The `figure_or_data` positional argument must be `dict`-like, `list`-like, or an instance of plotly.graph_objs.Figure
+Traceback (most recent call last):
+  File "/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py", line 279, in show_column
+    widget_fn(dstats, column_id)
+  File "/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/utils/streamlit_utils.py", line 204, in expander_label_distribution
+    st.plotly_chart(fig_labels, use_container_width=True)
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/plotly_chart.py", line 140, in plotly_chart
+    marshall(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/plotly_chart.py", line 172, in marshall
+    figure = plotly.tools.return_figure_from_figure_or_data(
+  File "/usr/local/lib/python3.9/site-packages/plotly/tools.py", line 544, in return_figure_from_figure_or_data
+    raise exceptions.PlotlyError(
+_plotly_utils.exceptions.PlotlyError: The `figure_or_data` positional argument must be `dict`-like, `list`-like, or an instance of plotly.graph_objs.Figure
+2022-09-20 21:21:49,960:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py,  app:277
+showing text_lengths.
+2022-09-20 21:21:50,773:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py,  app:281
+Jk jk jk. There was an issue with text_lengths:
+2022-09-20 21:21:50,775:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py,  app:282
+There are multiple identical `st.selectbox` widgets with
+`key='select_show_length_'`.
+
+To fix this, please make sure that the `key` argument is unique for
+each `st.selectbox` you create.
+Traceback (most recent call last):
+  File "/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py", line 279, in show_column
+    widget_fn(dstats, column_id)
+  File "/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/utils/streamlit_utils.py", line 244, in expander_text_lengths
+    start_id_show_lengths = st.selectbox(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/selectbox.py", line 99, in selectbox
+    return self._selectbox(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/elements/selectbox.py", line 162, in _selectbox
+    widget_state = register_widget(
+  File "/usr/local/lib/python3.9/site-packages/streamlit/runtime/state/widgets.py", line 199, in register_widget
+    raise DuplicateWidgetID(
+streamlit.errors.DuplicateWidgetID: There are multiple identical `st.selectbox` widgets with
+`key='select_show_length_'`.
+
+To fix this, please make sure that the `key` argument is unique for
+each `st.selectbox` you create.
+2022-09-20 21:21:50,779:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py,  app:277
+showing duplicates.
+2022-09-20 21:21:50,788:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py,  app:277
+showing npmi.
+2022-09-20 21:21:50,789:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py,  app:281
+Jk jk jk. There was an issue with npmi:
+2022-09-20 21:21:50,790:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py,  app:282
+'DatasetStatisticsCacheClass' object has no attribute 'npmi_stats'
+Traceback (most recent call last):
+  File "/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py", line 279, in show_column
+    widget_fn(dstats, column_id)
+  File "/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/utils/streamlit_utils.py", line 525, in npmi_widget
+    npmi_stats = dstats.npmi_stats
+AttributeError: 'DatasetStatisticsCacheClass' object has no attribute 'npmi_stats'
+2022-09-20 21:21:50,790:/Users/ezi/Desktop/DMT/DMT]/data-measurements-tool/app.py,  app:277
+showing zipf.
