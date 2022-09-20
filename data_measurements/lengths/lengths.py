@@ -33,8 +33,8 @@ class DMTHelper:
         self.load_only = load_only
         # Whether to try using cache first.
         # Must be true when self.load_only = True; this function assures that.
-        self.use_cache = ds_utils.check_load_and_use_cache(self.load_only, dstats.use_cache)
-        self.cache_path = dstats.cache_path
+        self.use_cache = dstats.use_cache
+        self.cache_dir = dstats.dataset_cache_dir
         self.save = save
         self.fig_lengths = None
         # Lengths class object
@@ -50,10 +50,10 @@ class DMTHelper:
         self.lengths_dir = "lengths"
         length_meas_json = "length_measurements.json"
         lengths_fig_png = "lengths_fig.png"
-        lengths_list_feather = "length_list.feather"
-        self.length_stats_json_fid = pjoin(self.cache_path, self.lengths_dir, length_meas_json)
-        self.lengths_fig_png_fid = pjoin(self.cache_path, self.lengths_dir, lengths_fig_png)
-        self.lengths_list_feather_fid = pjoin(self.cache_path, self.lengths_dir, lengths_list_feather)
+        lengths_list_json = "length_list.json"
+        self.length_stats_json_fid = pjoin(self.cache_dir, self.lengths_dir, length_meas_json)
+        self.lengths_fig_png_fid = pjoin(self.cache_dir, self.lengths_dir, lengths_fig_png)
+        self.lengths_list_json_fid = pjoin(self.cache_dir, self.lengths_dir, lengths_list_json)
 
     def run_DMT_processing(self):
         """
@@ -88,8 +88,8 @@ class DMTHelper:
         fig_lengths = None
         length_stats_dict = {}
         # Dataframe with <sentence, length> exists. Load it.
-        if exists(self.lengths_list_feather_fid):
-            lengths_df = ds_utils.read_df(self.lengths_list_feather_fid)
+        if exists(self.lengths_list_json_fid):
+            lengths_df = ds_utils.read_df(self.lengths_list_json_fid)
         # Image exists. Load it.
         if exists(self.lengths_fig_png_fid):
             fig_lengths = mpimg.imread(self.lengths_fig_png_fid)
@@ -101,13 +101,13 @@ class DMTHelper:
 
     def _write_lengths_cache(self):
         # Writes the data structures using the corresponding filetypes.
-        ds_utils.make_path(pjoin(self.cache_path, self.lengths_dir))
+        ds_utils.make_path(pjoin(self.cache_dir, self.lengths_dir))
         if self.length_stats_dict != {}:
             ds_utils.write_json(self.length_stats_dict, self.length_stats_json_fid)
         if isinstance(self.fig_lengths, Figure):
             self.fig_lengths.savefig(self.lengths_fig_png_fid)
         if isinstance(self.lengths_df, pd.DataFrame):
-            ds_utils.write_df(self.lengths_df, self.lengths_list_feather_fid)
+            ds_utils.write_df(self.lengths_df, self.lengths_list_json_fid)
 
 
     def _prepare_lengths(self):
@@ -121,7 +121,7 @@ class DMTHelper:
     def get_filenames(self):
         lengths_fid_dict = {"statistics": self.length_stats_json_fid,
                             "figure png": self.lengths_fig_png_fid,
-                            "list": self.lengths_list_feather_fid}
+                            "list": self.lengths_list_json_fid}
         return lengths_fid_dict
 
 
