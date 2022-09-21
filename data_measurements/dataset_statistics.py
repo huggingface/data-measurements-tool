@@ -104,10 +104,6 @@ IDENTITY_TERMS = [
 pd.set_option("use_inf_as_na", True)
 
 MIN_VOCAB_COUNT = 10
-_TREE_DEPTH = 12
-_TREE_MIN_NODES = 250
-# as long as we're using sklearn - already pushing the resources
-_MAX_CLUSTER_EXAMPLES = 5000
 _NUM_VOCAB_BATCHES = 2000
 _TOP_N = 100
 _CVEC = CountVectorizer(token_pattern="(?u)\\b\\w+\\b", lowercase=True)
