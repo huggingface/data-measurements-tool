@@ -36,46 +36,21 @@ from os.path import join as pjoin
 from pathlib import Path
 from sklearn.feature_extraction.text import CountVectorizer
 from utils.dataset_utils import (CNT, EMBEDDING_FIELD, LENGTH_FIELD,
-                                 OUR_TEXT_FIELD, PERPLEXITY_FIELD, PROP,
+                                 TEXT_FIELD, PERPLEXITY_FIELD, PROP,
                                  TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
                                  TOT_WORDS, VOCAB, WORD)
 
 logs = utils.prepare_logging(__file__)
 
 # TODO: Read this in depending on chosen language / expand beyond english
-nltk.download("stopwords")
+nltk.download("stopwords", quiet=True)
 _CLOSED_CLASS = (
         stopwords.words("english")
-        + [
-            "t",
-            "n",
-            "ll",
-            "d",
-            "wasn",
-            "weren",
-            "won",
-            "aren",
-            "wouldn",
-            "shouldn",
-            "didn",
-            "don",
-            "hasn",
-            "ain",
-            "couldn",
-            "doesn",
-            "hadn",
-            "haven",
-            "isn",
-            "mightn",
-            "mustn",
-            "needn",
-            "shan",
-            "would",
-            "could",
-            "dont",
-            "u",
-        ]
-        + [str(i) for i in range(0, 21)]
+        + ["t", "n", "ll", "d", "s"]
+        + ["wasn", "weren", "won", "aren", "wouldn", "shouldn", "didn", "don",
+           "hasn", "ain", "couldn", "doesn", "hadn", "haven", "isn", "mightn",
+           "mustn", "needn", "shan", "would", "could", "dont"]
+        + [str(i) for i in range(0, 99)]
 )
 IDENTITY_TERMS = [
     "man",
@@ -110,7 +85,6 @@ _TREE_MIN_NODES = 250
 _MAX_CLUSTER_EXAMPLES = 5000
 _NUM_VOCAB_BATCHES = 2000
 _TOP_N = 100
-_CVEC = CountVectorizer(token_pattern="(?u)\\b\\w+\\b", lowercase=True)
 
 _PERPLEXITY = load_metric("perplexity")
 
@@ -218,7 +192,6 @@ class DatasetStatisticsCacheClass:
         # The minimum amount of times a word should occur to be included in
         # word-count-based calculations (currently just relevant to nPMI)
         self.min_vocab_count = MIN_VOCAB_COUNT
-        self.cvec = _CVEC
 
         self.hf_dset_cache_dir = pjoin(self.dataset_cache_dir, "base_dset")
         self.tokenized_df_fid = pjoin(self.dataset_cache_dir, "tokenized_df.json")
@@ -343,7 +316,7 @@ class DatasetStatisticsCacheClass:
             len
         )
         self.length_df = self.tokenized_df[
-            [LENGTH_FIELD, OUR_TEXT_FIELD]
+            [LENGTH_FIELD, TEXT_FIELD]
         ].sort_values(by=[LENGTH_FIELD], ascending=True)
 
     def prepare_text_length_stats(self):
@@ -474,9 +447,9 @@ class DatasetStatisticsCacheClass:
         if self.text_dset is None:
             self.load_or_prepare_text_dset()
         results = _PERPLEXITY.compute(
-            input_texts=self.text_dset[OUR_TEXT_FIELD], model_id='gpt2')
+            input_texts=self.text_dset[TEXT_FIELD], model_id='gpt2')
         perplexities = {PERPLEXITY_FIELD: results["perplexities"],
-                        OUR_TEXT_FIELD: self.text_dset[OUR_TEXT_FIELD]}
+                        TEXT_FIELD: self.text_dset[TEXT_FIELD]}
         self.perplexities_df = pd.DataFrame(perplexities).sort_values(
             by=PERPLEXITY_FIELD, ascending=False)
 
@@ -487,15 +460,21 @@ class DatasetStatisticsCacheClass:
         self.tokenized_df is used further for calculating text lengths,
         word counts, etc.
         Args:
-            save: Store the calculated data to disk.
-
-        Returns:
-
+            load_only: Whether we should only try to load a cached dataset.
         """
-        if not self.dset:
-            self.prepare_base_dataset(load_only=load_only)
         logs.info("Doing text dset.")
-        self.load_or_prepare_text_dset(load_only=load_only)
+        if self.use_cache and exists(self.text_dset_fid):
+            # load extracted text
+            self.text_dset = load_from_disk(self.text_dset_fid)
+            logs.info("Loaded dataset from disk")
+            logs.info(self.text_dset)
+        # ...Or load it from the server and store it anew
+        elif not load_only:
+            self.prepare_text_dset()
+            if self.save:
+                # save extracted text instances
+                logs.info("Saving dataset to disk")
+                self.text_dset.save_to_disk(self.text_dset_fid)
 
     # TODO: Are we not using this anymore?
     def load_or_prepare_dset_peek(self, load_only=False):
@@ -504,7 +483,7 @@ class DatasetStatisticsCacheClass:
                 self.dset_peek = json.load(f)["dset peek"]
         elif not load_only:
             if self.dset is None:
-                self.get_dataset()
+                self.dset = self.get_dataset()
             self.dset_peek = self.dset[:100]
             if self.save:
                 ds_utils.write_json({"dset peek": self.dset_peek},
@@ -515,66 +494,26 @@ class DatasetStatisticsCacheClass:
             self.tokenized_df = ds_utils.read_df(self.tokenized_df_fid)
         elif not load_only:
             # tokenize all text instances
-            self.tokenized_df = self.do_tokenization()
+            tokenized_dset = tokenize.Tokenize(text_dset=self.text_dset, dset=self.dset)
+            self.tokenized_df = pd.DataFrame(tokenized_dset)
             if self.save:
                 logs.warning("Saving tokenized dataset to disk")
                 # save tokenized text
                 ds_utils.write_df(self.tokenized_df, self.tokenized_df_fid)
 
-    def load_or_prepare_text_dset(self, load_only=False):
-        if self.use_cache and exists(self.text_dset_fid):
-            # load extracted text
-            self.text_dset = load_from_disk(self.text_dset_fid)
-            logs.warning("Loaded dataset from disk")
-            logs.warning(self.text_dset)
-        # ...Or load it from the server and store it anew
-        elif not load_only:
-            self.prepare_text_dset()
-            if self.save:
-                # save extracted text instances
-                logs.warning("Saving dataset to disk")
-                self.text_dset.save_to_disk(self.text_dset_fid)
 
     def prepare_text_dset(self):
-        self.get_dataset()
-        logs.warning(self.dset)
+        self.dset = self.get_dataset()
+        logs.info("Working with dataset:")
+        logs.info(self.dset)
         # extract all text instances
         self.text_dset = self.dset.map(
             lambda examples: ds_utils.extract_field(
-                examples, self.text_field, OUR_TEXT_FIELD
+                examples, self.text_field, TEXT_FIELD
             ),
             batched=True,
             remove_columns=list(self.dset.features),
         )
-
-    def do_tokenization(self):
-        """
-        Tokenizes the dataset
-        :return:
-        """
-        if self.text_dset is None:
-            self.load_or_prepare_text_dset()
-        sent_tokenizer = self.cvec.build_tokenizer()
-
-        def tokenize_batch(examples):
-            # TODO: lowercase should be an option
-            res = {
-                TOKENIZED_FIELD: [
-                    tuple(sent_tokenizer(text.lower()))
-                    for text in examples[OUR_TEXT_FIELD]
-                ]
-            }
-            res[LENGTH_FIELD] = [len(tok_text) for tok_text in
-                                 res[TOKENIZED_FIELD]]
-            return res
-
-        tokenized_dset = self.text_dset.map(
-            tokenize_batch,
-            batched=True,
-            # remove_columns=[OUR_TEXT_FIELD], keep around to print
-        )
-        tokenized_df = pd.DataFrame(tokenized_dset)
-        return tokenized_df
 
     def load_or_prepare_npmi(self, load_only=False):
         npmi_obj = npmi.DMTHelper(self, IDENTITY_TERMS, load_only=load_only, use_cache=self.use_cache, save=self.save)
