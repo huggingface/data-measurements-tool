@@ -130,8 +130,6 @@ class DatasetStatisticsCacheClass:
         ### What are we analyzing?
         # name of the Hugging Face dataset
         self.dset_name = dset_name
-        # original HuggingFace dataset
-        self.dset = None
         # name of the dataset config
         self.dset_config = dset_config
         # name of the split to analyze
@@ -241,9 +239,9 @@ class DatasetStatisticsCacheClass:
             self.dataset_cache_dir, "sorted_top_vocab.json"
         )
         # Set the HuggingFace dataset object with the given arguments.
-        self.dset = self.get_dataset()
+        self.dset = self._get_dataset()
 
-    def get_dataset(self):
+    def _get_dataset(self):
         """
         Gets the HuggingFace Dataset object.
         First tries to use the given cache directory if specified;
@@ -468,7 +466,7 @@ class DatasetStatisticsCacheClass:
 
     def prepare_text_perplexities(self):
         if self.text_dset is None:
-            self.load_or_prepare_text_dset()
+            self.load_or_prepare_dataset()
         results = _PERPLEXITY.compute(
             input_texts=self.text_dset[OUR_TEXT_FIELD], model_id='gpt2')
         perplexities = {PERPLEXITY_FIELD: results["perplexities"],
@@ -478,20 +476,23 @@ class DatasetStatisticsCacheClass:
 
     def load_or_prepare_dataset(self, load_only=False):
         """
-        Prepares the HF datasets and data frames containing the untokenized and
-        tokenized text as well as the label values.
-        self.tokenized_df is used further for calculating text lengths,
-        word counts, etc.
+        Prepares the HF dataset text/feature based on given config, split, etc.
         Args:
-            save: Store the calculated data to disk.
-
-        Returns:
-
+            load_only: Whether only a cached dataset can be used.
         """
-        if not self.dset:
-            self.prepare_base_dataset(load_only=load_only)
         logs.info("Doing text dset.")
-        self.load_or_prepare_text_dset(load_only=load_only)
+        if self.use_cache and exists(self.text_dset_fid):
+            # load extracted text
+            self.text_dset = load_from_disk(self.text_dset_fid)
+            logs.warning("Loaded dataset from disk")
+            logs.warning(self.text_dset)
+        # ...Or load it from the server and store it anew
+        elif not load_only:
+            self.prepare_text_dset()
+            if self.save:
+                # save extracted text instances
+                logs.warning("Saving dataset to disk")
+                self.text_dset.save_to_disk(self.text_dset_fid)
 
     # TODO: Are we not using this anymore?
     def load_or_prepare_dset_peek(self, load_only=False):
@@ -499,8 +500,6 @@ class DatasetStatisticsCacheClass:
             with open(self.dset_peek_json_fid, "r") as f:
                 self.dset_peek = json.load(f)["dset peek"]
         elif not load_only:
-            if self.dset is None:
-                self.get_dataset()
             self.dset_peek = self.dset[:100]
             if self.save:
                 ds_utils.write_json({"dset peek": self.dset_peek},
@@ -517,23 +516,10 @@ class DatasetStatisticsCacheClass:
                 # save tokenized text
                 ds_utils.write_df(self.tokenized_df, self.tokenized_df_fid)
 
-    def load_or_prepare_text_dset(self, load_only=False):
-        if self.use_cache and exists(self.text_dset_fid):
-            # load extracted text
-            self.text_dset = load_from_disk(self.text_dset_fid)
-            logs.warning("Loaded dataset from disk")
-            logs.warning(self.text_dset)
-        # ...Or load it from the server and store it anew
-        elif not load_only:
-            self.prepare_text_dset()
-            if self.save:
-                # save extracted text instances
-                logs.warning("Saving dataset to disk")
-                self.text_dset.save_to_disk(self.text_dset_fid)
 
     def prepare_text_dset(self):
-        self.get_dataset()
-        logs.warning(self.dset)
+        logs.info("Working with dataset:")
+        logs.info(self.dset)
         # extract all text instances
         self.text_dset = self.dset.map(
             lambda examples: ds_utils.extract_field(
@@ -549,7 +535,7 @@ class DatasetStatisticsCacheClass:
         :return:
         """
         if self.text_dset is None:
-            self.load_or_prepare_text_dset()
+            self.load_or_prepare_dataset()
         sent_tokenizer = self.cvec.build_tokenizer()
 
         def tokenize_batch(examples):
