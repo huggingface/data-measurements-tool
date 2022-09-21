@@ -79,10 +79,6 @@ IDENTITY_TERMS = [
 pd.set_option("use_inf_as_na", True)
 
 MIN_VOCAB_COUNT = 10
-_TREE_DEPTH = 12
-_TREE_MIN_NODES = 250
-# as long as we're using sklearn - already pushing the resources
-_MAX_CLUSTER_EXAMPLES = 5000
 _NUM_VOCAB_BATCHES = 2000
 _TOP_N = 100
 
@@ -108,8 +104,6 @@ class DatasetStatisticsCacheClass:
         ### What are we analyzing?
         # name of the Hugging Face dataset
         self.dset_name = dset_name
-        # original HuggingFace dataset
-        self.dset = None
         # name of the dataset config
         self.dset_config = dset_config
         # name of the split to analyze
@@ -218,9 +212,9 @@ class DatasetStatisticsCacheClass:
             self.dataset_cache_dir, "sorted_top_vocab.json"
         )
         # Set the HuggingFace dataset object with the given arguments.
-        self.dset = self.get_dataset()
+        self.dset = self._get_dataset()
 
-    def get_dataset(self):
+    def _get_dataset(self):
         """
         Gets the HuggingFace Dataset object.
         First tries to use the given cache directory if specified;
@@ -445,7 +439,7 @@ class DatasetStatisticsCacheClass:
 
     def prepare_text_perplexities(self):
         if self.text_dset is None:
-            self.load_or_prepare_text_dset()
+            self.load_or_prepare_dataset()
         results = _PERPLEXITY.compute(
             input_texts=self.text_dset[TEXT_FIELD], model_id='gpt2')
         perplexities = {PERPLEXITY_FIELD: results["perplexities"],
@@ -455,12 +449,9 @@ class DatasetStatisticsCacheClass:
 
     def load_or_prepare_dataset(self, load_only=False):
         """
-        Prepares the HF datasets and data frames containing the untokenized and
-        tokenized text as well as the label values.
-        self.tokenized_df is used further for calculating text lengths,
-        word counts, etc.
+        Prepares the HF dataset text/feature based on given config, split, etc.
         Args:
-            load_only: Whether we should only try to load a cached dataset.
+            load_only: Whether only a cached dataset can be used.
         """
         logs.info("Doing text dset.")
         if self.use_cache and exists(self.text_dset_fid):
@@ -482,8 +473,6 @@ class DatasetStatisticsCacheClass:
             with open(self.dset_peek_json_fid, "r") as f:
                 self.dset_peek = json.load(f)["dset peek"]
         elif not load_only:
-            if self.dset is None:
-                self.dset = self.get_dataset()
             self.dset_peek = self.dset[:100]
             if self.save:
                 ds_utils.write_json({"dset peek": self.dset_peek},
@@ -503,7 +492,6 @@ class DatasetStatisticsCacheClass:
 
 
     def prepare_text_dset(self):
-        self.dset = self.get_dataset()
         logs.info("Working with dataset:")
         logs.info(self.dset)
         # extract all text instances
