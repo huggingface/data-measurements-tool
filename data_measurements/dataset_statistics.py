@@ -23,6 +23,7 @@ import seaborn as sns
 import statistics
 import utils
 import utils.dataset_utils as ds_utils
+from data_measurements.tokenize import Tokenize
 from data_measurements.embeddings.embeddings import Embeddings
 from data_measurements.labels import labels
 from data_measurements.npmi import npmi
@@ -138,8 +139,7 @@ class DatasetStatisticsCacheClass:
         # Save newly calculated results.
         self.save = save
 
-        # HF dataset with all of the self.text_field instances in self.dset
-        self.text_dset = None
+
         self.dset_peek = None
         # Tokenized text
         self.tokenized_df = None
@@ -211,8 +211,12 @@ class DatasetStatisticsCacheClass:
         self.sorted_top_vocab_df_fid = pjoin(
             self.dataset_cache_dir, "sorted_top_vocab.json"
         )
+
         # Set the HuggingFace dataset object with the given arguments.
         self.dset = self._get_dataset()
+        self.text_dset = None
+        # Defines self.text_dset, a HF Dataset with just the TEXT_FIELD instances in self.dset extracted
+        self.load_or_prepare_text()
 
     def _get_dataset(self):
         """
@@ -225,6 +229,42 @@ class DatasetStatisticsCacheClass:
                                                cache_dir=self.hf_dset_cache_dir,
                                                save=self.save)
         return dset
+
+    def load_or_prepare_text(self, load_only=False):
+        """
+        Prepares the HF dataset text/feature based on given config, split, etc.
+        Args:
+            load_only: Whether only a cached dataset can be used.
+        """
+        logs.info("Doing text dset.")
+        if self.use_cache and exists(self.text_dset_fid):
+            # load extracted text
+            self.text_dset = load_from_disk(self.text_dset_fid)
+            logs.info("Loaded dataset from disk")
+            logs.info(self.text_dset)
+        # ...Or load it from the server and store it anew
+        elif not load_only:
+            # Defines self.text_dset
+            self.prepare_text_dset()
+            if self.save:
+                # save extracted text instances
+                logs.info("Saving dataset to disk")
+                self.text_dset.save_to_disk(self.text_dset_fid)
+
+    def prepare_text_dset(self):
+        logs.info("Working with dataset:")
+        logs.info(self.dset)
+        # Extract all text instances from the user-specified self.text_field,
+        # which is a dataset-specific text/feature field;
+        # create a new feature called TEXT_FIELD, which is a constant shared
+        # across DMT logic.
+        self.text_dset = self.dset.map(
+            lambda examples: ds_utils.extract_field(
+                examples, self.text_field, TEXT_FIELD
+            ),
+            batched=True,
+            remove_columns=list(self.dset.features),
+        )
 
 
     def load_or_prepare_general_stats(self, load_only=False):
@@ -438,8 +478,6 @@ class DatasetStatisticsCacheClass:
         }
 
     def prepare_text_perplexities(self):
-        if self.text_dset is None:
-            self.load_or_prepare_dataset()
         results = _PERPLEXITY.compute(
             input_texts=self.text_dset[TEXT_FIELD], model_id='gpt2')
         perplexities = {PERPLEXITY_FIELD: results["perplexities"],
@@ -447,25 +485,6 @@ class DatasetStatisticsCacheClass:
         self.perplexities_df = pd.DataFrame(perplexities).sort_values(
             by=PERPLEXITY_FIELD, ascending=False)
 
-    def load_or_prepare_dataset(self, load_only=False):
-        """
-        Prepares the HF dataset text/feature based on given config, split, etc.
-        Args:
-            load_only: Whether only a cached dataset can be used.
-        """
-        logs.info("Doing text dset.")
-        if self.use_cache and exists(self.text_dset_fid):
-            # load extracted text
-            self.text_dset = load_from_disk(self.text_dset_fid)
-            logs.info("Loaded dataset from disk")
-            logs.info(self.text_dset)
-        # ...Or load it from the server and store it anew
-        elif not load_only:
-            self.prepare_text_dset()
-            if self.save:
-                # save extracted text instances
-                logs.info("Saving dataset to disk")
-                self.text_dset.save_to_disk(self.text_dset_fid)
 
     # TODO: Are we not using this anymore?
     def load_or_prepare_dset_peek(self, load_only=False):
@@ -483,25 +502,12 @@ class DatasetStatisticsCacheClass:
             self.tokenized_df = ds_utils.read_df(self.tokenized_df_fid)
         elif not load_only:
             # tokenize all text instances
-            tokenized_dset = tokenize.Tokenize(text_dset=self.text_dset, dset=self.dset)
-            self.tokenized_df = pd.DataFrame(tokenized_dset)
+            tokenized_array = Tokenize(text_series=self.text_dset[TEXT_FIELD]).get()
+            self.tokenized_df = pd.DataFrame(tokenized_array, columns=[TOKENIZED_FIELD])
             if self.save:
                 logs.warning("Saving tokenized dataset to disk")
                 # save tokenized text
                 ds_utils.write_df(self.tokenized_df, self.tokenized_df_fid)
-
-
-    def prepare_text_dset(self):
-        logs.info("Working with dataset:")
-        logs.info(self.dset)
-        # extract all text instances
-        self.text_dset = self.dset.map(
-            lambda examples: ds_utils.extract_field(
-                examples, self.text_field, TEXT_FIELD
-            ),
-            batched=True,
-            remove_columns=list(self.dset.features),
-        )
 
     def load_or_prepare_npmi(self, load_only=False):
         npmi_obj = npmi.DMTHelper(self, IDENTITY_TERMS, load_only=load_only, use_cache=self.use_cache, save=self.save)
