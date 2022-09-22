@@ -502,7 +502,8 @@ class DatasetStatisticsCacheClass:
             self.tokenized_df = ds_utils.read_df(self.tokenized_df_fid)
         elif not load_only:
             # tokenize all text instances
-            self.tokenized_df = Tokenize(self.text_dset, feature=TEXT_FIELD, tok_feature=TOKENIZED_FIELD).get_df()
+            self.tokenized_df = Tokenize(self.text_dset, feature=TEXT_FIELD,
+                                         tok_feature=TOKENIZED_FIELD).get_df()
             logs.info("tokenized df is")
             logs.info(self.tokenized_df)
             if self.save:
