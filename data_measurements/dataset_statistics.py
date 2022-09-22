@@ -216,7 +216,7 @@ class DatasetStatisticsCacheClass:
         self.dset = self._get_dataset()
         self.text_dset = None
         # Defines self.text_dset, a HF Dataset with just the TEXT_FIELD instances in self.dset extracted
-        self.load_or_prepare_text()
+        self.load_or_prepare_text_dataset()
 
     def _get_dataset(self):
         """
@@ -230,7 +230,7 @@ class DatasetStatisticsCacheClass:
                                                save=self.save)
         return dset
 
-    def load_or_prepare_text(self, load_only=False):
+    def load_or_prepare_text_dataset(self, load_only=False):
         """
         Prepares the HF dataset text/feature based on given config, split, etc.
         Args:
@@ -502,8 +502,9 @@ class DatasetStatisticsCacheClass:
             self.tokenized_df = ds_utils.read_df(self.tokenized_df_fid)
         elif not load_only:
             # tokenize all text instances
-            tokenized_array = Tokenize(text_series=self.text_dset[TEXT_FIELD]).get()
-            self.tokenized_df = pd.DataFrame(tokenized_array, columns=[TOKENIZED_FIELD])
+            self.tokenized_df = Tokenize(self.text_dset, feature=TEXT_FIELD, tok_feature=TOKENIZED_FIELD).get_df()
+            logs.info("tokenized df is")
+            logs.info(self.tokenized_df)
             if self.save:
                 logs.warning("Saving tokenized dataset to disk")
                 # save tokenized text

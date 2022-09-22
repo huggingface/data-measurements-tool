@@ -120,7 +120,7 @@ def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=T
     # Data common across DMT:
     # Includes the dataset text/requested feature column,
     # the dataset tokenized, and the vocabulary
-    dstats.load_or_prepare_text(load_only=load_only)
+    dstats.load_or_prepare_text_dataset(load_only=load_only)
     # Just a snippet of the dataset
     dstats.load_or_prepare_dset_peek(load_only=load_only)
     # Tokenized dataset
