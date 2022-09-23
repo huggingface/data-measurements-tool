@@ -72,7 +72,7 @@ def display_title(dstats):
 def display_measurements(dataset_args, display_list, loaded_dstats,
                          show_perplexities):
     """Displays the measurement results in the UI"""
-    if isdir(loaded_dstats.dataset_cache_dir):
+    if isdir(loaded_dstats.dset_cache_dir):
         show_column(loaded_dstats, display_list, show_perplexities)
     else:
         st.markdown("### Missing pre-computed data measures!")
@@ -115,7 +115,7 @@ def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=T
         load_only = False
         logs.info("Making new calculations if cache is not there.")
     if pull_cache_from_hub:
-        dataset_utils.pull_cache_from_hub(dstats.cache_path, dstats.dataset_cache_dir)
+        dataset_utils.pull_cache_from_hub(dstats.cache_path, dstats.dset_cache_dir)
 
     # Data common across DMT:
     # Includes the dataset text/requested feature column,

@@ -94,8 +94,8 @@ def _load_dotenv_for_cache_on_hub():
 def get_cache_dir_naming(out_dir, dataset, config, split, feature):
     feature_text = hyphenated(feature)
     dataset_cache_name = f"{dataset}_{config}_{split}_{feature_text}"
-    local_dataset_cache_dir = out_dir + "/" + dataset_cache_name
-    return dataset_cache_name, local_dataset_cache_dir
+    local_dset_cache_dir = out_dir + "/" + dataset_cache_name
+    return dataset_cache_name, local_dset_cache_dir
 
 def initialize_cache_hub_repo(local_cache_dir, dataset_cache_name):
     """
@@ -118,7 +118,7 @@ def initialize_cache_hub_repo(local_cache_dir, dataset_cache_name):
     repo.lfs_track(["*.feather"])
     return repo
 
-def pull_cache_from_hub(cache_path, dataset_cache_dir):
+def pull_cache_from_hub(cache_path, dset_cache_dir):
     """
     This function tries to pull a datasets cache from the huggingface hub if a
     cache for the dataset does not already exist locally. The function expects you
@@ -128,19 +128,19 @@ def pull_cache_from_hub(cache_path, dataset_cache_dir):
     Args:
         cache_path (string):
             The path to the local dataset cache that you want.
-        dataset_cache_dir (string):
+        dset_cache_dir (string):
             The name of the dataset repo on the huggingface hub.
 
     """
 
     hub_cache_organization, hf_token = _load_dotenv_for_cache_on_hub()
-    clone_source = pjoin(hub_cache_organization, dataset_cache_dir)
+    clone_source = pjoin(hub_cache_organization, dset_cache_dir)
 
     if isdir(cache_path):
         logs.warning("Already a local cache for the dataset, so not pulling from the hub.")
     else:
         # Here, dataset_info.id is of the form: <hub cache organization>/<dataset cache dir>
-        if dataset_cache_dir in [
+        if dset_cache_dir in [
             dataset_info.id.split("/")[-1] for dataset_info in
             list_datasets(author=hub_cache_organization,
                           use_auth_token=hf_token)]:

@@ -122,7 +122,7 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
         dstats.load_or_prepare_zipf()
         logs.info("Done!")
         zipf_json_fid, zipf_fig_json_fid, zipf_fig_html_fid = zipf.get_zipf_fids(
-            dstats.dataset_cache_dir)
+            dstats.dset_cache_dir)
         logs.info("Zipf results now available at %s." % zipf_json_fid)
         logs.info(
             "Figure saved to %s, with corresponding json at %s."
@@ -139,7 +139,7 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
         logs.info("\n* Preparing text perplexities.")
         dstats.load_or_prepare_text_perplexities()
 
-def pass_args_to_DMT(dset_name, dset_config, split_name, text_field, label_field, label_names, calculation, dataset_cache_dir, prepare_gui=False, use_cache=True):
+def pass_args_to_DMT(dset_name, dset_config, split_name, text_field, label_field, label_names, calculation, dset_cache_dir, prepare_gui=False, use_cache=True):
     if not use_cache:
         logs.info("Not using any cache; starting afresh")
     dataset_args = {
@@ -149,7 +149,7 @@ def pass_args_to_DMT(dset_name, dset_config, split_name, text_field, label_field
         "text_field": text_field,
         "label_field": label_field,
         "label_names": label_names,
-        "dataset_cache_dir": dataset_cache_dir
+        "dset_cache_dir": dset_cache_dir
     }
     if prepare_gui:
         load_or_prepare_widgets(dataset_args, use_cache=use_cache)
@@ -286,21 +286,21 @@ def main():
         server = smtplib.SMTP_SSL("smtp.gmail.com", port, context=context)
         server.login("data.measurements.tool@gmail.com", EMAIL_PASSWORD)
 
-    dataset_cache_name, local_dataset_cache_dir = dataset_utils.get_cache_dir_naming(args.out_dir, args.dataset, args.config, args.split, args.feature)
-    if not args.use_cache and exists(local_dataset_cache_dir):
+    dset_cache_name, local_dset_cache_dir = dataset_utils.get_cache_dir_naming(args.out_dir, args.dataset, args.config, args.split, args.feature)
+    if not args.use_cache and exists(local_dset_cache_dir):
         if args.overwrite_previous:
-            shutil.rmtree(local_dataset_cache_dir)
+            shutil.rmtree(local_dset_cache_dir)
         else:
             raise OSError("Cached results for this dataset already exist at %s. "
-                          "Delete it or use the --overwrite_previous argument." % local_dataset_cache_dir)
+                          "Delete it or use the --overwrite_previous argument." % local_dset_cache_dir)
 
     # Initialize the local cache directory
-    dataset_utils.make_path(local_dataset_cache_dir)
+    dataset_utils.make_path(local_dset_cache_dir)
 
     # Initialize the repository
     # TODO: print out local or hub cache directory location.
     if args.push_cache_to_hub:
-        repo = dataset_utils.initialize_cache_hub_repo(local_dataset_cache_dir, dataset_cache_name)
+        repo = dataset_utils.initialize_cache_hub_repo(local_dset_cache_dir, dset_cache_name)
     # Run the measurements.
     try:
         pass_args_to_DMT(
@@ -311,7 +311,7 @@ def main():
             label_field=args.label_field,
             label_names=args.label_names,
             calculation=args.calculation,
-            dataset_cache_dir=local_dataset_cache_dir,
+            dset_cache_dir=local_dset_cache_dir,
             prepare_gui=args.prepare_GUI_data,
             use_cache=args.use_cache,
         )
@@ -340,10 +340,10 @@ def main():
         return
     if not args.keep_local:
         # Remove the dataset from local storage - we only want it stored on the hub.
-        logs.warning("Deleting measurements data locally at %s" % local_dataset_cache_dir)
-        shutil.rmtree(local_dataset_cache_dir)
+        logs.warning("Deleting measurements data locally at %s" % local_dset_cache_dir)
+        shutil.rmtree(local_dset_cache_dir)
     else:
-        logs.info("Measurements made available locally at %s" % local_dataset_cache_dir)
+        logs.info("Measurements made available locally at %s" % local_dset_cache_dir)
 
 
 if __name__ == "__main__":

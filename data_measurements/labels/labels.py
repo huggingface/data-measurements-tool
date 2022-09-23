@@ -79,7 +79,7 @@ class DMTHelper:
         self.label_results = dstats.label_results
         self.fig_labels = dstats.fig_labels
         self.use_cache = dstats.use_cache
-        self.cache_dir = dstats.dataset_cache_dir
+        self.cache_dir = dstats.dset_cache_dir
         self.load_only = load_only
         self.save = save
         # -- Hugging Face Dataset variables

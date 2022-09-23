@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import json
+import sys
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import nltk
@@ -26,20 +27,23 @@ import utils.dataset_utils as ds_utils
 from data_measurements.tokenize import Tokenize
 from data_measurements.labels import labels
 from data_measurements.lengths import lengths
+from data_measurements.npmi import npmi
+from data_measurements.perplexity import perplexity
 from data_measurements.text_duplicates import text_duplicates as td
 from data_measurements.npmi import npmi
 from data_measurements.zipf import zipf
-from datasets import load_from_disk, load_metric
+from datasets import load_from_disk
 from nltk.corpus import stopwords
 from os import mkdir, getenv
 from os.path import exists, isdir
 from os.path import join as pjoin
 from pathlib import Path
 from sklearn.feature_extraction.text import CountVectorizer
-from utils.dataset_utils import (CNT, LENGTH_FIELD,
-                                 TEXT_FIELD, PERPLEXITY_FIELD, PROP,
-                                 TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
-                                 TOT_WORDS, VOCAB, WORD)
+from sklearn.preprocessing import MultiLabelBinarizer
+
+from utils.dataset_utils import (CNT, TEXT_FIELD, PROP, TEXT_NAN_CNT,
+                                 TOKENIZED_FIELD, TOT_OPEN_WORDS, TOT_WORDS,
+                                 VOCAB, WORD)
 
 logs = utils.prepare_logging(__file__)
 
@@ -53,29 +57,9 @@ _CLOSED_CLASS = (
            "mustn", "needn", "shan", "would", "could", "dont"]
         + [str(i) for i in range(0, 99)]
 )
-IDENTITY_TERMS = [
-    "man",
-    "woman",
-    "non-binary",
-    "gay",
-    "lesbian",
-    "queer",
-    "trans",
-    "straight",
-    "cis",
-    "she",
-    "her",
-    "hers",
-    "he",
-    "him",
-    "his",
-    "they",
-    "them",
-    "their",
-    "theirs",
-    "himself",
-    "herself",
-]
+IDENTITY_TERMS = ["man", "woman", "non-binary", "gay", "lesbian", "queer",
+                  "trans", "straight", "cis", "she", "her", "hers", "he", "him",
+                  "his", "they", "them", "their", "theirs", "himself", "herself"]
 # treating inf values as NaN as well
 pd.set_option("use_inf_as_na", True)
 
@@ -83,24 +67,11 @@ MIN_VOCAB_COUNT = 10
 _NUM_VOCAB_BATCHES = 2000
 _TOP_N = 100
 
-_PERPLEXITY = load_metric("perplexity")
-
 
 class DatasetStatisticsCacheClass:
 
-    def __init__(
-            self,
-            dset_name,
-            dset_config,
-            split_name,
-            text_field,
-            label_field,
-            label_names,
-            cache_dir="cache_dir",
-            dataset_cache_dir=None,
-            use_cache=False,
-            save=True,
-    ):
+    def __init__(self, dset_name, dset_config,split_name, text_field, 
+                 label_field, label_names, cache_dir="cache_dir", dset_cache_dir=None, use_cache=False, save=True):
         ### What are we analyzing?
         # name of the Hugging Face dataset
         self.dset_name = dset_name
@@ -143,14 +114,14 @@ class DatasetStatisticsCacheClass:
         self.label_results = None
 
         ## Caching
-        if not dataset_cache_dir:
-            _, self.dataset_cache_dir = ds_utils.get_cache_dir_naming(cache_dir,
+        if not dset_cache_dir:
+            dataset_cache_name, self.dset_cache_dir = ds_utils.get_cache_dir_naming(cache_dir,
                                                                       dset_name,
                                                                       dset_config,
                                                                       split_name,
                                                                       text_field)
         else:
-            self.dataset_cache_dir = dataset_cache_dir
+            self.dset_cache_dir = dset_cache_dir
 
         # Use stored data if there; otherwise calculate afresh
         self.use_cache = use_cache
@@ -205,29 +176,27 @@ class DatasetStatisticsCacheClass:
         # word-count-based calculations (currently just relevant to nPMI)
         self.min_vocab_count = MIN_VOCAB_COUNT
 
-        self.hf_dset_cache_dir = pjoin(self.dataset_cache_dir, "base_dset")
-        self.tokenized_df_fid = pjoin(self.dataset_cache_dir, "tokenized_df.json")
+        self.hf_dset_cache_dir = pjoin(self.dset_cache_dir, "base_dset")
+        self.tokenized_df_fid = pjoin(self.dset_cache_dir, "tokenized_df.json")
 
-        self.text_dset_fid = pjoin(self.dataset_cache_dir, "text_dset")
-        self.dset_peek_json_fid = pjoin(self.dataset_cache_dir, "dset_peek.json")
+        self.text_dset_fid = pjoin(self.dset_cache_dir, "text_dset")
+        self.dset_peek_json_fid = pjoin(self.dset_cache_dir, "dset_peek.json")
 
         ## Length cache files
-        self.length_df_fid = pjoin(self.dataset_cache_dir, "length_df.json")
-        self.length_stats_json_fid = pjoin(self.dataset_cache_dir, "length_stats.json")
+        self.length_df_fid = pjoin(self.dset_cache_dir, "length_df.json")
+        self.length_stats_json_fid = pjoin(self.dset_cache_dir, "length_stats.json")
 
-        self.vocab_counts_df_fid = pjoin(self.dataset_cache_dir,
+        self.vocab_counts_df_fid = pjoin(self.dset_cache_dir,
                                          "vocab_counts.json")
-        self.dup_counts_df_fid = pjoin(self.dataset_cache_dir, "dup_counts_df.json")
-        self.perplexities_df_fid = pjoin(self.dataset_cache_dir,
-                                         "perplexities_df.json")
-        self.fig_tok_length_fid = pjoin(self.dataset_cache_dir, "fig_tok_length.png")
+        self.dup_counts_df_fid = pjoin(self.dset_cache_dir, "dup_counts_df.json")
+        self.fig_tok_length_fid = pjoin(self.dset_cache_dir, "fig_tok_length.png")
 
         ## General text stats
-        self.general_stats_json_fid = pjoin(self.dataset_cache_dir,
+        self.general_stats_json_fid = pjoin(self.dset_cache_dir,
                                             "general_stats_dict.json")
         # Needed for UI
         self.sorted_top_vocab_df_fid = pjoin(
-            self.dataset_cache_dir, "sorted_top_vocab.json"
+            self.dset_cache_dir, "sorted_top_vocab.json"
         )
 
         # Set the HuggingFace dataset object with the given arguments.
@@ -371,7 +340,6 @@ class DatasetStatisticsCacheClass:
                 self.load_or_prepare_tokenized_df(load_only=False)
             logs.info("Calculating vocab afresh")
             word_count_df = count_vocab_frequencies(self.tokenized_df)
-            logs.info("Making dfs with proportion.")
             self.vocab_counts_df = calc_p_word(word_count_df)
             self.vocab_counts_filtered_df = filter_vocab(self.vocab_counts_df)
             if self.save:
@@ -400,13 +368,10 @@ class DatasetStatisticsCacheClass:
 
 
     def load_or_prepare_text_perplexities(self, load_only=False):
-        if self.use_cache and exists(self.perplexities_df_fid):
-            self.perplexities_df = ds_utils.read_df(self.perplexities_df_fid)
-        elif not load_only:
-            self.prepare_text_perplexities()
-            if self.save:
-                ds_utils.write_df(self.perplexities_df,
-                               self.perplexities_df_fid)
+        perplex_obj = perplexity.DMTHelper(self, load_only=load_only)
+        perplex_obj.run_DMT_processing()
+        self.perplexities_df = perplex_obj.df
+
 
     def load_general_stats(self):
         self.general_stats_dict = json.load(
@@ -438,14 +403,6 @@ class DatasetStatisticsCacheClass:
             TEXT_NAN_CNT: self.text_nan_count,
             td.DUPS_FRAC: self.dups_frac
         }
-
-    def prepare_text_perplexities(self):
-        results = _PERPLEXITY.compute(
-            input_texts=self.text_dset[TEXT_FIELD], model_id='gpt2')
-        perplexities = {PERPLEXITY_FIELD: results["perplexities"],
-                        TEXT_FIELD: self.text_dset[TEXT_FIELD]}
-        self.perplexities_df = pd.DataFrame(perplexities).sort_values(
-            by=PERPLEXITY_FIELD, ascending=False)
 
     def load_or_prepare_dataset(self, load_only=False):
         """
@@ -496,7 +453,7 @@ class DatasetStatisticsCacheClass:
 
     def load_or_prepare_zipf(self, load_only=False):
         zipf_json_fid, zipf_fig_json_fid, zipf_fig_html_fid = zipf.get_zipf_fids(
-            self.dataset_cache_dir)
+            self.dset_cache_dir)
         if self.use_cache and exists(zipf_json_fid):
             # Zipf statistics
             # Read Zipf statistics: Alpha, p-value, etc.

@@ -35,7 +35,7 @@ class DMTHelper:
             self.dset = dstats.text_dset
         self.use_cache = dstats.use_cache
         self.duplicates_results = dstats.duplicates_results
-        self.cache_dir = dstats.dataset_cache_dir
+        self.cache_dir = dstats.dset_cache_dir
         self.save = save
         self.load_only = load_only
         # Filenames

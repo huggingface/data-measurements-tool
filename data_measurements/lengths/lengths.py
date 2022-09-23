@@ -42,7 +42,7 @@ class DMTHelper:
         # Whether to try using cache first.
         # Must be true when self.load_only = True; this function assures that.
         self.use_cache = dstats.use_cache
-        self.cache_dir = dstats.dataset_cache_dir
+        self.cache_dir = dstats.dset_cache_dir
         self.save = save
         # Lengths class object
         self.lengths_obj = None
