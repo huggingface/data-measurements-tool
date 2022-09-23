@@ -190,20 +190,14 @@ class DMTHelper:
         return results_dict
 
     def prepare_results(self):
-        assoc_obj = nPMI(self.dstats.vocab_counts_df,
-                         self.tokenized_sentence_df,
-                         self.avail_identity_terms)
+        assoc_obj = nPMI(vocabulary_list=list(self.dstats.vocab_counts_df.index),
+                         tokenized_sentence_df=self.tokenized_sentence_df,
+                         given_id_terms=self.avail_identity_terms)
         self.assoc_results_dict = assoc_obj.assoc_results_dict
         self.results_dict = assoc_obj.bias_results_dict
         vocab_counts_df = assoc_obj.vocab_counts_df
         logs.info("Final vocab counts is")
         logs.info(vocab_counts_df)
-        #vocab_counts_df = pd.DataFrame(vocab_counts, columns=[CNT], index=self.dstats.vocab_counts_df.index)
-        #vocab_counts_df["proportion"] = vocab_counts_df[CNT]/sum(vocab_counts_df[CNT])
-        #logs.info(vocab_counts_df)
-        #logs.info("Compare to")
-        #logs.info(self.dstats.vocab_counts_df)
-        #sys.exit()
 
     def _prepare_dmt_dfs(self, measure="npmi"):
         """
@@ -295,18 +289,16 @@ class nPMI:
     co-occurrence statistics, PMI, and nPMI
     """
 
-    def __init__(self, vocab_counts_df, tokenized_sentence_df, given_id_terms):
+    def __init__(self, vocabulary_list, tokenized_sentence_df, given_id_terms):
         logs.debug("Initiating assoc class.")
-        self.vocab_counts_df = None #pd.DataFrame(np.array([0] * len(self.vocabulary))) #vocab_counts_df
+        self.vocab_counts_df = None
         # TODO: Change this logic so just the vocabulary is given.
-        self.vocabulary = list(vocab_counts_df.index)
-        self.vocab_count_array = np.array([0] * len(self.vocabulary))
-        #logs.debug("vocabulary is is")
-        #logs.debug(self.vocab_counts_df)
+        self.vocabulary_list = vocabulary_list
+        self.vocab_count_array = np.array([0] * len(self.vocabulary_list))
         self.tokenized_sentence_df = tokenized_sentence_df
         logs.debug("tokenized sentences are")
         logs.debug(self.tokenized_sentence_df)
-        self.given_id_terms = ["she", "he"]#given_id_terms
+        self.given_id_terms = given_id_terms
         logs.info("identity terms are")
         logs.info(self.given_id_terms)
         # Terms we calculate the difference between
@@ -314,7 +306,7 @@ class nPMI:
 
         # Matrix of # sentences x vocabulary size
         self.word_cnts_per_sentence = self.count_words_per_sentence()
-        self.vocab_counts_df = pd.DataFrame(self.vocab_count_array.T, columns=["count"], index=self.vocabulary)
+        self.vocab_counts_df = pd.DataFrame(self.vocab_count_array.T, columns=["count"], index=self.vocabulary_list)
         self.vocab_counts_df["proportion"] = self.vocab_counts_df["count"]/sum(self.vocab_counts_df["count"])
         logs.info("Calculating results...")
         # Formatted as {subgroup:{"count":{...},"npmi":{...}}}
@@ -340,7 +332,7 @@ class nPMI:
             # Makes matrix shape: batch size (# sentences) x # words,
             # with the occurrence of each word per sentence.
             # vocab_counts_df.index is the vocabulary.
-            mlb = MultiLabelBinarizer(classes=self.vocabulary)
+            mlb = MultiLabelBinarizer(classes=self.vocabulary_list)
             if batch_num % 100 == 0:
                 logs.debug(
                     "%s of %s sentence binarize batches." % (
@@ -361,7 +353,7 @@ class nPMI:
         for subgroup in self.given_id_terms:
             logs.info("Calculating for %s " % subgroup)
             # Index of the identity term in the vocabulary
-            subgroup_idx = self.vocabulary.index(subgroup)
+            subgroup_idx = self.vocabulary_list.index(subgroup)
             print("idx is %s" % subgroup_idx)
             logs.debug("Calculating co-occurrences...")
             vocab_cooc_df = self.calc_cooccurrences(subgroup, subgroup_idx)
