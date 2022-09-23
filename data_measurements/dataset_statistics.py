@@ -35,7 +35,7 @@ from os.path import exists, isdir
 from os.path import join as pjoin
 from pathlib import Path
 from sklearn.feature_extraction.text import CountVectorizer
-from utils.dataset_utils import (CNT, EMBEDDING_FIELD, LENGTH_FIELD,
+from utils.dataset_utils import (CNT, LENGTH_FIELD,
                                  TEXT_FIELD, PERPLEXITY_FIELD, PROP,
                                  TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
                                  TOT_WORDS, VOCAB, WORD)
