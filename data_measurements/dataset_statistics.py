@@ -24,7 +24,6 @@ import statistics
 import utils
 import utils.dataset_utils as ds_utils
 from data_measurements.tokenize import Tokenize
-from data_measurements.embeddings.embeddings import Embeddings
 from data_measurements.labels import labels
 from data_measurements.npmi import npmi
 from data_measurements.text_duplicates import text_duplicates as td
