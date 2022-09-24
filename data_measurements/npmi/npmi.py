@@ -291,8 +291,6 @@ class nPMI:
 
     def __init__(self, vocabulary_list, tokenized_sentence_df, given_id_terms):
         logs.debug("Initiating assoc class.")
-        self.vocab_counts_df = None
-        # TODO: Change this logic so just the vocabulary is given.
         self.vocabulary_list = vocabulary_list
         self.vocab_count_array = np.array([0] * len(self.vocabulary_list))
         self.tokenized_sentence_df = tokenized_sentence_df
@@ -306,8 +304,7 @@ class nPMI:
 
         # Matrix of # sentences x vocabulary size
         self.word_cnts_per_sentence = self.count_words_per_sentence()
-        self.vocab_counts_df = pd.DataFrame(self.vocab_count_array.T, columns=["count"], index=self.vocabulary_list)
-        self.vocab_counts_df["proportion"] = self.vocab_counts_df["count"]/sum(self.vocab_counts_df["count"])
+        self.vocab_counts_df = self.count_vocab()
         logs.info("Calculating results...")
         # Formatted as {subgroup:{"count":{...},"npmi":{...}}}
         self.assoc_results_dict = self.calc_measures()
@@ -315,6 +312,15 @@ class nPMI:
         # vocab terms as the index, and columns of paired difference and
         # individual scores for the two identity terms.
         self.bias_results_dict = self.calc_bias(self.assoc_results_dict)
+
+    def count_vocab(self):
+        self.vocab_counts_df = pd.DataFrame(self.vocab_count_array.T,
+                                            columns=["count"],
+                                            index=self.vocabulary_list)
+        self.vocab_counts_df["proportion"] = self.vocab_counts_df[
+                                                 "count"] / sum(
+            self.vocab_counts_df["count"])
+        return self.vocab_counts_df
 
     def count_words_per_sentence(self):
         """
