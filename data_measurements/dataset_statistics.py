@@ -71,7 +71,8 @@ _TOP_N = 100
 class DatasetStatisticsCacheClass:
 
     def __init__(self, dset_name, dset_config,split_name, text_field, 
-                 label_field, label_names, cache_dir="cache_dir", dset_cache_dir=None, use_cache=False, save=True):
+                 label_field, label_names, cache_dir="cache_dir",
+                 dset_cache_dir=None, use_cache=False, save=True):
         ### What are we analyzing?
         # name of the Hugging Face dataset
         self.dset_name = dset_name
@@ -81,37 +82,23 @@ class DatasetStatisticsCacheClass:
         self.split_name = split_name
         # which text/feature fields are we analysing?
         self.text_field = text_field
-
         ## Label variables
         # which label fields are we analysing?
         self.label_field = label_field
         # what are the names of the classes?
         self.label_names = label_names
-        # save label pie chart in the class so it doesn't ge re-computed
-        self.fig_labels = None
         ## Hugging Face dataset objects
         self.dset = None  # original dataset
         # HF dataset with all of the self.text_field instances in self.dset
         self.text_dset = None
         self.dset_peek = None
-        # HF dataset with text embeddings in the same order as self.text_dset
-        self.embeddings_dset = None
-        # HF dataset with all of the self.label_field instances in self.dset
-        # TODO: Not being used anymore; make sure & remove.
-        self.label_dset = None
-        self.length_obj = None
         ## Data frames
         # Tokenized text
         self.tokenized_df = None
-        # Data Frame version of self.label_dset
-        # TODO: Not being used anymore. Make sure and remove
-        self.label_df = None
-        # where are they being cached?
-        self.label_files = {}
-        # label pie chart used in the UI
-        self.fig_labels = None
-        # results
-        self.label_results = None
+
+        # Widgets:
+        self.length_obj = None
+        self.label_obj = None
 
         ## Caching
         if not dset_cache_dir:
@@ -174,17 +161,13 @@ class DatasetStatisticsCacheClass:
         # word-count-based calculations (currently just relevant to nPMI)
         self.min_vocab_count = MIN_VOCAB_COUNT
 
+        # Files used in the DMT for the basic info, before fancier modules.
         self.hf_dset_cache_dir = pjoin(self.dset_cache_dir, "base_dset")
-        self.tokenized_df_fid = pjoin(self.dset_cache_dir, "tokenized_df.json")
-
         self.text_dset_fid = pjoin(self.dset_cache_dir, "text_dset")
+        self.tokenized_df_fid = pjoin(self.dset_cache_dir, "tokenized_df.json")
         self.dset_peek_json_fid = pjoin(self.dset_cache_dir, "dset_peek.json")
-
         self.vocab_counts_df_fid = pjoin(self.dset_cache_dir,
                                          "vocab_counts.json")
-        self.dup_counts_df_fid = pjoin(self.dset_cache_dir, "dup_counts_df.json")
-
-        ## General text stats
         self.general_stats_json_fid = pjoin(self.dset_cache_dir,
                                             "general_stats_dict.json")
         # Needed for UI
@@ -310,11 +293,8 @@ class DatasetStatisticsCacheClass:
         or else uses what's available in the cache.
         Currently supports Datasets with just one label column.
         """
-        label_obj = labels.DMTHelper(self, load_only=load_only, save=self.save)
-        label_obj.run_DMT_processing()
-        self.fig_labels = label_obj.fig_labels
-        self.label_results = label_obj.label_results
-        self.label_files = label_obj.get_label_filenames()
+        self.label_obj = labels.DMTHelper(self, load_only=load_only, save=self.save)
+        self.label_obj.run_DMT_processing()
 
     # Get vocab with word counts
     def load_or_prepare_vocab(self, load_only=False):
@@ -413,8 +393,6 @@ class DatasetStatisticsCacheClass:
         logs.info("Doing text dset.")
         self.load_or_prepare_text_dset(load_only=load_only)
 
-
-    # TODO: Are we not using this anymore?
     def load_or_prepare_dset_peek(self, load_only=False):
         if self.use_cache and exists(self.dset_peek_json_fid):
             with open(self.dset_peek_json_fid, "r") as f:
@@ -440,11 +418,8 @@ class DatasetStatisticsCacheClass:
                 ds_utils.write_df(self.tokenized_df, self.tokenized_df_fid)
 
     def load_or_prepare_npmi(self, load_only=False):
-        npmi_obj = npmi.DMTHelper(self, IDENTITY_TERMS, load_only=load_only, use_cache=self.use_cache, save=self.save)
-        npmi_obj.run_DMT_processing()
-        self.npmi_obj = npmi_obj
-        self.npmi_results = npmi_obj.results_dict
-        self.npmi_files = npmi_obj.get_filenames()
+        self.npmi_obj = npmi.DMTHelper(self, IDENTITY_TERMS, load_only=load_only, use_cache=self.use_cache, save=self.save)
+        self.npmi_obj.run_DMT_processing()
 
     def load_or_prepare_zipf(self, load_only=False):
         zipf_json_fid, zipf_fig_json_fid, zipf_fig_html_fid = zipf.get_zipf_fids(

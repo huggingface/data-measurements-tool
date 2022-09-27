@@ -76,8 +76,8 @@ class DMTHelper:
     def __init__(self, dstats, load_only, save):
         logs.info("Initializing labels.")
         # -- Data Measurements Tool variables
-        self.label_results = dstats.label_results
-        self.fig_labels = dstats.fig_labels
+        self.label_results = {}
+        self.fig_labels = None
         self.use_cache = dstats.use_cache
         self.cache_dir = dstats.dset_cache_dir
         self.load_only = load_only

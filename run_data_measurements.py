@@ -97,16 +97,17 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
     if do_all or calculation == "labels":
         logs.info("\n* Calculating label statistics.")
         dstats.load_or_prepare_labels()
-        npmi_fid_dict = dstats.label_files
+        label_fid_dict = dstats.label_obj.get_label_filenames()
         print("If all went well, then results are in the following files:")
-        for key, value in npmi_fid_dict.items():
+        for key, value in label_fid_dict.items():
             print("%s: %s" % (key, value))
         print()
 
     if do_all or calculation == "npmi":
         print("\n* Preparing nPMI.")
         dstats.load_or_prepare_npmi()
-        npmi_fid_dict = dstats.npmi_files
+        npmi_fid_dict = dstats.npmi_obj.get_filenames()
+
         print("If all went well, then results are in the following files:")
         for key, value in npmi_fid_dict.items():
             if isinstance(value, dict):

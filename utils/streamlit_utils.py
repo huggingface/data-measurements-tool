@@ -153,8 +153,8 @@ def expander_label_distribution(dstats, column_id=""):
         st.caption(
             "Use this widget to see how balanced the labels in your dataset are."
         )
-        if dstats.fig_labels:
-            st.plotly_chart(dstats.fig_labels, use_container_width=True)
+        if dstats.label_obj.fig_labels:
+            st.plotly_chart(dstats.label_obj.fig_labels, use_container_width=True)
         else:
             st.markdown("No labels were found in the dataset")
 
