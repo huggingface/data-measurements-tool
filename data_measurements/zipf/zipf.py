@@ -75,6 +75,9 @@ class DMTHelper:
         if exists(zipf_fig_json_fid):
             self.zipf_fig = ds_utils.read_plotly(zipf_fig_json_fid)
 
+    def get_filenames(self):
+
+
 
 class Zipf:
     def __init__(self, vocab_counts_df, count_str="count",

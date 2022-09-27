@@ -130,6 +130,20 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
             % (zipf_fig_html_fid, zipf_fig_json_fid)
         )
 
+
+        zipf_fid_dict = dstats.zipf_obj.get_filenames()
+
+        print("If all went well, then results are in the following files:")
+        for key, value in npmi_fid_dict.items():
+            if isinstance(value, dict):
+                print(key + ":")
+                for key2, value2 in value.items():
+                    print("\t%s: %s" % (key2, value2))
+            else:
+                print("%s: %s" % (key, value))
+        print()
+
+
     # Don't do this one until someone specifically asks for it -- takes awhile.
     if calculation == "embeddings":
         logs.info("\n* Preparing text embeddings.")
