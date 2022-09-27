@@ -74,9 +74,9 @@ class DMTHelper:
         if exists(self.dups_result_json_fid):
             results = ds_utils.read_json(self.dups_result_json_fid)
         return results
-    
+
     def _write_duplicates_cache(self):
-        """Writes newly computer results to cache."""
+        """Writes newly computed results to cache."""
         ds_utils.make_path(pjoin(self.cache_dir, self.dups_dir))
         if self.duplicates_results:
             ds_utils.write_json(self.duplicates_results, self.dups_result_json_fid)

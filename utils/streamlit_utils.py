@@ -15,6 +15,7 @@
 import logging
 import numpy as np
 import pandas as pd
+from matplotlib.figure import Figure
 import seaborn as sns
 import statistics
 import streamlit as st
@@ -174,32 +175,38 @@ def expander_text_lengths(dstats, column_id=""):
             "identify instances you want to remove or augment."
         )
         st.markdown(
-            "### Here is the relative frequency of different text lengths in "
+            "### Here is the count of different text lengths in "
             "your dataset:"
         )
-        try:
-            st.image(dstats.fig_tok_length)
-        except Exception as e:
-            logs.warning("Hit exception for length %s " % e)
-            # Must be a matplotlib figure.
-            st.pyplot(dstats.fig_tok_length, use_container_width=True)
+        # When matplotlib first creates this, it's a Figure.
+        # Once it's saved, then read back in,
+        # it's an ndarray that must be displayed using st.image
+        # (I know, lame).
+        if isinstance(dstats.length_obj.fig_lengths, Figure):
+            st.pyplot(dstats.length_obj.fig_lengths, use_container_width=True)
+        else:
+            try:
+                st.image(dstats.length_obj.fig_lengths)
+            except Exception as e:
+                logs.exception("Hit exception for lengths figure:")
+                logs.exception(e)
         st.markdown(
             "The average length of text instances is **"
-            + str(dstats.avg_length)
+            + str(round(dstats.length_obj.avg_length, 2))
             + " words**, with a standard deviation of **"
-            + str(dstats.std_length)
+            + str(round(dstats.length_obj.std_length, 2))
             + "**."
         )
-        if dstats.length_df is not None:
+        if dstats.length_obj.lengths_df is not None:
             start_id_show_lengths = st.selectbox(
                 "Show examples of length:",
-                np.sort(dstats.length_df["length"].unique())[::-1].tolist(),
+                np.sort(dstats.length_obj.lengths_df["length"].unique())[::-1].tolist(),
                 key=f"select_show_length_{column_id}",
             )
             st.table(
-                dstats.length_df[
-                    dstats.length_df["length"] == start_id_show_lengths
-                    ].set_index("length")
+                dstats.length_obj.lengths_df[
+                    dstats.length_obj.lengths_df["length"] == start_id_show_lengths
+                ].set_index("length")
             )
 
 
