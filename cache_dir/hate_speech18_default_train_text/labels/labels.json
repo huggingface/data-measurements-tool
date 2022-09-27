@@ -1,0 +1,1 @@
+{"label_measurement": {"label_distribution": {"labels": [0, 1, 2, 3], "fractions": [0.8686951754385965, 0.10928362573099415, 0.0066703216374269, 0.015350877192982455]}, "label_skew": 3.6791795371907026, "sums": [9507, 1196, 73, 168]}, "label_names": ["noHate", "hate", "idk/skip", "relation"]}

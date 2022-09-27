@@ -19,8 +19,14 @@ from matplotlib.figure import Figure
 import seaborn as sns
 import statistics
 import streamlit as st
+
+
+import streamlit.components.v1 as components
+import codecs
+
 import utils
 import utils.dataset_utils as ds_utils
+
 from st_aggrid import AgGrid, GridOptionsBuilder
 from utils.dataset_utils import HF_DESC_FIELD, HF_FEATURE_FIELD, HF_LABEL_FIELD
 
@@ -34,129 +40,173 @@ st.set_option('deprecation.showPyplotGlobalUse', False)
 pd.options.display.float_format = "{:,.3f}".format # '{:20,.2f}'.format
 
 def sidebar_header():
+
+    side_bar_text = '<p style="font-size: 16px;font-weight:bold;">To use this tool, follow the steps below👇</p>'
+    st.sidebar.markdown(
+    side_bar_text,
+    unsafe_allow_html=True,
+   )
+   #return 0
+
+
+
+    '''
     st.sidebar.markdown("""This demo showcases the 
     [dataset metrics as we develop them](https://huggingface.co/blog/data-measurements-tool).
     Right now this has:
     - dynamic loading of datasets in the lib
     - fetching config and info without downloading the dataset
     - propose the list of candidate text and label features to select.
-    """, unsafe_allow_html=True,)
+    """, unsafe_allow_html=True,)'''
+
+
 
 
 def sidebar_selection(ds_name_to_dict, column_id=""):
+    i = 1
+    expanded = True
     ds_names = list(ds_name_to_dict.keys())
-    with st.sidebar.expander(f"Choose dataset and field {column_id}",
-                             expanded=True):
-        # choose a dataset to analyze
+    with st.sidebar:
+        #ds_name =
+        st.markdown('<p class="question"><span><span class="number-label">'+str(i)+'</span></span>'+f"<span>Select a dataset to explore{column_id}:</span>"+'</p>',unsafe_allow_html=True)      # Creating markdown to add Question and unsafe_allow_html to True to make the tags displayed
+         #choose a dataset to analyze
         ds_name = st.selectbox(
             f"Choose dataset to explore{column_id}:",
             ds_names,
             index=ds_names.index("hate_speech18"),
         )
         # choose a config to analyze
-        ds_configs = ds_name_to_dict[ds_name]
-        # special handling for the largest-by-far dataset, C4
-        if ds_name == "c4":
-            config_names = ['en', 'en.noblocklist', 'realnewslike']
-        else:
-            config_names = list(ds_configs.keys())
-        config_name = st.selectbox(
-            f"Choose configuration{column_id}:",
-            config_names,
-            index=0,
-        )
+        i+=1            # Increasing question number by 1 
+        ds_configs = ds_name_to_dict[ds_name]                   # Saving value of those keys in the ds_configs
+        if ds_name == "c4":                                     
+            config_names = ['en','en.noblocklist','realnewslike']
+        else:                                                      # else 
+            config_names = list(ds_configs.keys())                  # store all the keys of the selected option and convert it to a list 
+        st.markdown('<p class="question"><span><span class="number-label">'+str(i)+'</span></span>'+f"Choose a configuration from the selected dataset{column_id}:"+'</p>',unsafe_allow_html=True) 
+        config_name = st.radio(f"Choose a configuration from the selected dataset{column_id}:",config_names,index=0,)  # Adding Question and options in the selectbox. NOTE: THIS QUESTION IS STYLED AND SET DISPLAYED TO NONE BECAUSE WE WANT TO USE MARKDOWN AS QUESTION
         # choose a subset of num_examples
+        i+=1            # Increasing question number by 1 
         ds_config = ds_configs[config_name]
         text_features = ds_config[HF_FEATURE_FIELD]["string"]
+        st.markdown('<p class="question"><span><span class="number-label">'+str(i)+'</span></span>'+f"Which text feature from the {column_id} dataset would you like to analyze?"+'</p>',unsafe_allow_html=True) 
+
         # TODO @yacine: Explain what this is doing and why eg tp[0] could = "id"
-        text_field = st.selectbox(
+        text_field = st.radio(
             f"Which text feature from the {column_id} dataset would you like to"
             f" analyze?",
             [("text",)]
             if ds_name == "c4"
             else [tp for tp in text_features if tp[0] != "id"],
         )
+
         # Choose a split and dataset size
-        avail_splits = list(ds_config["splits"].keys())
-        # 12.Nov note: Removing "test" because those should not be examined
-        # without discussion of pros and cons, which we haven't done yet.
-        if "test" in avail_splits:
+        avail_splits = list(ds_config["splits"].keys())  
+        
+        i=i+1               # Next Number of the question 
+        if "test" in avail_splits:              # 
             avail_splits.remove("test")
-        split = st.selectbox(
-            f"Which split from the{column_id} dataset would you like to "
-            f"analyze?",
-            avail_splits,
-            index=0,
-        )
-        label_field, label_names = (
+
+        st.markdown('<p class="question"><span><span class="number-label">'+str(i)+'</span></span>'+f"Choose a split from the{column_id} dataset would you like to analyze?"+'</p>',unsafe_allow_html=True) 
+        
+        split = st.radio(f"Choose a split from the{column_id} dataset would you like to analyze?",avail_splits,index=0,) # Adding Question and options in the selectbox. NOTE: THIS QUESTION IS STYLED AND SET DISPLAYED TO NONE BECAUSE WE WANT TO USE MARKDOWN AS QUESTION
+        label_field, label_names = (ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][HF_LABEL_FIELD][0] if len(ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][HF_LABEL_FIELD])> 0 else ((), []))
+        # if len(ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][HF_LABEL_FIELD])> 0    --->  ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][HF_LABEL_FIELD][0]
+        # else ---> ((), [])
+
+        st.markdown('<p class="question"></p>',unsafe_allow_html=True) # This is just to cover the line on the frontend
+    st.sidebar.write('\n')
+    st.sidebar.write('\n')
+    #st.sidebar.write('\n')
+    st.sidebar.markdown(
+        """
+    
+    The tool is in development, and will keep growing in utility and functionality 🤗🚀
+    """,
+        unsafe_allow_html=True,
+    )
+
+    #split = st.selectbox(
+    #    f"Which split from the{column_id} dataset would you like to "
+    #    f"analyze?",
+   #     avail_splits,
+   #    index=0,
+   # )
+    label_field, label_names = (
+        ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][
+            HF_LABEL_FIELD][0]
+        if len(
             ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][
-                HF_LABEL_FIELD][0]
-            if len(
-                ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][
-                    HF_LABEL_FIELD]
-            ) > 0
-            else ((), [])
-        )
-        return {
-            "dset_name": ds_name,
-            "dset_config": config_name,
-            "split_name": split,
-            "text_field": text_field,
-            "label_field": label_field,
-            "label_names": label_names,
-        }
+                HF_LABEL_FIELD]
+        ) > 0
+        else ((), [])
+    )
+    return {
+        "dset_name": ds_name,
+        "dset_config": config_name,
+        "split_name": split,
+        "text_field": text_field,
+        "label_field": label_field,
+        "label_names": label_names,
+    }
 
 
-def expander_header(dstats, ds_name_to_dict, column_id=""):
-    with st.expander(f"Dataset Description{column_id}"):
-        st.markdown(
-            ds_name_to_dict[dstats.dset_name][dstats.dset_config][HF_DESC_FIELD]
-        )
-        st.dataframe(dstats.dset_peek)
+def expander_header(dstats, ds_name_to_dict, column_id):
+    #st.header(f"Dataset Description{column_id}")
+    st.markdown(
+        ds_name_to_dict[dstats.dset_name][dstats.dset_config][HF_DESC_FIELD]
+    )
+    st.dataframe(dstats.dset_peek)
+
+
 
 
 def expander_general_stats(dstats, column_id=""):
-    with st.expander(f"General Text Statistics{column_id}"):
-        st.caption(
-            "Use this widget to check whether the terms you see most "
-            "represented in the dataset make sense for the goals of the dataset."
+    #with st.expander(f"General Text Statistics{column_id}"):
+    st.caption(
+        "Use this widget to check whether the terms you see most "
+        "represented in the dataset make sense for the goals of the dataset."
+    )
+    st.markdown("There are {0} total words".format(str(dstats.total_words)))
+    st.markdown(
+        "There are {0} words after removing closed "
+        "class words".format(str(dstats.total_open_words))
+    )
+    st.markdown(
+        "The most common "
+        "[open class words](https://dictionary.apa.org/open-class-words) "
+        "and their counts are: "
+    )
+    st.dataframe(dstats.sorted_top_vocab_df)
+    st.markdown(
+        "There are {0} missing values in the dataset.".format(
+            str(dstats.text_nan_count)
         )
-        st.markdown("There are {0} total words".format(str(dstats.total_words)))
+    )
+    if dstats.dups_frac > 0:
         st.markdown(
-            "There are {0} words after removing closed "
-            "class words".format(str(dstats.total_open_words))
+            "The dataset is {0}% duplicates. "
+            "For more information about the duplicates, "
+            "click the 'Duplicates' tab below.".format(
+                str(round(dstats.dups_frac * 100, 2)))
         )
-        st.markdown(
-            "The most common "
-            "[open class words](https://dictionary.apa.org/open-class-words) "
-            "and their counts are: "
-        )
-        st.dataframe(dstats.sorted_top_vocab_df)
-        st.markdown(
-            "There are {0} missing values in the dataset.".format(
-                str(dstats.text_nan_count)
-            )
-        )
-        if dstats.dups_frac > 0:
-            st.markdown(
-                "The dataset is {0}% duplicates. "
-                "For more information about the duplicates, "
-                "click the 'Duplicates' tab below.".format(
-                    str(round(dstats.dups_frac * 100, 2)))
-            )
-        else:
-            st.markdown("There are 0 duplicate items in the dataset. ")
+    else:
+        st.markdown("There are 0 duplicate items in the dataset. ")
 
 
-def expander_label_distribution(dstats, column_id=""):
-    with st.expander(f"Label Distribution{column_id}", expanded=False):
-        st.caption(
-            "Use this widget to see how balanced the labels in your dataset are."
-        )
-        if dstats.fig_labels:
-            st.plotly_chart(dstats.fig_labels, use_container_width=True)
-        else:
-            st.markdown("No labels were found in the dataset")
+
+
+### Show the label distribution from the datasets
+def expander_label_distribution(fig_labels, column_id):
+    #with st.expander(f"Label Distribution{column_id}", expanded=False):
+    st.caption(
+        "Use this widget to see how balanced the labels in your dataset are."
+    )
+    if fig_labels is not None:
+        st.plotly_chart(fig_labels, use_container_width=True)
+    else:
+        st.markdown("No labels were found in the dataset")
+
+
 
 
 def expander_text_lengths(dstats, column_id=""):
@@ -210,60 +260,148 @@ def expander_text_lengths(dstats, column_id=""):
             )
 
 
-def expander_text_duplicates(dstats, column_id=""):
-    with st.expander(f"Text Duplicates{column_id}", expanded=False):
-        st.caption(
-            "Use this widget to identify text strings that appear more than "
-            "once."
+
+
+### Third, use a sentence embedding model
+#TO:DO delete
+def expander_text_embeddings(
+    text_dset, fig_tree, node_list, embeddings, text_field, column_id
+):
+    #with st.expander(f"Text Embedding Clusters{column_id}", expanded=False):
+    _EMBEDDINGS_CAPTION = """
+    ### Hierarchical Clustering of Text Fields
+    Taking in the diversity of text represented in a dataset can be
+    challenging when it is made up of hundreds to thousands of sentences.
+    Grouping these text items based on a measure of similarity can help
+    users gain some insights into their distribution.
+    The following figure shows a hierarchical clustering of the text fields
+    in the dataset based on a
+    [Sentence-Transformer](https://hf.co/sentence-transformers/all-mpnet-base-v2)
+    model. Clusters are merged if any of the embeddings in cluster A has a
+    dot product with any of the embeddings or with the centroid of cluster B
+    higher than a threshold (one threshold per level, from 0.5 to 0.95).
+    To explore the clusters, you can:
+    - hover over a node to see the 5 most representative examples (deduplicated)
+    - enter an example in the text box below to see which clusters it is most similar to
+    - select a cluster by ID to show all of its examples
+    """
+    st.markdown(_EMBEDDINGS_CAPTION)
+    st.plotly_chart(fig_tree, use_container_width=True)
+    st.markdown("---\n")
+    if st.checkbox(
+        label="Enter text to see nearest clusters",
+        key=f"search_clusters_{column_id}",
+    ):
+        compare_example = st.text_area(
+            label="Enter some text here to see which of the clusters in the dataset it is closest to",
+            key=f"search_cluster_input_{column_id}",
         )
-        st.markdown(
-            "A model's training and testing may be negatively affected by "
-            "unwarranted duplicates "
-            "([Lee et al., 2021](https://arxiv.org/abs/2107.06499))."
-        )
-        st.markdown("------")
-        st.write(
-            "### Here is the list of all the duplicated items and their counts "
-            "in the dataset."
-        )
-        if not dstats.duplicates_results:
-            st.write("There are no duplicates in this dataset! 🥳")
+        if compare_example != "":
+            paths_to_leaves = embeddings.cached_clusters.get(
+                compare_example,
+                embeddings.find_cluster_beam(compare_example, beam_size=50),
+            )
+            clusters_intro = ""
+            if paths_to_leaves[0][1] < 0.3:
+                clusters_intro += (
+                    "**Warning: no close clusters found (best score <0.3). **"
+                )
+            clusters_intro += "The closest clusters to the text entered aboce are:"
+            st.markdown(clusters_intro)
+            for path, score in paths_to_leaves[:5]:
+                example = text_dset[
+                    node_list[path[-1]]["sorted_examples_centroid"][0][0]
+                ][text_field][:256]
+                st.write(
+                    f"Cluster {path[-1]:5d} | Score: {score:.3f}  \n Example: {example}"
+                )
+            show_node_default = paths_to_leaves[0][0][-1]
         else:
-            st.write("The fraction of the data that is a duplicate is:")
-            st.write(str(round(dstats.dups_frac, 4)))
-            # TODO: Check if this is slow when the size is large --
-            # Should we store as dataframes?
-            # Dataframes allow this to be interactive.
-            st.dataframe(ds_utils.counter_dict_to_df(dstats.dups_dict))
+            show_node_default = len(node_list) // 2
+    else:
+        show_node_default = len(node_list) // 2
+    st.markdown("---\n")
+    if text_dset is None:
+        st.markdown("Missing source text to show, check back later!")
+    else:
+        show_node = st.selectbox(
+            f"Choose a leaf node to explore in the{column_id} dataset:",
+            range(len(node_list)),
+            index=show_node_default,
+        )
+        node = node_list[show_node]
+        start_id = st.slider(
+            f"Show closest sentences in cluster to the centroid{column_id} starting at index:",
+            0,
+            len(node["sorted_examples_centroid"]) - 5,
+            value=0,
+            step=5,
+        )
+        for sid, sim in node["sorted_examples_centroid"][start_id : start_id + 5]:
+            # only show the first 4 lines and the first 10000 characters
+            show_text = text_dset[sid][text_field][:10000]
+            show_text = "\n".join(show_text.split("\n")[:4])
+            st.text(f"{sim:.3f} \t {show_text}")
+
+
+
+
+def expander_text_duplicates(dstats, column_id=""):
+
+    #with st.expander(f"Text Duplicates{column_id}", expanded=False):
+    st.caption(
+        "Use this widget to identify text strings that appear more than "
+        "once."
+    )
+    st.markdown(
+        "A model's training and testing may be negatively affected by "
+        "unwarranted duplicates "
+        "([Lee et al., 2021](https://arxiv.org/abs/2107.06499))."
+    )
+    st.markdown("------")
+    st.write(
+        "### Here is the list of all the duplicated items and their counts "
+        "in the dataset."
+    )
+    if not dstats.duplicates_results:
+        st.write("There are no duplicates in this dataset! 🥳")
+    else:
+        st.write("The fraction of the data that is a duplicate is:")
+        st.write(str(round(dstats.dups_frac, 4)))
+        # TODO: Check if this is slow when the size is large --
+        # Should we store as dataframes?
+        # Dataframes allow this to be interactive.
+        st.dataframe(ds_utils.counter_dict_to_df(dstats.dups_dict))
+
 
 
 def expander_text_perplexities(dstats, column_id=""):
-    with st.expander(f"Text Perplexities{column_id}", expanded=False):
-        st.caption(
-            "Use this widget to identify text perplexities from GPT-2."
-        )
-        st.markdown(
-            """
-            Outlier perplexities, especially very high values, could highlight 
-            an issue with an example. Smaller variations should be interpreted 
-            with more care, as they indicate how similar to the GPT-2 training 
-            corpus the examples are rather than being reflective of general 
-            linguistic properties.
-            For more information on GPT-2, 
-            see its [model card](https://hf.co/gpt2).
-            """
-        )
-        st.markdown("------")
+   # with st.expander(f"Text Perplexities{column_id}", expanded=False):
+    st.caption(
+        "Use this widget to identify text perplexities from GPT-2."
+    )
+    st.markdown(
+        """
+        Outlier perplexities, especially very high values, could highlight 
+        an issue with an example. Smaller variations should be interpreted 
+        with more care, as they indicate how similar to the GPT-2 training 
+        corpus the examples are rather than being reflective of general 
+        linguistic properties.
+        For more information on GPT-2, 
+        see its [model card](https://hf.co/gpt2).
+        """
+    )
+    st.markdown("------")
+    st.write(
+        "### Here is the list of the examples in the dataset, sorted by "
+        "GPT-2 perplexity:"
+    )
+    if dstats.perplexities_df is None or dstats.perplexities_df.empty:
         st.write(
-            "### Here is the list of the examples in the dataset, sorted by "
-            "GPT-2 perplexity:"
-        )
-        if dstats.perplexities_df is None or dstats.perplexities_df.empty:
-            st.write(
-                "Perplexities have not been computed yet for this dataset, or "
-                "this dataset is too large for the UI (> 1,000,000 examples).")
-        else:
-            st.dataframe(dstats.perplexities_df.reset_index(drop=True))
+            "Perplexities have not been computed yet for this dataset, or "
+            "this dataset is too large for the UI (> 1,000,000 examples).")
+    else:
+        st.dataframe(dstats.perplexities_df.reset_index(drop=True))
 
 
 def expander_npmi_description(min_vocab):
@@ -301,78 +439,85 @@ def expander_npmi_description(min_vocab):
     )
 
 
+
+### Finally, show Zipf stuff
+
+
 def expander_zipf(dstats, column_id=""):
     z = dstats.z
     zipf_fig = dstats.zipf_fig
-    with st.expander(
-        f"Vocabulary Distribution{column_id}: Zipf's Law Fit", expanded=False
-    ):
-        try:
-            _ZIPF_CAPTION = """This shows how close the observed language is to an ideal
-            natural language distribution following [Zipf's law](https://en.wikipedia.org/wiki/Zipf%27s_law),
-            calculated by minimizing the [Kolmogorov-Smirnov (KS) statistic](https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test)."""
 
-            powerlaw_eq = r"""p(x) \propto x^{- \alpha}"""
-            zipf_summary = (
-                    "The optimal alpha based on this dataset is: **"
-                    + str(round(z.alpha, 2))
-                    + "**, with a KS distance of: **"
-                    + str(round(z.ks_distance, 2))
-            )
-            zipf_summary += (
-                    "**.  This was fit with a minimum rank value of: **"
-                    + str(int(z.xmin))
-                    + "**, which is the optimal rank *beyond which* the scaling regime of the power law fits best."
-            )
+    #with st.expander(
+    #    f"Vocabulary Distribution{column_id}: Zipf's Law Fit", expanded=False
+   # ):
+    try:
+        _ZIPF_CAPTION = """This shows how close the observed language is to an ideal
+        natural language distribution following [Zipf's law](https://en.wikipedia.org/wiki/Zipf%27s_law),
+        calculated by minimizing the [Kolmogorov-Smirnov (KS) statistic](https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test)."""
 
-            alpha_warning = "Your alpha value is a bit on the high side, which means that the distribution over words in this dataset is a bit unnatural. This could be due to non-language items throughout the dataset."
-            xmin_warning = "The minimum rank for this fit is a bit on the high side, which means that the frequencies of your most common words aren't distributed as would be expected by Zipf's law."
-            fit_results_table = pd.DataFrame.from_dict(
-                {
-                    r"Alpha:": [str("%.2f" % z.alpha)],
-                    "KS distance:": [str("%.2f" % z.ks_distance)],
-                    "Min rank:": [str("%s" % int(z.xmin))],
-                },
-                columns=["Results"],
-                orient="index",
-            )
-            fit_results_table.index.name = column_id
-            st.caption(
-                "Use this widget for the counts of different words in your dataset, measuring the difference between the observed count and the expected count under Zipf's law."
-            )
-            st.markdown(_ZIPF_CAPTION)
-            st.write(
-                """
-            A Zipfian distribution follows the power law: $p(x) \propto x^{-α}$
-    with an ideal α value of 1."""
-            )
-            st.markdown(
-                "In general, an alpha greater than 2 or a minimum rank greater than 10 (take with a grain of salt) means that your distribution is relativaly _unnatural_ for natural language. This can be a sign of mixed artefacts in the dataset, such as HTML markup."
-            )
-            st.markdown(
-                "Below, you can see the counts of each word in your dataset vs. the expected number of counts following a Zipfian distribution."
-            )
-            st.markdown("-----")
-            st.write("### Here is your dataset's Zipf results:")
-            st.dataframe(fit_results_table)
-            st.write(zipf_summary)
-            # TODO: Nice UI version of the content in the comments.
-            # st.markdown("\nThe KS test p-value is < %.2f" % z.ks_test.pvalue)
-            # if z.ks_test.pvalue < 0.01:
-            #    st.markdown(
-            #        "\n Great news! Your data fits a powerlaw with a minimum KS " "distance of %.4f" % z.distance)
-            # else:
-            #    st.markdown("\n Sadly, your data does not fit a powerlaw. =(")
-            # st.markdown("Checking the goodness of fit of our observed distribution")
-            # st.markdown("to the hypothesized power law distribution")
-            # st.markdown("using a Kolmogorov–Smirnov (KS) test.")
-            st.plotly_chart(zipf_fig, use_container_width=True)
-            if z.alpha > 2:
-                st.markdown(alpha_warning)
-            if z.xmin > 5:
-                st.markdown(xmin_warning)
-        except:
-            st.write("Under construction!")
+        powerlaw_eq = r"""p(x) \propto x^{- \alpha}"""
+        zipf_summary = (
+                "The optimal alpha based on this dataset is: **"
+                + str(round(z.alpha, 2))
+                + "**, with a KS distance of: **"
+                + str(round(z.ks_distance, 2))
+        )
+        zipf_summary += (
+                "**.  This was fit with a minimum rank value of: **"
+                + str(int(z.xmin))
+                + "**, which is the optimal rank *beyond which* the scaling regime of the power law fits best."
+        )
+
+        alpha_warning = "Your alpha value is a bit on the high side, which means that the distribution over words in this dataset is a bit unnatural. This could be due to non-language items throughout the dataset."
+        xmin_warning = "The minimum rank for this fit is a bit on the high side, which means that the frequencies of your most common words aren't distributed as would be expected by Zipf's law."
+        fit_results_table = pd.DataFrame.from_dict(
+            {
+                r"Alpha:": [str("%.2f" % z.alpha)],
+                "KS distance:": [str("%.2f" % z.ks_distance)],
+                "Min rank:": [str("%s" % int(z.xmin))],
+            },
+            columns=["Results"],
+            orient="index",
+        )
+        fit_results_table.index.name = column_id
+        st.caption(
+            "Use this widget for the counts of different words in your dataset, measuring the difference between the observed count and the expected count under Zipf's law."
+        )
+        st.markdown(_ZIPF_CAPTION)
+        st.write(
+            """
+        A Zipfian distribution follows the power law: $p(x) \propto x^{-α}$
+with an ideal α value of 1."""
+        )
+        st.markdown(
+            "In general, an alpha greater than 2 or a minimum rank greater than 10 (take with a grain of salt) means that your distribution is relativaly _unnatural_ for natural language. This can be a sign of mixed artefacts in the dataset, such as HTML markup."
+        )
+        st.markdown(
+            "Below, you can see the counts of each word in your dataset vs. the expected number of counts following a Zipfian distribution."
+        )
+        st.markdown("-----")
+        st.write("### Here is your dataset's Zipf results:")
+        st.dataframe(fit_results_table)
+        st.write(zipf_summary)
+        # TODO: Nice UI version of the content in the comments.
+        # st.markdown("\nThe KS test p-value is < %.2f" % z.ks_test.pvalue)
+        # if z.ks_test.pvalue < 0.01:
+        #    st.markdown(
+        #        "\n Great news! Your data fits a powerlaw with a minimum KS " "distance of %.4f" % z.distance)
+        # else:
+        #    st.markdown("\n Sadly, your data does not fit a powerlaw. =(")
+        # st.markdown("Checking the goodness of fit of our observed distribution")
+        # st.markdown("to the hypothesized power law distribution")
+        # st.markdown("using a Kolmogorov-Smirnov (KS) test.")
+        st.plotly_chart(zipf_fig, use_container_width=True)
+        if z.alpha > 2:
+            st.markdown(alpha_warning)
+        if z.xmin > 5:
+            st.markdown(xmin_warning)
+    except:
+        st.write("Under construction!")
+
+
 
 
 def npmi_widget(dstats, column_id=""):
@@ -383,6 +528,38 @@ def npmi_widget(dstats, column_id=""):
     :return:
     """
     min_vocab = dstats.min_vocab_count
+
+    npmi_stats = dstats.npmi_stats
+    #with st.expander(f"Word Association{column_id}: nPMI", expanded=False):
+    if npmi_stats and len(npmi_stats.available_terms) > 0:
+        expander_npmi_description(min_vocab)
+        st.markdown("-----")
+        term1 = st.selectbox( 
+            f"What is the first term you want to select?{column_id}",
+            npmi_stats.available_terms,
+        )
+        term2 = st.selectbox(
+            f"What is the second term you want to select?{column_id}",
+            reversed(npmi_stats.available_terms),
+        )
+        # We calculate/grab nPMI data based on a canonical (alphabetic)
+        # subgroup ordering.
+        subgroup_pair = sorted([term1, term2])
+        try:
+            joint_npmi_df = npmi_stats.load_or_prepare_joint_npmi(
+                subgroup_pair)
+            npmi_show(joint_npmi_df)
+        except KeyError:
+            st.markdown(
+                "**WARNING!** The nPMI for these terms has not been"
+                " pre-computed, please re-run caching."
+            )
+    else:
+        st.markdown(
+            "No words found co-occurring with both of the selected identity"
+            " terms."
+        )
+
     npmi_stats = dstats.npmi_obj
     available_terms = npmi_stats.avail_identity_terms
     with st.expander(f"Word Association{column_id}: nPMI", expanded=False):
@@ -409,6 +586,7 @@ def npmi_widget(dstats, column_id=""):
         else:
             st.markdown("No words found co-occurring with both of the selected identity"
                 " terms.")
+
 
 
 def npmi_show(paired_results):
