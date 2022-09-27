@@ -25,8 +25,9 @@ import utils
 import utils.dataset_utils as ds_utils
 from data_measurements.tokenize import Tokenize
 from data_measurements.labels import labels
-from data_measurements.npmi import npmi
+from data_measurements.lengths import lengths
 from data_measurements.text_duplicates import text_duplicates as td
+from data_measurements.npmi import npmi
 from data_measurements.zipf import zipf
 from datasets import load_from_disk, load_metric
 from nltk.corpus import stopwords
@@ -100,7 +101,6 @@ class DatasetStatisticsCacheClass:
             use_cache=False,
             save=True,
     ):
-
         ### What are we analyzing?
         # name of the Hugging Face dataset
         self.dset_name = dset_name
@@ -116,6 +116,25 @@ class DatasetStatisticsCacheClass:
         self.label_field = label_field
         # what are the names of the classes?
         self.label_names = label_names
+        # save label pie chart in the class so it doesn't ge re-computed
+        self.fig_labels = None
+        ## Hugging Face dataset objects
+        self.dset = None  # original dataset
+        # HF dataset with all of the self.text_field instances in self.dset
+        self.text_dset = None
+        self.dset_peek = None
+        # HF dataset with text embeddings in the same order as self.text_dset
+        self.embeddings_dset = None
+        # HF dataset with all of the self.label_field instances in self.dset
+        # TODO: Not being used anymore; make sure & remove.
+        self.label_dset = None
+        self.length_obj = None
+        ## Data frames
+        # Tokenized text
+        self.tokenized_df = None
+        # Data Frame version of self.label_dset
+        # TODO: Not being used anymore. Make sure and remove
+        self.label_df = None
         # where are they being cached?
         self.label_files = {}
         # label pie chart used in the UI
@@ -311,71 +330,14 @@ class DatasetStatisticsCacheClass:
         a figure of the text lengths, some text length statistics, and
         a text length dataframe to peruse.
         Args:
-            save:
+            load_only (Bool): Whether we can compute anew, or just need to try to grab cache.
         Returns:
 
         """
-        # Text length figure
-        if self.use_cache and exists(self.fig_tok_length_fid):
-            self.fig_tok_length = mpimg.imread(self.fig_tok_length_fid)
-        elif not load_only:
-            self.prepare_fig_text_lengths()
-            if self.save:
-                self.fig_tok_length.savefig(self.fig_tok_length_fid)
-        # Text length dataframe
-        if self.use_cache and exists(self.length_df_fid):
-            self.length_df = ds_utils.read_df(self.length_df_fid)
-        elif not load_only:
-            self.prepare_length_df()
-            if self.save:
-                ds_utils.write_df(self.length_df, self.length_df_fid)
-
-        # Text length stats.
-        if self.use_cache and exists(self.length_stats_json_fid):
-            with open(self.length_stats_json_fid, "r") as f:
-                self.length_stats_dict = json.load(f)
-            self.avg_length = self.length_stats_dict["avg length"]
-            self.std_length = self.length_stats_dict["std length"]
-            self.num_uniq_lengths = self.length_stats_dict["num lengths"]
-        elif not load_only:
-            self.prepare_text_length_stats()
-            if self.save:
-                ds_utils.write_json(self.length_stats_dict,
-                                 self.length_stats_json_fid)
-
-    def prepare_length_df(self):
-        self.tokenized_df[LENGTH_FIELD] = self.tokenized_df[
-            TOKENIZED_FIELD].apply(
-            len
-        )
-        self.length_df = self.tokenized_df[
-            [LENGTH_FIELD, TEXT_FIELD]
-        ].sort_values(by=[LENGTH_FIELD], ascending=True)
-
-    def prepare_text_length_stats(self):
-        if (
-                LENGTH_FIELD not in self.tokenized_df.columns
-                or self.length_df is None
-        ):
-            self.prepare_length_df()
-        avg_length = sum(self.tokenized_df[LENGTH_FIELD]) / len(
-            self.tokenized_df[LENGTH_FIELD]
-        )
-        self.avg_length = round(avg_length, 1)
-        std_length = statistics.stdev(self.tokenized_df[LENGTH_FIELD])
-        self.std_length = round(std_length, 1)
-        self.num_uniq_lengths = len(self.length_df["length"].unique())
-        self.length_stats_dict = {
-            "avg length": self.avg_length,
-            "std length": self.std_length,
-            "num lengths": self.num_uniq_lengths,
-        }
-
-    def prepare_fig_text_lengths(self):
-        if LENGTH_FIELD not in self.tokenized_df.columns:
-            self.prepare_length_df()
-        self.fig_tok_length = make_fig_lengths(self.tokenized_df,
-                                               LENGTH_FIELD)
+        # We work with the already tokenized dataset
+        self.load_or_prepare_tokenized_df()
+        self.length_obj = lengths.DMTHelper(self, load_only=load_only, save=self.save)
+        self.length_obj.run_DMT_processing()
 
     ## Labels functions
     def load_or_prepare_labels(self, load_only=False):
@@ -469,6 +431,7 @@ class DatasetStatisticsCacheClass:
         self.total_words = len(self.vocab_counts_df)
         self.total_open_words = len(self.vocab_counts_filtered_df)
         self.text_nan_count = int(self.tokenized_df.isnull().sum().sum())
+        self.load_or_prepare_text_duplicates()
         self.general_stats_dict = {
             TOT_WORDS: self.total_words,
             TOT_OPEN_WORDS: self.total_open_words,
@@ -609,12 +572,3 @@ def filter_vocab(vocab_counts_df):
     filtered_count_denom = float(sum(filtered_vocab_counts_df[CNT]))
     filtered_vocab_counts_df[PROP] = filtered_count / filtered_count_denom
     return filtered_vocab_counts_df
-
-
-## Figures ##
-
-def make_fig_lengths(tokenized_df, length_field):
-    fig_tok_length, axs = plt.subplots(figsize=(15, 6), dpi=150)
-    sns.histplot(data=tokenized_df[length_field], kde=True, bins=100, ax=axs)
-    sns.rugplot(data=tokenized_df[length_field], ax=axs)
-    return fig_tok_length

@@ -2,6 +2,7 @@ import logging
 import os
 from pathlib import Path
 
+
 def prepare_logging(fid):
     # Create the directory for log files (if it doesn't exist)
     Path('./log_files').mkdir(exist_ok=True)
