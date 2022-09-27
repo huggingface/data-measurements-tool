@@ -15,6 +15,7 @@
 import logging
 import numpy as np
 import pandas as pd
+from matplotlib.figure import Figure
 import seaborn as sns
 import statistics
 import streamlit as st
@@ -191,12 +192,7 @@ def expander_label_distribution(dstats, column_id=""):
 
 
 def expander_text_lengths(dstats, column_id=""):
-    _TEXT_LENGTH_CAPTION = (
-        "Use this widget to identify outliers, particularly suspiciously long "
-        "outliers."
-    )
    
-        #(f"Text Lengths{column_id}"):
     st.caption(_TEXT_LENGTH_CAPTION)
     st.markdown(
         "Below, you can see how the lengths of the text instances in your "
