@@ -23,7 +23,7 @@ import seaborn as sns
 import statistics
 import utils
 import utils.dataset_utils as ds_utils
-from data_measurements.embeddings.embeddings import Embeddings
+from data_measurements.tokenize import Tokenize
 from data_measurements.labels import labels
 from data_measurements.lengths import lengths
 from data_measurements.text_duplicates import text_duplicates as td
@@ -36,47 +36,22 @@ from os.path import exists, isdir
 from os.path import join as pjoin
 from pathlib import Path
 from sklearn.feature_extraction.text import CountVectorizer
-from utils.dataset_utils import (CNT, EMBEDDING_FIELD, LENGTH_FIELD,
-                                 OUR_TEXT_FIELD, PERPLEXITY_FIELD, PROP,
+from utils.dataset_utils import (CNT, LENGTH_FIELD,
+                                 TEXT_FIELD, PERPLEXITY_FIELD, PROP,
                                  TEXT_NAN_CNT, TOKENIZED_FIELD, TOT_OPEN_WORDS,
                                  TOT_WORDS, VOCAB, WORD)
 
 logs = utils.prepare_logging(__file__)
 
 # TODO: Read this in depending on chosen language / expand beyond english
-nltk.download("stopwords")
+nltk.download("stopwords", quiet=True)
 _CLOSED_CLASS = (
         stopwords.words("english")
-        + [
-            "t",
-            "n",
-            "ll",
-            "d",
-            "wasn",
-            "weren",
-            "won",
-            "aren",
-            "wouldn",
-            "shouldn",
-            "didn",
-            "don",
-            "hasn",
-            "ain",
-            "couldn",
-            "doesn",
-            "hadn",
-            "haven",
-            "isn",
-            "mightn",
-            "mustn",
-            "needn",
-            "shan",
-            "would",
-            "could",
-            "dont",
-            "u",
-        ]
-        + [str(i) for i in range(0, 21)]
+        + ["t", "n", "ll", "d", "s"]
+        + ["wasn", "weren", "won", "aren", "wouldn", "shouldn", "didn", "don",
+           "hasn", "ain", "couldn", "doesn", "hadn", "haven", "isn", "mightn",
+           "mustn", "needn", "shan", "would", "could", "dont"]
+        + [str(i) for i in range(0, 99)]
 )
 IDENTITY_TERMS = [
     "man",
@@ -105,13 +80,8 @@ IDENTITY_TERMS = [
 pd.set_option("use_inf_as_na", True)
 
 MIN_VOCAB_COUNT = 10
-_TREE_DEPTH = 12
-_TREE_MIN_NODES = 250
-# as long as we're using sklearn - already pushing the resources
-_MAX_CLUSTER_EXAMPLES = 5000
 _NUM_VOCAB_BATCHES = 2000
 _TOP_N = 100
-_CVEC = CountVectorizer(token_pattern="(?u)\\b\\w+\\b", lowercase=True)
 
 _PERPLEXITY = load_metric("perplexity")
 
@@ -134,8 +104,6 @@ class DatasetStatisticsCacheClass:
         ### What are we analyzing?
         # name of the Hugging Face dataset
         self.dset_name = dset_name
-        # original HuggingFace dataset
-        self.dset = None
         # name of the dataset config
         self.dset_config = dset_config
         # name of the split to analyze
@@ -189,8 +157,7 @@ class DatasetStatisticsCacheClass:
         # Save newly calculated results.
         self.save = save
 
-        # HF dataset with all of the self.text_field instances in self.dset
-        self.text_dset = None
+
         self.dset_peek = None
         # Tokenized text
         self.tokenized_df = None
@@ -237,7 +204,6 @@ class DatasetStatisticsCacheClass:
         # The minimum amount of times a word should occur to be included in
         # word-count-based calculations (currently just relevant to nPMI)
         self.min_vocab_count = MIN_VOCAB_COUNT
-        self.cvec = _CVEC
 
         self.hf_dset_cache_dir = pjoin(self.dataset_cache_dir, "base_dset")
         self.tokenized_df_fid = pjoin(self.dataset_cache_dir, "tokenized_df.json")
@@ -263,10 +229,14 @@ class DatasetStatisticsCacheClass:
         self.sorted_top_vocab_df_fid = pjoin(
             self.dataset_cache_dir, "sorted_top_vocab.json"
         )
-        # Set the HuggingFace dataset object with the given arguments.
-        self.dset = self.get_dataset()
 
-    def get_dataset(self):
+        # Set the HuggingFace dataset object with the given arguments.
+        self.dset = self._get_dataset()
+        self.text_dset = None
+        # Defines self.text_dset, a HF Dataset with just the TEXT_FIELD instances in self.dset extracted
+        self.load_or_prepare_text_dataset()
+
+    def _get_dataset(self):
         """
         Gets the HuggingFace Dataset object.
         First tries to use the given cache directory if specified;
@@ -277,6 +247,42 @@ class DatasetStatisticsCacheClass:
                                                cache_dir=self.hf_dset_cache_dir,
                                                save=self.save)
         return dset
+
+    def load_or_prepare_text_dataset(self, load_only=False):
+        """
+        Prepares the HF dataset text/feature based on given config, split, etc.
+        Args:
+            load_only: Whether only a cached dataset can be used.
+        """
+        logs.info("Doing text dset.")
+        if self.use_cache and exists(self.text_dset_fid):
+            # load extracted text
+            self.text_dset = load_from_disk(self.text_dset_fid)
+            logs.info("Loaded dataset from disk")
+            logs.info(self.text_dset)
+        # ...Or load it from the server and store it anew
+        elif not load_only:
+            # Defines self.text_dset
+            self.prepare_text_dset()
+            if self.save:
+                # save extracted text instances
+                logs.info("Saving dataset to disk")
+                self.text_dset.save_to_disk(self.text_dset_fid)
+
+    def prepare_text_dset(self):
+        logs.info("Working with dataset:")
+        logs.info(self.dset)
+        # Extract all text instances from the user-specified self.text_field,
+        # which is a dataset-specific text/feature field;
+        # create a new feature called TEXT_FIELD, which is a constant shared
+        # across DMT logic.
+        self.text_dset = self.dset.map(
+            lambda examples: ds_utils.extract_field(
+                examples, self.text_field, TEXT_FIELD
+            ),
+            batched=True,
+            remove_columns=list(self.dset.features),
+        )
 
 
     def load_or_prepare_general_stats(self, load_only=False):
@@ -434,29 +440,13 @@ class DatasetStatisticsCacheClass:
         }
 
     def prepare_text_perplexities(self):
-        if self.text_dset is None:
-            self.load_or_prepare_text_dset()
         results = _PERPLEXITY.compute(
-            input_texts=self.text_dset[OUR_TEXT_FIELD], model_id='gpt2')
+            input_texts=self.text_dset[TEXT_FIELD], model_id='gpt2')
         perplexities = {PERPLEXITY_FIELD: results["perplexities"],
-                        OUR_TEXT_FIELD: self.text_dset[OUR_TEXT_FIELD]}
+                        TEXT_FIELD: self.text_dset[TEXT_FIELD]}
         self.perplexities_df = pd.DataFrame(perplexities).sort_values(
             by=PERPLEXITY_FIELD, ascending=False)
 
-    def load_or_prepare_dataset(self, load_only=False):
-        """
-        Prepares the HF datasets and data frames containing the untokenized and
-        tokenized text as well as the label values.
-        self.tokenized_df is used further for calculating text lengths,
-        word counts, etc.
-        Args:
-            load_only (Bool): Whether we should only use cache, no new prep.
-
-        Returns:
-
-        """
-        logs.info("Doing text dset.")
-        self.load_or_prepare_text_dset(load_only=load_only)
 
     # TODO: Are we not using this anymore?
     def load_or_prepare_dset_peek(self, load_only=False):
@@ -464,8 +454,6 @@ class DatasetStatisticsCacheClass:
             with open(self.dset_peek_json_fid, "r") as f:
                 self.dset_peek = json.load(f)["dset peek"]
         elif not load_only:
-            if self.dset is None:
-                self.get_dataset()
             self.dset_peek = self.dset[:100]
             if self.save:
                 ds_utils.write_json({"dset peek": self.dset_peek},
@@ -476,63 +464,14 @@ class DatasetStatisticsCacheClass:
             self.tokenized_df = ds_utils.read_df(self.tokenized_df_fid)
         elif not load_only:
             # tokenize all text instances
-            self.tokenized_df = self.do_tokenization()
+            self.tokenized_df = Tokenize(self.text_dset, feature=TEXT_FIELD,
+                                         tok_feature=TOKENIZED_FIELD).get_df()
+            logs.info("tokenized df is")
+            logs.info(self.tokenized_df)
             if self.save:
                 logs.warning("Saving tokenized dataset to disk")
                 # save tokenized text
                 ds_utils.write_df(self.tokenized_df, self.tokenized_df_fid)
-
-    def load_or_prepare_text_dset(self, load_only=False):
-        if self.use_cache and exists(self.text_dset_fid):
-            # load extracted text
-            self.text_dset = load_from_disk(self.text_dset_fid)
-            logs.warning("Loaded dataset from disk")
-            logs.warning(self.text_dset)
-        # ...Or load it from the server and store it anew
-        elif not load_only:
-            self.prepare_text_dset()
-            if self.save:
-                # save extracted text instances
-                logs.warning("Saving dataset to disk")
-                self.text_dset.save_to_disk(self.text_dset_fid)
-
-    def prepare_text_dset(self):
-        self.get_dataset()
-        logs.warning(self.dset)
-        # extract all text instances
-        self.text_dset = self.dset.map(
-            lambda examples: ds_utils.extract_field(
-                examples, self.text_field, OUR_TEXT_FIELD
-            ),
-            batched=True,
-            remove_columns=list(self.dset.features),
-        )
-
-    def do_tokenization(self):
-        """
-        Tokenizes the dataset
-        :return:
-        """
-        if self.text_dset is None:
-            self.load_or_prepare_text_dset()
-        sent_tokenizer = self.cvec.build_tokenizer()
-
-        def tokenize_batch(examples):
-            # TODO: lowercase should be an option
-            res = {
-                TOKENIZED_FIELD: [
-                    tuple(sent_tokenizer(text.lower()))
-                    for text in examples[OUR_TEXT_FIELD]
-                ]
-            }
-            return res
-
-        tokenized_dset = self.text_dset.map(
-            tokenize_batch,
-            batched=True
-        )
-        tokenized_df = pd.DataFrame(tokenized_dset)
-        return tokenized_df
 
     def load_or_prepare_npmi(self, load_only=False):
         npmi_obj = npmi.DMTHelper(self, IDENTITY_TERMS, load_only=load_only, use_cache=self.use_cache, save=self.save)
