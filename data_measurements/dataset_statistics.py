@@ -299,7 +299,7 @@ class DatasetStatisticsCacheClass:
         a figure of the text lengths, some text length statistics, and
         a text length dataframe to peruse.
         Args:
-            load_only: Whether we can compute anew, or just need to try to grab cache.
+            load_only (Bool): Whether we can compute anew, or just need to try to grab cache.
         Returns:
 
         """
@@ -418,6 +418,7 @@ class DatasetStatisticsCacheClass:
         """
         logs.info("Doing text dset.")
         self.load_or_prepare_text_dset(load_only=load_only)
+
 
     # TODO: Are we not using this anymore?
     def load_or_prepare_dset_peek(self, load_only=False):
