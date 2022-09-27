@@ -324,7 +324,7 @@ class DatasetStatisticsCacheClass:
         a figure of the text lengths, some text length statistics, and
         a text length dataframe to peruse.
         Args:
-            load_only: Whether we can compute anew, or just need to try to grab cache.
+            load_only (Bool): Whether we can compute anew, or just need to try to grab cache.
         Returns:
 
         """
