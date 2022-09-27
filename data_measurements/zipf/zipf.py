@@ -16,11 +16,13 @@ import json
 import logging
 import numpy as np
 import os
+from os.path import exists
 import pandas as pd
 import plotly.graph_objects as go
 import powerlaw
 from os.path import join as pjoin
 import utils
+import utils.dataset_utils as ds_utils
 from scipy.stats import ks_2samp
 from scipy.stats import zipf as zipf_lib
 
@@ -29,6 +31,49 @@ from scipy.stats import zipf as zipf_lib
 pd.set_option("use_inf_as_na", True)
 
 logs = utils.prepare_logging(__file__)
+
+
+class DMTHelper:
+    def __init__(self, dstats, load_only=False, use_cache=False, save=True):
+        self.dstats = dstats
+        self.dset_cache_dir = self.dstats.dset_cache_dir
+        self.vocab_counts_df = self.dstats.vocab_counts_df
+        self.load_only = load_only
+        self.use_cache = use_cache
+        self.save = save
+        self.zipf_fig = None
+        # The zipf obj
+        self.z = None
+
+    def run_DMT_processing(self):
+        zipf_json_fid, zipf_fig_json_fid, zipf_fig_html_fid = get_zipf_fids(
+            self.dset_cache_dir)
+        if self.use_cache and exists(zipf_json_fid):
+            self.load_zipf()
+        elif not self.load_only:
+            self.prepare_zipf()
+            if self.save:
+                zipf_dict = self.z.get_zipf_dict()
+                ds_utils.write_json(zipf_dict, zipf_json_fid)
+                ds_utils.write_plotly(self.zipf_fig, zipf_fig_json_fid)
+                self.zipf_fig.write_html(zipf_fig_html_fid)
+
+    def prepare_zipf(self):
+        # Calculate zipf from scratch
+        self.z = Zipf(self.vocab_counts_df)
+        self.z.calc_fit()
+        self.zipf_fig = make_zipf_fig(self.z)
+
+    def load_zipf(self):
+        # Zipf statistics
+        # Read Zipf statistics: Alpha, p-value, etc.
+        zipf_dict = ds_utils.read_json(zipf_json_fid)
+        # Define the Zipf object with the cached computations.
+        self.z = Zipf(self.vocab_counts_df)
+        self.z.load(zipf_dict)
+        # Zipf figure
+        if exists(zipf_fig_json_fid):
+            self.zipf_fig = ds_utils.read_plotly(zipf_fig_json_fid)
 
 
 class Zipf:
@@ -176,7 +221,6 @@ class Zipf:
             self.xmax = int(len(self.word_ranks_unique))
 
 
-# TODO: This might fit better in its own file handling class?
 def get_zipf_fids(cache_path):
     zipf_cache_dir = pjoin(cache_path, "zipf")
     os.makedirs(zipf_cache_dir, exist_ok=True)

@@ -14,12 +14,9 @@
 
 import json
 import sys
-import matplotlib.image as mpimg
-import matplotlib.pyplot as plt
 import nltk
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 import seaborn as sns
 import statistics
 import utils
@@ -40,6 +37,9 @@ from os.path import join as pjoin
 from pathlib import Path
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.preprocessing import MultiLabelBinarizer
+# Unfortunately, caching computations for the streamlit UI requires bringing st
+# into the main data statistics class, which is separate from the UI.
+import streamlit as st
 
 from utils.dataset_utils import (CNT, TEXT_FIELD, PROP, TEXT_NAN_CNT,
                                  TOKENIZED_FIELD, TOT_OPEN_WORDS, TOT_WORDS,
@@ -194,6 +194,7 @@ class DatasetStatisticsCacheClass:
                                                save=self.save)
         return dset
 
+    @st.cache
     def load_or_prepare_text_dataset(self, load_only=False):
         """
         Prepares the HF dataset text/feature based on given config, split, etc.
@@ -230,7 +231,7 @@ class DatasetStatisticsCacheClass:
             remove_columns=list(self.dset.features),
         )
 
-
+    @st.cache
     def load_or_prepare_general_stats(self, load_only=False):
         """
         Content for expander_general_stats widget.
@@ -270,6 +271,7 @@ class DatasetStatisticsCacheClass:
                 ds_utils.write_json(self.general_stats_dict,
                                  self.general_stats_json_fid)
 
+    @st.cache
     def load_or_prepare_text_lengths(self, load_only=False):
         """
         The text length widget relies on this function, which provides
@@ -286,6 +288,7 @@ class DatasetStatisticsCacheClass:
         self.length_obj.run_DMT_processing()
 
     ## Labels functions
+    @st.cache
     def load_or_prepare_labels(self, load_only=False):
         """Uses a generic Labels class, with attributes specific to this
         project as input.
@@ -297,6 +300,7 @@ class DatasetStatisticsCacheClass:
         self.label_obj.run_DMT_processing()
 
     # Get vocab with word counts
+    @st.cache
     def load_or_prepare_vocab(self, load_only=False):
         """
         Calculates the vocabulary count from the tokenized text.
@@ -327,6 +331,7 @@ class DatasetStatisticsCacheClass:
     def load_vocab(self):
         self.vocab_counts_df = ds_utils.read_df(self.vocab_counts_df_fid)
 
+    @st.cache
     def load_or_prepare_text_duplicates(self, load_only=False, save=True, list_duplicates=True):
         """Uses a text duplicates library, which
         returns strings with their counts, fraction of data that is duplicated,
@@ -340,7 +345,7 @@ class DatasetStatisticsCacheClass:
             self.dups_dict = self.duplicates_results[td.DUPS_DICT]
         self.duplicates_files = dups_obj.get_duplicates_filenames()
 
-
+    @st.cache
     def load_or_prepare_text_perplexities(self, load_only=False):
         perplex_obj = perplexity.DMTHelper(self, load_only=load_only)
         perplex_obj.run_DMT_processing()
@@ -378,6 +383,7 @@ class DatasetStatisticsCacheClass:
             td.DUPS_FRAC: self.dups_frac
         }
 
+    @st.cache
     def load_or_prepare_dataset(self, load_only=False):
         """
         Prepares the HF datasets and data frames containing the untokenized and
@@ -393,6 +399,7 @@ class DatasetStatisticsCacheClass:
         logs.info("Doing text dset.")
         self.load_or_prepare_text_dset(load_only=load_only)
 
+    @st.cache
     def load_or_prepare_dset_peek(self, load_only=False):
         if self.use_cache and exists(self.dset_peek_json_fid):
             with open(self.dset_peek_json_fid, "r") as f:
@@ -403,6 +410,7 @@ class DatasetStatisticsCacheClass:
                 ds_utils.write_json({"dset peek": self.dset_peek},
                                  self.dset_peek_json_fid)
 
+    @st.cache
     def load_or_prepare_tokenized_df(self, load_only=False):
         if self.use_cache and exists(self.tokenized_df_fid):
             self.tokenized_df = ds_utils.read_df(self.tokenized_df_fid)
@@ -417,41 +425,15 @@ class DatasetStatisticsCacheClass:
                 # save tokenized text
                 ds_utils.write_df(self.tokenized_df, self.tokenized_df_fid)
 
+    @st.cache
     def load_or_prepare_npmi(self, load_only=False):
         self.npmi_obj = npmi.DMTHelper(self, IDENTITY_TERMS, load_only=load_only, use_cache=self.use_cache, save=self.save)
         self.npmi_obj.run_DMT_processing()
 
+    @st.cache
     def load_or_prepare_zipf(self, load_only=False):
-        zipf_json_fid, zipf_fig_json_fid, zipf_fig_html_fid = zipf.get_zipf_fids(
-            self.dset_cache_dir)
-        if self.use_cache and exists(zipf_json_fid):
-            # Zipf statistics
-            # Read Zipf statistics: Alpha, p-value, etc.
-            with open(zipf_json_fid, "r") as f:
-                zipf_dict = json.load(f)
-            self.z = zipf.Zipf(self.vocab_counts_df)
-            self.z.load(zipf_dict)
-            # Zipf figure
-            if exists(zipf_fig_json_fid):
-                self.zipf_fig = ds_utils.read_plotly(zipf_fig_json_fid)
-            elif not load_only:
-                self.zipf_fig = zipf.make_zipf_fig(self.z)
-                if self.save:
-                    ds_utils.write_plotly(self.zipf_fig)
-        elif not load_only:
-            self.prepare_zipf()
-            if self.save:
-                zipf_dict = self.z.get_zipf_dict()
-                ds_utils.write_json(zipf_dict, zipf_json_fid)
-                ds_utils.write_plotly(self.zipf_fig, zipf_fig_json_fid)
-                self.zipf_fig.write_html(zipf_fig_html_fid)
-
-    def prepare_zipf(self):
-        # Calculate zipf from scratch
-        # TODO: Does z even need to be self?
-        self.z = zipf.Zipf(self.vocab_counts_df)
-        self.z.calc_fit()
-        self.zipf_fig = zipf.make_zipf_fig(self.z)
+        self.zipf_obj = zipf.DMTHelper(self, load_only=load_only, use_cache=self.use_cache, save=self.save)
+        self.zipf_obj.run_DMT_processing()
 
 def dummy(doc):
     return doc

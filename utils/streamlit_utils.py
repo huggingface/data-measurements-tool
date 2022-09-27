@@ -33,6 +33,7 @@ st.set_option('deprecation.showPyplotGlobalUse', False)
 
 pd.options.display.float_format = "{:,.3f}".format # '{:20,.2f}'.format
 
+
 def sidebar_header():
     st.sidebar.markdown("""This demo showcases the 
     [dataset metrics as we develop them](https://huggingface.co/blog/data-measurements-tool).
@@ -42,7 +43,7 @@ def sidebar_header():
     - propose the list of candidate text and label features to select.
     """, unsafe_allow_html=True,)
 
-
+@st.cache(suppress_st_warning=True)
 def sidebar_selection(ds_name_to_dict, column_id=""):
     ds_names = list(ds_name_to_dict.keys())
     with st.sidebar.expander(f"Choose dataset and field {column_id}",
@@ -114,7 +115,6 @@ def expander_header(dstats, ds_name_to_dict, column_id=""):
         )
         st.dataframe(dstats.dset_peek)
 
-
 def expander_general_stats(dstats, column_id=""):
     with st.expander(f"General Text Statistics{column_id}"):
         st.caption(
@@ -147,7 +147,6 @@ def expander_general_stats(dstats, column_id=""):
         else:
             st.markdown("There are 0 duplicate items in the dataset. ")
 
-
 def expander_label_distribution(dstats, column_id=""):
     with st.expander(f"Label Distribution{column_id}", expanded=False):
         st.caption(
@@ -157,7 +156,6 @@ def expander_label_distribution(dstats, column_id=""):
             st.plotly_chart(dstats.label_obj.fig_labels, use_container_width=True)
         else:
             st.markdown("No labels were found in the dataset")
-
 
 def expander_text_lengths(dstats, column_id=""):
     _TEXT_LENGTH_CAPTION = (
@@ -209,7 +207,6 @@ def expander_text_lengths(dstats, column_id=""):
                 ].set_index("length")
             )
 
-
 def expander_text_duplicates(dstats, column_id=""):
     with st.expander(f"Text Duplicates{column_id}", expanded=False):
         st.caption(
@@ -235,7 +232,6 @@ def expander_text_duplicates(dstats, column_id=""):
             # Should we store as dataframes?
             # Dataframes allow this to be interactive.
             st.dataframe(ds_utils.counter_dict_to_df(dstats.dups_dict))
-
 
 def expander_text_perplexities(dstats, column_id=""):
     with st.expander(f"Text Perplexities{column_id}", expanded=False):
@@ -264,7 +260,6 @@ def expander_text_perplexities(dstats, column_id=""):
                 "this dataset is too large for the UI (> 1,000,000 examples).")
         else:
             st.dataframe(dstats.perplexities_df.reset_index(drop=True))
-
 
 def expander_npmi_description(min_vocab):
     _NPMI_CAPTION = (
@@ -300,10 +295,12 @@ def expander_npmi_description(min_vocab):
         "the second identity term."
     )
 
-
 def expander_zipf(dstats, column_id=""):
-    z = dstats.z
-    zipf_fig = dstats.zipf_fig
+    # DMT-specific data structures.
+    dstats_zipf = dstats.zipf_obj
+    # Raw statistics
+    z = dstats_zipf.z
+    zipf_fig = dstats_zipf.zipf_fig
     with st.expander(
         f"Vocabulary Distribution{column_id}: Zipf's Law Fit", expanded=False
     ):
@@ -433,9 +430,14 @@ def npmi_show(paired_results):
         else:
             s_filtered = s
         cm = sns.palplot(sns.diverging_palette(270, 36, s=99, l=48, n=16))
-        out_df = s_filtered.style.background_gradient(subset=bias_col, cmap=cm).format(formatter="{:,.3f}").set_properties(**{"align": "center", "width":"100em"}).set_caption("nPMI scores between the selected identity terms and the words they both co-occur with")
+        out_df = s_filtered.style.background_gradient(subset=bias_col, cmap=cm)\
+            .format(formatter="{:,.3f}")\
+            .set_properties(**{"align": "center", "width":"100em"})\
+            .set_caption("nPMI scores between the selected identity terms and "
+                         "the words they both co-occur with")
         #set_properties(subset=count_cols, **{"width": "10em", "text-align": "center"}).
         # .format(subset=count_cols, formatter=int).
         #.format(subset=bias_col, formatter="{:,.3f}")
         st.write("### Here is your dataset's bias results:")
-        st.dataframe(out_df)
+        # width=100
+        st.dataframe(out_df, width=1000)
