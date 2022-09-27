@@ -175,7 +175,7 @@ class DatasetStatisticsCacheClass:
             self.dset_cache_dir, "sorted_top_vocab.json"
         )
 
-        # Set the HuggingFace dataset object with the given arguments.
+        # Load the HuggingFace dataset object with the given arguments.
         self.dset = self._get_dataset()
         self.text_dset = None
         # Defines self.text_dset, a HF Dataset with just the TEXT_FIELD
@@ -232,6 +232,65 @@ class DatasetStatisticsCacheClass:
         )
 
     @st.cache
+    def load_or_prepare_dset_peek(self, load_only=False):
+        if self.use_cache and exists(self.dset_peek_json_fid):
+            with open(self.dset_peek_json_fid, "r") as f:
+                self.dset_peek = json.load(f)["dset peek"]
+        elif not load_only:
+            self.dset_peek = self.dset[:100]
+            if self.save:
+                ds_utils.write_json({"dset peek": self.dset_peek},
+                                 self.dset_peek_json_fid)
+
+    @st.cache
+    def load_or_prepare_tokenized_df(self, load_only=False):
+        if self.use_cache and exists(self.tokenized_df_fid):
+            self.tokenized_df = ds_utils.read_df(self.tokenized_df_fid)
+        elif not load_only:
+            # tokenize all text instances
+            self.tokenized_df = Tokenize(self.text_dset, feature=TEXT_FIELD,
+                                         tok_feature=TOKENIZED_FIELD).get_df()
+            logs.info("tokenized df is")
+            logs.info(self.tokenized_df)
+            if self.save:
+                logs.warning("Saving tokenized dataset to disk")
+                # save tokenized text
+                ds_utils.write_df(self.tokenized_df, self.tokenized_df_fid)
+
+    # Get vocab with word counts
+    @st.cache
+    def load_or_prepare_vocab(self, load_only=False):
+        """
+        Calculates the vocabulary count from the tokenized text.
+        The resulting dataframes may be used in nPMI calculations, zipf, etc.
+        :param
+        :return:
+        """
+        if self.use_cache and exists(self.vocab_counts_df_fid):
+            logs.info("Reading vocab from cache")
+            self.load_vocab()
+            self.vocab_counts_filtered_df = filter_vocab(self.vocab_counts_df)
+        elif not load_only:
+            if self.tokenized_df is None:
+                # Building the vocabulary starts with tokenizing.
+                self.load_or_prepare_tokenized_df(load_only=False)
+            logs.info("Calculating vocab afresh")
+            word_count_df = count_vocab_frequencies(self.tokenized_df)
+            self.vocab_counts_df = calc_p_word(word_count_df)
+            self.vocab_counts_filtered_df = filter_vocab(self.vocab_counts_df)
+            if self.save:
+                logs.info("Writing out.")
+                ds_utils.write_df(self.vocab_counts_df, self.vocab_counts_df_fid)
+        logs.info("unfiltered vocab")
+        logs.info(self.vocab_counts_df)
+        logs.info("filtered vocab")
+        logs.info(self.vocab_counts_filtered_df)
+
+    def load_vocab(self):
+        self.vocab_counts_df = ds_utils.read_df(self.vocab_counts_df_fid)
+
+
+    @st.cache
     def load_or_prepare_general_stats(self, load_only=False):
         """
         Content for expander_general_stats widget.
@@ -271,86 +330,6 @@ class DatasetStatisticsCacheClass:
                 ds_utils.write_json(self.general_stats_dict,
                                  self.general_stats_json_fid)
 
-    @st.cache
-    def load_or_prepare_text_lengths(self, load_only=False):
-        """
-        The text length widget relies on this function, which provides
-        a figure of the text lengths, some text length statistics, and
-        a text length dataframe to peruse.
-        Args:
-            load_only (Bool): Whether we can compute anew, or just need to try to grab cache.
-        Returns:
-
-        """
-        # We work with the already tokenized dataset
-        self.load_or_prepare_tokenized_df()
-        self.length_obj = lengths.DMTHelper(self, load_only=load_only, save=self.save)
-        self.length_obj.run_DMT_processing()
-
-    ## Labels functions
-    @st.cache
-    def load_or_prepare_labels(self, load_only=False):
-        """Uses a generic Labels class, with attributes specific to this
-        project as input.
-        Computes results for each label column,
-        or else uses what's available in the cache.
-        Currently supports Datasets with just one label column.
-        """
-        self.label_obj = labels.DMTHelper(self, load_only=load_only, save=self.save)
-        self.label_obj.run_DMT_processing()
-
-    # Get vocab with word counts
-    @st.cache
-    def load_or_prepare_vocab(self, load_only=False):
-        """
-        Calculates the vocabulary count from the tokenized text.
-        The resulting dataframes may be used in nPMI calculations, zipf, etc.
-        :param
-        :return:
-        """
-        if self.use_cache and exists(self.vocab_counts_df_fid):
-            logs.info("Reading vocab from cache")
-            self.load_vocab()
-            self.vocab_counts_filtered_df = filter_vocab(self.vocab_counts_df)
-        elif not load_only:
-            if self.tokenized_df is None:
-                # Building the vocabulary starts with tokenizing.
-                self.load_or_prepare_tokenized_df(load_only=False)
-            logs.info("Calculating vocab afresh")
-            word_count_df = count_vocab_frequencies(self.tokenized_df)
-            self.vocab_counts_df = calc_p_word(word_count_df)
-            self.vocab_counts_filtered_df = filter_vocab(self.vocab_counts_df)
-            if self.save:
-                logs.info("Writing out.")
-                ds_utils.write_df(self.vocab_counts_df, self.vocab_counts_df_fid)
-        logs.info("unfiltered vocab")
-        logs.info(self.vocab_counts_df)
-        logs.info("filtered vocab")
-        logs.info(self.vocab_counts_filtered_df)
-
-    def load_vocab(self):
-        self.vocab_counts_df = ds_utils.read_df(self.vocab_counts_df_fid)
-
-    @st.cache
-    def load_or_prepare_text_duplicates(self, load_only=False, save=True, list_duplicates=True):
-        """Uses a text duplicates library, which
-        returns strings with their counts, fraction of data that is duplicated,
-        or else uses what's available in the cache.
-        """
-        dups_obj = td.DMTHelper(self, load_only=load_only, save=save)
-        dups_obj.run_DMT_processing(list_duplicates=list_duplicates)
-        self.duplicates_results = dups_obj.duplicates_results
-        self.dups_frac = self.duplicates_results[td.DUPS_FRAC]
-        if list_duplicates and td.DUPS_DICT in self.duplicates_results:
-            self.dups_dict = self.duplicates_results[td.DUPS_DICT]
-        self.duplicates_files = dups_obj.get_duplicates_filenames()
-
-    @st.cache
-    def load_or_prepare_text_perplexities(self, load_only=False):
-        perplex_obj = perplexity.DMTHelper(self, load_only=load_only)
-        perplex_obj.run_DMT_processing()
-        self.perplexities_df = perplex_obj.df
-
 
     def load_general_stats(self):
         self.general_stats_dict = json.load(
@@ -383,47 +362,66 @@ class DatasetStatisticsCacheClass:
             td.DUPS_FRAC: self.dups_frac
         }
 
-    @st.cache
-    def load_or_prepare_dataset(self, load_only=False):
+    def load_or_prepare_text_duplicates(self, load_only=False, save=True, list_duplicates=True):
+        """Uses a text duplicates library, which
+        returns strings with their counts, fraction of data that is duplicated,
+        or else uses what's available in the cache.
         """
-        Prepares the HF datasets and data frames containing the untokenized and
-        tokenized text as well as the label values.
-        self.tokenized_df is used further for calculating text lengths,
-        word counts, etc.
-        Args:
-            load_only (Bool): Whether we should only use cache, no new prep.
+        dups_obj = td.DMTHelper(self, load_only=load_only, save=save)
+        dups_obj.run_DMT_processing(list_duplicates=list_duplicates)
+        self.duplicates_results = dups_obj.duplicates_results
+        self.dups_frac = self.duplicates_results[td.DUPS_FRAC]
+        if list_duplicates and td.DUPS_DICT in self.duplicates_results:
+            self.dups_dict = self.duplicates_results[td.DUPS_DICT]
+        self.duplicates_files = dups_obj.get_duplicates_filenames()
 
+    def load_or_prepare_text_lengths(self, load_only=False):
+        """
+        The text length widget relies on this function, which provides
+        a figure of the text lengths, some text length statistics, and
+        a text length dataframe to peruse.
+        Args:
+            load_only (Bool): Whether we can compute anew, or just need to try to grab cache.
         Returns:
 
         """
-        logs.info("Doing text dset.")
-        self.load_or_prepare_text_dset(load_only=load_only)
+        # We work with the already tokenized dataset
+        self.load_or_prepare_tokenized_df()
+        self.length_obj = lengths.DMTHelper(self, load_only=load_only, save=self.save)
+        self.length_obj.run_DMT_processing()
 
     @st.cache
-    def load_or_prepare_dset_peek(self, load_only=False):
-        if self.use_cache and exists(self.dset_peek_json_fid):
-            with open(self.dset_peek_json_fid, "r") as f:
-                self.dset_peek = json.load(f)["dset peek"]
-        elif not load_only:
-            self.dset_peek = self.dset[:100]
-            if self.save:
-                ds_utils.write_json({"dset peek": self.dset_peek},
-                                 self.dset_peek_json_fid)
+    def load_or_prepare_text_lengths(self, load_only=False):
+        """
+        The text length widget relies on this function, which provides
+        a figure of the text lengths, some text length statistics, and
+        a text length dataframe to peruse.
+        Args:
+            load_only (Bool): Whether we can compute anew, or just need to try to grab cache.
+        Returns:
 
+        """
+        # We work with the already tokenized dataset
+        self.load_or_prepare_tokenized_df()
+        self.length_obj = lengths.DMTHelper(self, load_only=load_only, save=self.save)
+        self.length_obj.run_DMT_processing()
+
+    ## Labels functions
     @st.cache
-    def load_or_prepare_tokenized_df(self, load_only=False):
-        if self.use_cache and exists(self.tokenized_df_fid):
-            self.tokenized_df = ds_utils.read_df(self.tokenized_df_fid)
-        elif not load_only:
-            # tokenize all text instances
-            self.tokenized_df = Tokenize(self.text_dset, feature=TEXT_FIELD,
-                                         tok_feature=TOKENIZED_FIELD).get_df()
-            logs.info("tokenized df is")
-            logs.info(self.tokenized_df)
-            if self.save:
-                logs.warning("Saving tokenized dataset to disk")
-                # save tokenized text
-                ds_utils.write_df(self.tokenized_df, self.tokenized_df_fid)
+    def load_or_prepare_labels(self, load_only=False):
+        """Uses a generic Labels class, with attributes specific to this
+        project as input.
+        Computes results for each label column,
+        or else uses what's available in the cache.
+        Currently supports Datasets with just one label column.
+        """
+        self.label_obj = labels.DMTHelper(self, load_only=load_only, save=self.save)
+        self.label_obj.run_DMT_processing()
+
+    def load_or_prepare_text_perplexities(self, load_only=False):
+        perplex_obj = perplexity.DMTHelper(self, load_only=load_only)
+        perplex_obj.run_DMT_processing()
+        self.perplexities_df = perplex_obj.df
 
     @st.cache
     def load_or_prepare_npmi(self, load_only=False):
