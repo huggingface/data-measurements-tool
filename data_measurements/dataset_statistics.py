@@ -128,7 +128,6 @@ class DatasetStatisticsCacheClass:
         # Save newly calculated results.
         self.save = save
 
-
         self.dset_peek = None
         # Tokenized text
         self.tokenized_df = None
@@ -160,7 +159,6 @@ class DatasetStatisticsCacheClass:
         self.std_length = None
         self.length_stats_dict = None
         self.length_df = None
-        self.fig_tok_length = None
         self.num_uniq_lengths = 0
 
         ## "General" stats
@@ -182,14 +180,9 @@ class DatasetStatisticsCacheClass:
         self.text_dset_fid = pjoin(self.dset_cache_dir, "text_dset")
         self.dset_peek_json_fid = pjoin(self.dset_cache_dir, "dset_peek.json")
 
-        ## Length cache files
-        self.length_df_fid = pjoin(self.dset_cache_dir, "length_df.json")
-        self.length_stats_json_fid = pjoin(self.dset_cache_dir, "length_stats.json")
-
         self.vocab_counts_df_fid = pjoin(self.dset_cache_dir,
                                          "vocab_counts.json")
         self.dup_counts_df_fid = pjoin(self.dset_cache_dir, "dup_counts_df.json")
-        self.fig_tok_length_fid = pjoin(self.dset_cache_dir, "fig_tok_length.png")
 
         ## General text stats
         self.general_stats_json_fid = pjoin(self.dset_cache_dir,
@@ -202,7 +195,8 @@ class DatasetStatisticsCacheClass:
         # Set the HuggingFace dataset object with the given arguments.
         self.dset = self._get_dataset()
         self.text_dset = None
-        # Defines self.text_dset, a HF Dataset with just the TEXT_FIELD instances in self.dset extracted
+        # Defines self.text_dset, a HF Dataset with just the TEXT_FIELD
+        # instances in self.dset extracted
         self.load_or_prepare_text_dataset()
 
     def _get_dataset(self):
