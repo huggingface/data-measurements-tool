@@ -109,13 +109,11 @@ def sidebar_selection(ds_name_to_dict, column_id=""):
         
         split = st.radio(f"Choose a split from the{column_id} dataset would you like to analyze?",avail_splits,index=0,) # Adding Question and options in the selectbox. NOTE: THIS QUESTION IS STYLED AND SET DISPLAYED TO NONE BECAUSE WE WANT TO USE MARKDOWN AS QUESTION
         label_field, label_names = (ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][HF_LABEL_FIELD][0] if len(ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][HF_LABEL_FIELD])> 0 else ((), []))
-        # if len(ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][HF_LABEL_FIELD])> 0    --->  ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][HF_LABEL_FIELD][0]
-        # else ---> ((), [])
+        
 
         st.markdown('<p class="question"></p>',unsafe_allow_html=True) # This is just to cover the line on the frontend
     st.sidebar.write('\n')
     st.sidebar.write('\n')
-    #st.sidebar.write('\n')
     st.sidebar.markdown(
         """
     
@@ -124,12 +122,7 @@ def sidebar_selection(ds_name_to_dict, column_id=""):
         unsafe_allow_html=True,
     )
 
-    #split = st.selectbox(
-    #    f"Which split from the{column_id} dataset would you like to "
-    #    f"analyze?",
-   #     avail_splits,
-   #    index=0,
-   # )
+    
     label_field, label_names = (
         ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][
             HF_LABEL_FIELD][0]
@@ -147,9 +140,7 @@ def sidebar_selection(ds_name_to_dict, column_id=""):
         "label_field": label_field,
         "label_names": label_names,
     }
-
-
-def expander_header(dstats, ds_name_to_dict, column_id):
+def expander_header(dstats, ds_name_to_dict):
     #st.header(f"Dataset Description{column_id}")
     st.markdown(
         ds_name_to_dict[dstats.dset_name][dstats.dset_config][HF_DESC_FIELD]
@@ -158,9 +149,8 @@ def expander_header(dstats, ds_name_to_dict, column_id):
 
 
 
-
 def expander_general_stats(dstats, column_id=""):
-    #with st.expander(f"General Text Statistics{column_id}"):
+    
     st.caption(
         "Use this widget to check whether the terms you see most "
         "represented in the dataset make sense for the goals of the dataset."
@@ -192,20 +182,14 @@ def expander_general_stats(dstats, column_id=""):
         st.markdown("There are 0 duplicate items in the dataset. ")
 
 
-
-
-### Show the label distribution from the datasets
-def expander_label_distribution(fig_labels, column_id):
-    #with st.expander(f"Label Distribution{column_id}", expanded=False):
+def expander_label_distribution(dstats, column_id=""):
     st.caption(
         "Use this widget to see how balanced the labels in your dataset are."
     )
-    if fig_labels is not None:
-        st.plotly_chart(fig_labels, use_container_width=True)
+    if dstats.fig_labels:
+        st.plotly_chart(dstats.fig_labels, use_container_width=True)
     else:
         st.markdown("No labels were found in the dataset")
-
-
 
 
 def expander_text_lengths(dstats, column_id=""):
@@ -213,135 +197,54 @@ def expander_text_lengths(dstats, column_id=""):
         "Use this widget to identify outliers, particularly suspiciously long "
         "outliers."
     )
-    with st.expander(f"Text Lengths{column_id}", expanded=False):
-        st.caption(_TEXT_LENGTH_CAPTION)
-        st.markdown(
-            "Below, you can see how the lengths of the text instances in your "
-            "dataset are distributed."
-        )
-        st.markdown(
-            "Any unexpected peaks or valleys in the distribution may help to "
-            "identify instances you want to remove or augment."
-        )
-        st.markdown(
-            "### Here is the relative frequency of different text lengths in "
-            "your dataset:"
-        )
+   
+        #(f"Text Lengths{column_id}"):
+    st.caption(_TEXT_LENGTH_CAPTION)
+    st.markdown(
+        "Below, you can see how the lengths of the text instances in your "
+        "dataset are distributed."
+    )
+    st.markdown(
+        "Any unexpected peaks or valleys in the distribution may help to "
+        "identify instances you want to remove or augment."
+    )
+    st.markdown(
+        "### Here is the count of different text lengths in "
+        "your dataset:"
+    )
+    # When matplotlib first creates this, it's a Figure.
+    # Once it's saved, then read back in,
+    # it's an ndarray that must be displayed using st.image
+    # (I know, lame).
+    if isinstance(dstats.length_obj.fig_lengths, Figure):
+        st.pyplot(dstats.length_obj.fig_lengths, use_container_width=True)
+    else:
         try:
-            st.image(dstats.fig_tok_length)
+            st.image(dstats.length_obj.fig_lengths)
         except Exception as e:
-            logs.warning("Hit exception for length %s " % e)
-            # Must be a matplotlib figure.
-            st.pyplot(dstats.fig_tok_length, use_container_width=True)
-        st.markdown(
-            "The average length of text instances is **"
-            + str(dstats.avg_length)
-            + " words**, with a standard deviation of **"
-            + str(dstats.std_length)
-            + "**."
+            logs.exception("Hit exception for lengths figure:")
+            logs.exception(e)
+    st.markdown(
+        "The average length of text instances is **"
+        + str(round(dstats.length_obj.avg_length, 2))
+        + " words**, with a standard deviation of **"
+        + str(round(dstats.length_obj.std_length, 2))
+        + "**."
+    )
+    if dstats.length_obj.lengths_df is not None:
+        start_id_show_lengths = st.selectbox(
+            "Show examples of length:",
+            np.sort(dstats.length_obj.lengths_df["length"].unique())[::-1].tolist(),
+            key=f"select_show_length_{column_id}",
         )
-        if dstats.length_df is not None:
-            start_id_show_lengths = st.selectbox(
-                "Show examples of length:",
-                np.sort(dstats.length_df["length"].unique())[::-1].tolist(),
-                key=f"select_show_length_{column_id}",
-            )
-            st.table(
-                dstats.length_df[
-                    dstats.length_df["length"] == start_id_show_lengths
-                    ].set_index("length")
-            )
-
-
-
-
-### Third, use a sentence embedding model
-#TO:DO delete
-def expander_text_embeddings(
-    text_dset, fig_tree, node_list, embeddings, text_field, column_id
-):
-    #with st.expander(f"Text Embedding Clusters{column_id}", expanded=False):
-    _EMBEDDINGS_CAPTION = """
-    ### Hierarchical Clustering of Text Fields
-    Taking in the diversity of text represented in a dataset can be
-    challenging when it is made up of hundreds to thousands of sentences.
-    Grouping these text items based on a measure of similarity can help
-    users gain some insights into their distribution.
-    The following figure shows a hierarchical clustering of the text fields
-    in the dataset based on a
-    [Sentence-Transformer](https://hf.co/sentence-transformers/all-mpnet-base-v2)
-    model. Clusters are merged if any of the embeddings in cluster A has a
-    dot product with any of the embeddings or with the centroid of cluster B
-    higher than a threshold (one threshold per level, from 0.5 to 0.95).
-    To explore the clusters, you can:
-    - hover over a node to see the 5 most representative examples (deduplicated)
-    - enter an example in the text box below to see which clusters it is most similar to
-    - select a cluster by ID to show all of its examples
-    """
-    st.markdown(_EMBEDDINGS_CAPTION)
-    st.plotly_chart(fig_tree, use_container_width=True)
-    st.markdown("---\n")
-    if st.checkbox(
-        label="Enter text to see nearest clusters",
-        key=f"search_clusters_{column_id}",
-    ):
-        compare_example = st.text_area(
-            label="Enter some text here to see which of the clusters in the dataset it is closest to",
-            key=f"search_cluster_input_{column_id}",
+        st.table(
+            dstats.length_obj.lengths_df[
+                dstats.length_obj.lengths_df["length"] == start_id_show_lengths
+            ].set_index("length")
         )
-        if compare_example != "":
-            paths_to_leaves = embeddings.cached_clusters.get(
-                compare_example,
-                embeddings.find_cluster_beam(compare_example, beam_size=50),
-            )
-            clusters_intro = ""
-            if paths_to_leaves[0][1] < 0.3:
-                clusters_intro += (
-                    "**Warning: no close clusters found (best score <0.3). **"
-                )
-            clusters_intro += "The closest clusters to the text entered aboce are:"
-            st.markdown(clusters_intro)
-            for path, score in paths_to_leaves[:5]:
-                example = text_dset[
-                    node_list[path[-1]]["sorted_examples_centroid"][0][0]
-                ][text_field][:256]
-                st.write(
-                    f"Cluster {path[-1]:5d} | Score: {score:.3f}  \n Example: {example}"
-                )
-            show_node_default = paths_to_leaves[0][0][-1]
-        else:
-            show_node_default = len(node_list) // 2
-    else:
-        show_node_default = len(node_list) // 2
-    st.markdown("---\n")
-    if text_dset is None:
-        st.markdown("Missing source text to show, check back later!")
-    else:
-        show_node = st.selectbox(
-            f"Choose a leaf node to explore in the{column_id} dataset:",
-            range(len(node_list)),
-            index=show_node_default,
-        )
-        node = node_list[show_node]
-        start_id = st.slider(
-            f"Show closest sentences in cluster to the centroid{column_id} starting at index:",
-            0,
-            len(node["sorted_examples_centroid"]) - 5,
-            value=0,
-            step=5,
-        )
-        for sid, sim in node["sorted_examples_centroid"][start_id : start_id + 5]:
-            # only show the first 4 lines and the first 10000 characters
-            show_text = text_dset[sid][text_field][:10000]
-            show_text = "\n".join(show_text.split("\n")[:4])
-            st.text(f"{sim:.3f} \t {show_text}")
-
-
 
 
 def expander_text_duplicates(dstats, column_id=""):
-
-    #with st.expander(f"Text Duplicates{column_id}", expanded=False):
     st.caption(
         "Use this widget to identify text strings that appear more than "
         "once."
@@ -367,9 +270,7 @@ def expander_text_duplicates(dstats, column_id=""):
         st.dataframe(ds_utils.counter_dict_to_df(dstats.dups_dict))
 
 
-
 def expander_text_perplexities(dstats, column_id=""):
-   # with st.expander(f"Text Perplexities{column_id}", expanded=False):
     st.caption(
         "Use this widget to identify text perplexities from GPT-2."
     )
@@ -432,17 +333,9 @@ def expander_npmi_description(min_vocab):
     )
 
 
-
-### Finally, show Zipf stuff
-
-
 def expander_zipf(dstats, column_id=""):
     z = dstats.z
     zipf_fig = dstats.zipf_fig
-
-    #with st.expander(
-    #    f"Vocabulary Distribution{column_id}: Zipf's Law Fit", expanded=False
-   # ):
     try:
         _ZIPF_CAPTION = """This shows how close the observed language is to an ideal
         natural language distribution following [Zipf's law](https://en.wikipedia.org/wiki/Zipf%27s_law),
@@ -511,8 +404,6 @@ with an ideal α value of 1."""
         st.write("Under construction!")
 
 
-
-
 def npmi_widget(dstats, column_id=""):
     """
     Part of the UI, but providing for interaction.
@@ -521,65 +412,31 @@ def npmi_widget(dstats, column_id=""):
     :return:
     """
     min_vocab = dstats.min_vocab_count
-
-    npmi_stats = dstats.npmi_stats
-    #with st.expander(f"Word Association{column_id}: nPMI", expanded=False):
-    if npmi_stats and len(npmi_stats.available_terms) > 0:
+    npmi_stats = dstats.npmi_obj
+    available_terms = npmi_stats.avail_identity_terms
+    if npmi_stats and len(available_terms) > 0:
         expander_npmi_description(min_vocab)
         st.markdown("-----")
-        term1 = st.selectbox( 
+        term1 = st.selectbox(
             f"What is the first term you want to select?{column_id}",
-            npmi_stats.available_terms,
+            available_terms,
         )
         term2 = st.selectbox(
             f"What is the second term you want to select?{column_id}",
-            reversed(npmi_stats.available_terms),
+            reversed(available_terms),
         )
-        # We calculate/grab nPMI data based on a canonical (alphabetic)
-        # subgroup ordering.
-        subgroup_pair = sorted([term1, term2])
         try:
-            joint_npmi_df = npmi_stats.load_or_prepare_joint_npmi(
-                subgroup_pair)
+            joint_npmi_df = npmi_stats.get_display(term1, term2)
             npmi_show(joint_npmi_df)
-        except KeyError:
+        except Exception as e:
+            logs.exception(e)
             st.markdown(
                 "**WARNING!** The nPMI for these terms has not been"
                 " pre-computed, please re-run caching."
             )
     else:
-        st.markdown(
-            "No words found co-occurring with both of the selected identity"
-            " terms."
-        )
-
-    npmi_stats = dstats.npmi_obj
-    available_terms = npmi_stats.avail_identity_terms
-    with st.expander(f"Word Association{column_id}: nPMI", expanded=False):
-        if npmi_stats and len(available_terms) > 0:
-            expander_npmi_description(min_vocab)
-            st.markdown("-----")
-            term1 = st.selectbox(
-                f"What is the first term you want to select?{column_id}",
-                available_terms,
-            )
-            term2 = st.selectbox(
-                f"What is the second term you want to select?{column_id}",
-                reversed(available_terms),
-            )
-            try:
-                joint_npmi_df = npmi_stats.get_display(term1, term2)
-                npmi_show(joint_npmi_df)
-            except Exception as e:
-                logs.exception(e)
-                st.markdown(
-                    "**WARNING!** The nPMI for these terms has not been"
-                    " pre-computed, please re-run caching."
-                )
-        else:
-            st.markdown("No words found co-occurring with both of the selected identity"
-                " terms.")
-
+        st.markdown("No words found co-occurring with both of the selected identity"
+            " terms.")
 
 
 def npmi_show(paired_results):

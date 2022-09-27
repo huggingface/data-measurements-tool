@@ -32,7 +32,7 @@ from utils import streamlit_utils as st_utils
 #"""
 #Examples:
 ## When not in deployment mode
-#streamlit run app.py -- --live=False
+#streamlit run app.py -- --live
 #
 ## When deployed.
 #streamlit run app.py
@@ -58,8 +58,7 @@ st.set_page_config(
 
 
 
- #with open('style.css') as f:
-  #      st.markdown(f'<style>{f.read()}</style>',unsafe_allow_html=True)
+ 
 
 
 # Utility for sidebar description and selection of the dataset
@@ -115,10 +114,10 @@ def load_or_prepare_widgets(ds_args, show_embeddings, show_perplexities, live=Fa
      """
 
 def display_measurements(dataset_args, display_list, loaded_dstats,
-                         show_perplexities):
+                        show_perplexities):
     """Displays the measurement results in the UI"""
     if isdir(loaded_dstats.dataset_cache_dir):
-        show_column(loaded_dstats, display_list, show_perplexities)
+        show_column(loaded_dstats, display_list,show_perplexities)
     else:
         st.markdown("### Missing pre-computed data measures!")
         st.write(dataset_args)
@@ -205,86 +204,37 @@ def show_column(dstats, display_list, show_perplexities, column_id=""):
     # start showing stuff
 
 
-    #title_str = f"### Showing{column_id}: {dstats.dset_name} - {dstats.dset_config} - {dstats.split_name} - {'-'.join(dstats.text_field)}"
-    #st.markdown(title_str)
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7,tab8 = st.tabs(["Dataset Description", "General Text Statistics", "Label Distribution", "Text Lengths","Text Duplicates","Text Perplexities","nPMI","Zipfs Law Fit"])#,"Text Embedding Clustering"])
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["Dataset Description", "General Text Statistics", "Label Distribution", "Text Lengths","Text Duplicates","nPMI","Zipfs Law Fit"])#,"Text Embedding Clustering"])
     
     with tab1:
         logs.info("showing header")
-        st_utils.expander_header(dstats, DATASET_NAME_TO_DICT,column_id)
-    with tab2:
-        logs.info("showing general stats")
-        st_utils.expander_general_stats(dstats, column_id)
-    with tab3:
-        st_utils.expander_label_distribution(dstats.fig_labels, column_id)
-    with tab4:
-        st_utils.expander_text_lengths(dstats, column_id)
-    with tab5:
-        st_utils.expander_text_duplicates(dstats, column_id)
-    with tab6:
-        st_utils.expander_text_perplexities(dstats, column_id)
-    # Uses an interaction; handled a bit differently than other widgets.
-    with tab7:
-        logs.info("showing npmi widget")
-        #st_utils.npmi_widget(dstats.load_or_prepare_npmi, column_id)
-        st_utils.npmi_widget
-    with tab8:
-        logs.info("showing zipf")
-        #st_utils.expander_zipf(dstats.z, dstats.zipf_fig, column_id)
-        st_utils.expander_zipf(dstats,column_id)
-    #with tab9:
-        #if show_embeddings:
-        #    st_utils.expander_text_embeddings(
-        #        dstats.text_dset,
-        #        dstats.fig_tree,
-        #        dstats.node_list,
-        #        dstats.embeddings,
-        #        OUR_TEXT_FIELD,
-        #        column_id,
-        #    )
-    show_embeddings = False
-    #title_str = f"### Showing{column_id}: {dstats.dset_name} - {dstats.dset_config} - {dstats.split_name} - {'-'.join(dstats.text_field)}"
-    #st.markdown(title_str)
-    #logs.info("showing header")
-    #st_utils.expander_header(dstats, ds_name_to_dict, column_id)
-    logs.info("showing general stats")
-    #st_utils.expander_general_stats(dstats, column_id)
-    #st_utils.expander_label_distribution(dstats.fig_labels, column_id)
-    #st_utils.expander_text_lengths(dstats, column_id)
-    #st_utils.expander_text_duplicates(dstats, column_id)
-    # Uses an interaction; handled a bit differently than other widgets.
-    logs.info("showing npmi widget")
-    #st_utils.npmi_widget(dstats.npmi_stats, _MIN_VOCAB_COUNT, column_id)
-    logs.info("showing zipf")
-   # st_utils.expander_zipf(dstats.z, dstats.zipf_fig, column_id)
-
-
-   #if show_embeddings:
-        #st_utils.expander_text_embeddings(
-       #     dstats.text_dset,
-        #    dstats.fig_tree,
-        #    dstats.node_list,
-        #    dstats.embeddings,
-        #    OUR_TEXT_FIELD,
-       #     column_id,
-        #)
+        st_utils.expander_header(dstats, DATASET_NAME_TO_DICT)
+  
         
     ##TO:DO @Ezi --> incorperate 
     #st_utils.expander_header(dstats, DATASET_NAME_TO_DICT)
-    for widget_tuple in display_list:
+    i =1
+    for (widget_tuple, tab) in zip(display_list,[tab2, tab3, tab4, tab5, tab6, tab7]) :
         widget_type = widget_tuple[0]
         widget_fn = widget_tuple[1]
-        logs.info("showing %s." % widget_type)
-        try:
-            widget_fn(dstats, column_id)
-        except Exception as e:
-            logs.warning("Jk jk jk. There was an issue with %s:" % widget_type)
-            logs.exception(e)
+        with tab:
+            #tab_no = tabs
+            logs.info("showing %s" % widget_type)
+            try:
+                widget_fn(dstats, column_id)
+            except Exception as e:
+                logs.warning("Jk jk jk. There was an issue with %s:" % widget_type)
+                logs.exception(e)
+        i=i+1
+
+             
+    # TODO: Fix how this is a weird outlier.
+    if show_perplexities:
+        st_utils.expander_text_perplexities(dstats, column_id)
+    logs.info("Have finished displaying the widgets.")
     # TODO: Fix how this is a weird outlier.
 
-   #if show_perplexities:
-    #    st_utils.expander_text_perplexities(dstats, column_id)
-    #logs.info("Have finished displaying the widgets.")
+  
 
 
 def main():
@@ -304,7 +254,6 @@ def main():
 
     # Sidebar description and selection
 
-    ds_name_to_dict = dataset_utils.get_dataset_info_dicts()
     st.title("Data Measurements Tool")
     st.markdown("""
     This demo showcases the [dataset metrics as we develop them](https://huggingface.co/blog/data-measurements-tool).
@@ -329,45 +278,22 @@ def main():
     # When not doing new development, use the cache.
     use_cache = True
 
-    #show_embeddings = 0 #st.sidebar.checkbox("Show text clusters")
-    # List of datasets for which embeddings are hard to compute:
-
-    
-    #show_embeddings =0 #st.sidebar.checkbox("Show text clusters")
-    #show_perplexities =0# st.sidebar.checkbox("Show text perplexities")
+   
   
     logs.warning("Using Single Dataset Mode")
-    #dataset_args = st_utils.sidebar_selection(ds_name_to_dict, "")
-    #dstats, cache_exists = load_or_prepare_widgets(dataset_args, show_embeddings,show_perplexities, live=live, use_cache=use_cache)
-    #if cache_exists:
-       # show_column(dstats, ds_name_to_dict, show_embeddings, show_perplexities, "")
-   # else:
-
-    #    st.markdown("### Missing pre-computed data measures!")
-     #   st.write(dataset_args)
+    
     
     st.sidebar.write('\n')
     st.sidebar.write('\n')
     st.sidebar.write('\n')
-    #st.sidebar.write('\n')
-
-    ### this is in streamlit_utils.py
-    #st.sidebar.markdown(
-   #     """
-    
-   # The tool is in development, and will keep growing in utility and functionality 🤗🚀
-   # """,
-   #     unsafe_allow_html=True,
-   # )
-
    
 
     pull_cache_from_hub = arguments.pull_cache_from_hub
 
-    dataset_args = st_utils.sidebar_selection(DATASET_NAME_TO_DICT)
+    #dataset_args = st_utils.sidebar_selection(ds_name_to_dict)
 
     # Initialize the interface and grab the UI-provided arguments
-    #dataset_args = display_initial_UI()
+    dataset_args = display_initial_UI()
 
     # TODO: Make this less of a weird outlier.
     #show_perplexities = st.sidebar.checkbox("Show text perplexities")
@@ -389,8 +315,7 @@ def main():
     # either because it was there already,
     # or we computed them (which we do when not live).
     # Write out on the UI what we have.
-    display_measurements(dataset_args, display_list, loaded_dstats,
-                         show_perplexities)
+    display_measurements(dataset_args, display_list, loaded_dstats,show_perplexities)
 
 
 if __name__ == "__main__":
