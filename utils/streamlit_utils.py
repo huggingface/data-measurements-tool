@@ -148,9 +148,7 @@ def expander_header(dstats, ds_name_to_dict):
     st.dataframe(dstats.dset_peek)
 
 
-
 def expander_general_stats(dstats, column_id=""):
-    
     st.caption(
         "Use this widget to check whether the terms you see most "
         "represented in the dataset make sense for the goals of the dataset."
