@@ -26,9 +26,8 @@ import utils
 import utils.dataset_utils as ds_utils
 from data_measurements.tokenize import Tokenize
 from data_measurements.labels import labels
-from data_measurements.lengths import lengths
-from data_measurements.npmi import npmi
 from data_measurements.perplexity import perplexity
+from data_measurements.lengths import lengths
 from data_measurements.text_duplicates import text_duplicates as td
 from data_measurements.npmi import npmi
 from data_measurements.zipf import zipf
@@ -260,21 +259,6 @@ class DatasetStatisticsCacheClass:
 
     def load_vocab(self):
         self.vocab_counts_df = ds_utils.read_df(self.vocab_counts_df_fid)
-
-    def load_or_prepare_dataset(self, load_only=False):
-        """
-        Prepares the HF datasets and data frames containing the untokenized and
-        tokenized text as well as the label values.
-        self.tokenized_df is used further for calculating text lengths,
-        word counts, etc.
-        Args:
-            load_only (Bool): Whether we should only use cache, no new prep.
-
-        Returns:
-
-        """
-        logs.info("Doing text dset.")
-        self.load_or_prepare_text_dset(load_only=load_only)
 
     def load_or_prepare_dset_peek(self, load_only=False):
         if self.use_cache and exists(self.dset_peek_json_fid):
@@ -511,3 +495,9 @@ def filter_vocab(vocab_counts_df):
     filtered_count_denom = float(sum(filtered_vocab_counts_df[CNT]))
     filtered_vocab_counts_df[PROP] = filtered_count / filtered_count_denom
     return filtered_vocab_counts_df
+
+
+
+# =======
+#     def load_or_prepare_dataset(self, load_only=False):
+# >>>>>>> main
