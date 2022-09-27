@@ -25,11 +25,12 @@ import utils
 import utils.dataset_utils as ds_utils
 from data_measurements.tokenize import Tokenize
 from data_measurements.labels import labels
+from data_measurements.perplexity import perplexity
 from data_measurements.lengths import lengths
 from data_measurements.text_duplicates import text_duplicates as td
 from data_measurements.npmi import npmi
 from data_measurements.zipf import zipf
-from datasets import load_from_disk, load_metric
+from datasets import load_from_disk
 from nltk.corpus import stopwords
 from os import mkdir, getenv
 from os.path import exists, isdir
@@ -82,8 +83,6 @@ pd.set_option("use_inf_as_na", True)
 MIN_VOCAB_COUNT = 10
 _NUM_VOCAB_BATCHES = 2000
 _TOP_N = 100
-
-_PERPLEXITY = load_metric("perplexity")
 
 
 class DatasetStatisticsCacheClass:
@@ -218,8 +217,6 @@ class DatasetStatisticsCacheClass:
         self.vocab_counts_df_fid = pjoin(self.dataset_cache_dir,
                                          "vocab_counts.json")
         self.dup_counts_df_fid = pjoin(self.dataset_cache_dir, "dup_counts_df.json")
-        self.perplexities_df_fid = pjoin(self.dataset_cache_dir,
-                                         "perplexities_df.json")
         self.fig_tok_length_fid = pjoin(self.dataset_cache_dir, "fig_tok_length.png")
 
         ## General text stats
@@ -400,13 +397,10 @@ class DatasetStatisticsCacheClass:
 
 
     def load_or_prepare_text_perplexities(self, load_only=False):
-        if self.use_cache and exists(self.perplexities_df_fid):
-            self.perplexities_df = ds_utils.read_df(self.perplexities_df_fid)
-        elif not load_only:
-            self.prepare_text_perplexities()
-            if self.save:
-                ds_utils.write_df(self.perplexities_df,
-                               self.perplexities_df_fid)
+        perplex_obj = perplexity.DMTHelper(self, load_only=load_only)
+        perplex_obj.run_DMT_processing()
+        self.perplexities_df = perplex_obj.df
+
 
     def load_general_stats(self):
         self.general_stats_dict = json.load(
@@ -439,14 +433,25 @@ class DatasetStatisticsCacheClass:
             td.DUPS_FRAC: self.dups_frac
         }
 
-    def prepare_text_perplexities(self):
-        results = _PERPLEXITY.compute(
-            input_texts=self.text_dset[TEXT_FIELD], model_id='gpt2')
-        perplexities = {PERPLEXITY_FIELD: results["perplexities"],
-                        TEXT_FIELD: self.text_dset[TEXT_FIELD]}
-        self.perplexities_df = pd.DataFrame(perplexities).sort_values(
-            by=PERPLEXITY_FIELD, ascending=False)
-
+    def load_or_prepare_dataset(self, load_only=False):
+        """
+        Prepares the HF dataset text/feature based on given config, split, etc.
+        Args:
+            load_only: Whether only a cached dataset can be used.
+        """
+        logs.info("Doing text dset.")
+        if self.use_cache and exists(self.text_dset_fid):
+            # load extracted text
+            self.text_dset = load_from_disk(self.text_dset_fid)
+            logs.warning("Loaded dataset from disk")
+            logs.warning(self.text_dset)
+        # ...Or load it from the server and store it anew
+        elif not load_only:
+            self.prepare_text_dset()
+            if self.save:
+                # save extracted text instances
+                logs.warning("Saving dataset to disk")
+                self.text_dset.save_to_disk(self.text_dset_fid)
 
     # TODO: Are we not using this anymore?
     def load_or_prepare_dset_peek(self, load_only=False):
