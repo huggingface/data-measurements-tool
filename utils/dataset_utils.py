@@ -43,7 +43,6 @@ CACHE_DIR = "cache_dir"
 TEXT_FIELD = "text"
 PERPLEXITY_FIELD = "perplexity"
 TOKENIZED_FIELD = "tokenized_text"
-EMBEDDING_FIELD = "embedding"
 LENGTH_FIELD = "length"
 VOCAB = "vocab"
 WORD = "word"
@@ -53,6 +52,8 @@ TEXT_NAN_CNT = "text_nan_count"
 TXT_LEN = "text lengths"
 TOT_WORDS = "total words"
 TOT_OPEN_WORDS = "total open words"
+DUPS_FRAC = "duplicates fraction"
+TOP_VOCAB = "most frequent words"
 
 _DATASET_LIST = [
     "c4",

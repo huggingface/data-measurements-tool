@@ -73,14 +73,14 @@ class DMTHelper:
     in one file.
     """
 
-    def __init__(self, dstats, load_only, save):
+    def __init__(self, dstats, save):
         logs.info("Initializing labels.")
         # -- Data Measurements Tool variables
         self.label_results = {}
         self.fig_labels = None
         self.use_cache = dstats.use_cache
         self.cache_dir = dstats.dset_cache_dir
-        self.load_only = load_only
+        self.load_only = dstats.load_only
         self.save = save
         # -- Hugging Face Dataset variables
         self.label_field = dstats.label_field

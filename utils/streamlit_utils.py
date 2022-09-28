@@ -121,17 +121,17 @@ def expander_general_stats(dstats, column_id=""):
             "Use this widget to check whether the terms you see most "
             "represented in the dataset make sense for the goals of the dataset."
         )
-        st.markdown("There are {0} total words".format(str(dstats.total_words)))
+        st.markdown("There are {0} total words".format(str(dstats.word_counts)))
         st.markdown(
             "There are {0} words after removing closed "
-            "class words".format(str(dstats.total_open_words))
+            "class words".format(str(dstats.open_word_counts))
         )
         st.markdown(
             "The most common "
             "[open class words](https://dictionary.apa.org/open-class-words) "
             "and their counts are: "
         )
-        st.dataframe(dstats.sorted_top_vocab_df)
+        st.dataframe(dstats.top_vocab)
         st.markdown(
             "There are {0} missing values in the dataset.".format(
                 str(dstats.text_nan_count)

@@ -27,7 +27,7 @@ class DMTHelper:
     Does caching and using the evaluate library for computation.
     """
 
-    def __init__(self, dstats, load_only, save):
+    def __init__(self, dstats, save=True):
         # Input HuggingFace Dataset.
         self.dset = dstats.text_dset[TEXT]
         if self.dset is None:
@@ -36,8 +36,8 @@ class DMTHelper:
         self.use_cache = dstats.use_cache
         self.duplicates_results = dstats.duplicates_results
         self.cache_dir = dstats.dset_cache_dir
+        self.load_only = dstats.load_only
         self.save = save
-        self.load_only = load_only
         # Filenames
         self.dups_dir = "text_duplicates"
         dups_json = "text_duplicates.json"

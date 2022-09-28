@@ -47,20 +47,20 @@ def get_widgets(dstats):
     """
     # Measurement calculation:
     # Add any additional modules and their load-prepare function here.
-    load_prepare_list = [("general stats", dstats.load_or_prepare_general_stats),
-                         ("label distribution", dstats.load_or_prepare_labels),
-                         ("text_lengths", dstats.load_or_prepare_text_lengths),
-                         ("duplicates", dstats.load_or_prepare_text_duplicates),
-                         ("npmi", dstats.load_or_prepare_npmi),
-                         ("zipf", dstats.load_or_prepare_zipf)]
+    load_prepare_list = [("general stats", dstats.load_or_prepare_general_stats)]
+                        # ("label distribution", dstats.load_or_prepare_labels),
+                        # ("text_lengths", dstats.load_or_prepare_text_lengths),
+                        # ("duplicates", dstats.load_or_prepare_text_duplicates),
+                        # ("npmi", dstats.load_or_prepare_npmi),
+                        # ("zipf", dstats.load_or_prepare_zipf)]
     # Measurement interface:
     # Add the graphic interfaces for any new measurements here.
-    display_list = [("general stats", st_utils.expander_general_stats),
-                    ("label distribution", st_utils.expander_label_distribution),
-                    ("text_lengths", st_utils.expander_text_lengths),
-                    ("duplicates", st_utils.expander_text_duplicates),
-                    ("npmi", st_utils.npmi_widget),
-                    ("zipf", st_utils.expander_zipf)]
+    display_list = [("general stats", st_utils.expander_general_stats)]
+                   # ("label distribution", st_utils.expander_label_distribution),
+                   # ("text_lengths", st_utils.expander_text_lengths),
+                   # ("duplicates", st_utils.expander_text_duplicates),
+                   # ("npmi", st_utils.npmi_widget),
+                   # ("zipf", st_utils.expander_zipf)]
 
     return load_prepare_list, display_list
 
@@ -120,19 +120,19 @@ def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=T
     # Data common across DMT:
     # Includes the dataset text/requested feature column,
     # the dataset tokenized, and the vocabulary
-    dstats.load_or_prepare_text_dataset(load_only=load_only)
+    dstats.load_or_prepare_text_dataset()
     # Just a snippet of the dataset
-    dstats.load_or_prepare_dset_peek(load_only=load_only)
+    dstats.load_or_prepare_dset_peek()
     # Tokenized dataset
-    dstats.load_or_prepare_tokenized_df(load_only=load_only)
+    dstats.load_or_prepare_tokenized_df()
     # Vocabulary (uses tokenized dataset)
-    dstats.load_or_prepare_vocab(load_only=load_only)
+    dstats.load_or_prepare_vocab()
     # Custom widgets
     for widget_tuple in load_prepare_list:
         widget_name = widget_tuple[0]
         widget_fn = widget_tuple[1]
         try:
-            widget_fn(load_only=load_only)
+            widget_fn()
         except Exception as e:
             logs.warning("Issue with %s." % widget_name)
             logs.exception(e)
@@ -140,7 +140,7 @@ def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=T
     # It won't take up computation time.
     if show_perplexities:
         try:
-            dstats.load_or_prepare_text_perplexities(load_only=load_only)
+            dstats.load_or_prepare_text_perplexities()
         except Exception as e:
             logs.warning("Issue with %s." % "perplexities")
             logs.exception(e)
@@ -176,7 +176,7 @@ def show_column(dstats, display_list, show_perplexities, column_id=""):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--live", default=False, required=False, action="store_true", help="Flag to specify that this is not running live.")
+        "--live", default=False, required=False, action="store_true", help="Flag to specify that this is running live; only cache should be used.")
     parser.add_argument(
         "--pull_cache_from_hub", default=False, required=False, action="store_true", help="Flag to specify whether to look in the hub for measurements caches. If you are using this option, you must have HUB_CACHE_ORGANIZATION=<the organization you've set up on the hub to store your cache> and HF_TOKEN=<your hf token> on separate lines in a file named .env at the root of this repo.")
     arguments = parser.parse_args()
@@ -191,7 +191,7 @@ def main():
 
     # Initialize the main DMT class with the UI-provided arguments
     # When using the app (this file), try to use cache by default.
-    dstats = dmt_cls(**dataset_args, use_cache=True)
+    dstats = dmt_cls(**dataset_args, use_cache=True, load_only=live)
     display_title(dstats)
     # Get the widget functionality for the different measurements.
     load_prepare_list, display_list = get_widgets(dstats)

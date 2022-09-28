@@ -461,10 +461,10 @@ class DMTHelper:
         ds_utils.make_path(pjoin(self.cache_path, measure))
         for pair, bias_df in self.results_dict.items():
             bias_df = bias_df.sort_values(bias_df.columns[0], ascending=False)
-            logs.debug("Results for pair is:")
-            logs.debug(bias_df)
+            # logs.debug("Results for pair is:")
+            # logs.debug(bias_df)
             fid = self.filenames_dict[DMT][pair]
-            logs.debug("Writing to %s" % fid)
+            # logs.debug("Writing to %s" % fid)
             ds_utils.write_df(bias_df, fid)
 
     def _make_fids(self, measure="npmi"):
@@ -497,7 +497,7 @@ class DMTHelper:
     def get_display(self, s1, s2):
         pair = tuple(sorted([s1, s2]))
         display_df = self.results_dict[pair]
-        logs.debug(self.results_dict)
+        # logs.debug(self.results_dict)
         display_df.columns = ["bias", s1, s2]
         return display_df
 
