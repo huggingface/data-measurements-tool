@@ -131,7 +131,7 @@ class DatasetStatisticsCacheClass:
         self.vocab_counts_df = None
         # Vocabulary filtered to remove stopwords
         self.vocab_counts_filtered_df = None
-        self.top_vocab = None
+        self.top_vocab_df = None
 
         # Text Duplicates
         self.duplicates_results = None
@@ -321,7 +321,9 @@ class DatasetStatisticsCacheClass:
         self.dups_frac = self.general_stats_dict[DUPS_FRAC]
         self.word_counts = self.general_stats_dict[TOT_WORDS]
         self.open_word_counts = self.general_stats_dict[TOT_OPEN_WORDS]
-        self.top_vocab = self.general_stats_dict[TOP_VOCAB]
+        # We're reading in a json dict; must convert to dataframe.
+        top_vocab = self.general_stats_dict[TOP_VOCAB]
+        self.top_vocab_df = pd.DataFrame(top_vocab)
 
     def prepare_general_stats(self):
         self.prepare_word_counts()
@@ -330,11 +332,12 @@ class DatasetStatisticsCacheClass:
         self.prepare_nan_count()
         self.general_stats_dict[TEXT_NAN_CNT] = self.text_nan_count
         self.prepare_top_vocab()
-        self.general_stats_dict[TOP_VOCAB] = self.top_vocab
-        # Text duplicates are not saved in their
-        # own files, but rather just the text duplicate fraction is saved in the
-        # "general" file. We therefore set save=False for
-        # the text duplicate files in this case.
+        # To keep a dictionary structure compatible with json,
+        # we use the dict version of the df.
+        self.general_stats_dict[TOP_VOCAB] = self.top_vocab_df.to_dict('index')
+        # We want to save the text duplicate fraction in the
+        # "general" file, so set save=False for
+        # the additional text duplicate files.
         # Similarly, we don't need the full list of duplicates
         # in general stats, so set list_duplicates to False
         self.load_or_prepare_text_duplicates(save=False,
@@ -355,11 +358,11 @@ class DatasetStatisticsCacheClass:
     def prepare_top_vocab(self, top_n=100):
         if self.vocab_counts_filtered_df is None:
             self.load_or_prepare_vocab()
-        self.top_vocab = self.vocab_counts_filtered_df.sort_values(CNT, ascending=False).head(top_n)
+        self.top_vocab_df = self.vocab_counts_filtered_df.sort_values(CNT, ascending=False).head(top_n)
         logs.info("vocab counts")
         logs.info(self.vocab_counts_filtered_df)
         logs.info("top vocab")
-        logs.info(self.top_vocab)
+        logs.info(self.top_vocab_df)
 
     def load_or_prepare_text_duplicates(self, save=True, list_duplicates=True):
         """Uses a text duplicates library, which
