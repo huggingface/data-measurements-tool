@@ -392,6 +392,7 @@ class DMTHelper:
             self.results_dict = self._load_dmt_cache()
         # Compute results if we can
         if not self.load_only:
+            logs.info("Calculating anew.")
             # If there isn't a solution using cache
             if not self.results_dict:
                 # Does the actual computations
@@ -410,6 +411,7 @@ class DMTHelper:
         for pair in pairs:
             combined_fid = self.filenames_dict[DMT][pair]
             if exists(combined_fid):
+                logs.debug(combined_fid)
                 results_dict[pair] = ds_utils.read_df(combined_fid)
         return results_dict
 

@@ -300,10 +300,6 @@ class DatasetStatisticsCacheClass:
         Content for expander_general_stats widget.
         Provides statistics for total words, total open words,
         the sorted top vocab, the NaN count, and the duplicate count.
-        Args:
-
-        Returns:
-
         """
         # General statistics
         if self.use_cache and exists(self.general_stats_json_fid):
@@ -323,7 +319,9 @@ class DatasetStatisticsCacheClass:
         self.open_word_counts = self.general_stats_dict[TOT_OPEN_WORDS]
         # We're reading in a json dict; must convert to dataframe.
         top_vocab = self.general_stats_dict[TOP_VOCAB]
-        self.top_vocab_df = pd.DataFrame(top_vocab)
+        self.top_vocab_df = pd.DataFrame.from_dict(top_vocab, orient='index')
+        logs.info("self.top_vocab_df is")
+        logs.info(self.top_vocab_df)
 
     def prepare_general_stats(self):
         self.prepare_word_counts()
@@ -334,7 +332,7 @@ class DatasetStatisticsCacheClass:
         self.prepare_top_vocab()
         # To keep a dictionary structure compatible with json,
         # we use the dict version of the df.
-        self.general_stats_dict[TOP_VOCAB] = self.top_vocab_df.to_dict('index')
+        self.general_stats_dict[TOP_VOCAB] = self.top_vocab_df.to_dict(orient='index')
         # We want to save the text duplicate fraction in the
         # "general" file, so set save=False for
         # the additional text duplicate files.

@@ -100,7 +100,7 @@ class DMTHelper:
             self.std_length = self.length_stats_dict[STD]
             self.uniq_counts = self.length_stats_dict[UNIQ]
         else:
-            logs.info("Dictionary of results is empty, couldn't load measurements. =(")
+            logs.info("No luck finding length measurements.")
 
     def load_lengths_cache(self):
         # Dataframe with <sentence, length> exists. Load it.

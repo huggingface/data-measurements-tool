@@ -48,19 +48,19 @@ def get_widgets(dstats):
     # Measurement calculation:
     # Add any additional modules and their load-prepare function here.
     load_prepare_list = [("general stats", dstats.load_or_prepare_general_stats),
-                         ("label distribution", dstats.load_or_prepare_labels),
-                         ("text_lengths", dstats.load_or_prepare_text_lengths),
-                         ("duplicates", dstats.load_or_prepare_text_duplicates),
-                         ("npmi", dstats.load_or_prepare_npmi),
-                         ("zipf", dstats.load_or_prepare_zipf)]
+                         ("label distribution", dstats.load_or_prepare_labels),]
+                         #("text_lengths", dstats.load_or_prepare_text_lengths),
+                         #("duplicates", dstats.load_or_prepare_text_duplicates),]
+                        # ("npmi", dstats.load_or_prepare_npmi),
+                        # ("zipf", dstats.load_or_prepare_zipf)]
     # Measurement interface:
     # Add the graphic interfaces for any new measurements here.
     display_list = [("general stats", st_utils.expander_general_stats),
-                    ("label distribution", st_utils.expander_label_distribution),
-                    ("text_lengths", st_utils.expander_text_lengths),
-                    ("duplicates", st_utils.expander_text_duplicates),
-                    ("npmi", st_utils.npmi_widget),
-                    ("zipf", st_utils.expander_zipf)]
+                    ("label distribution", st_utils.expander_label_distribution),]
+                    #("text_lengths", st_utils.expander_text_lengths),
+                    #("duplicates", st_utils.expander_text_duplicates),]
+                   # ("npmi", st_utils.npmi_widget),
+                   # ("zipf", st_utils.expander_zipf)]
 
     return load_prepare_list, display_list
 
@@ -87,6 +87,7 @@ def display_initial_UI():
     dataset_args = st_utils.sidebar_selection(DATASET_NAME_TO_DICT)
     return dataset_args
 
+@st.cache(suppress_st_warning=True,)
 def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=True, pull_cache_from_hub=False):
     """
      Takes the dataset arguments from the GUI and uses them to load a dataset from the Hub or, if
@@ -147,30 +148,30 @@ def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=T
     return dstats
 
 
-def show_widgets(dstats, display_list, show_perplexities, column_id=""):
+@st.cache(suppress_st_warning=True,)
+def show_widgets(dstats, display_list, show_perplexities):
     """
     Function for displaying the elements in the streamlit app.
     Args:
         dstats (class): The dataset_statistics.py DatasetStatisticsCacheClass
         display_list (list): List of tuples for (widget_name, widget_display_function)
         show_perplexities (Bool): Whether perplexities should be loaded and displayed for this dataset
-        column_id (str): Which column of the dataset the analysis is done on [DEPRECATED for v1]
     """
 
-    # start showing stuff
+    # start showing widgets
     st_utils.expander_header(dstats, DATASET_NAME_TO_DICT)
     for widget_tuple in display_list:
         widget_type = widget_tuple[0]
         widget_fn = widget_tuple[1]
         logs.info("showing %s." % widget_type)
         try:
-            widget_fn(dstats, column_id)
+            widget_fn(dstats)
         except Exception as e:
             logs.warning("Jk jk jk. There was an issue with %s:" % widget_type)
             logs.exception(e)
     # TODO: Fix how this is a weird outlier.
     if show_perplexities:
-        st_utils.expander_text_perplexities(dstats, column_id)
+        st_utils.expander_text_perplexities(dstats)
     logs.info("Have finished displaying the widgets.")
 
 def main():

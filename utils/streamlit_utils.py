@@ -131,6 +131,7 @@ def expander_general_stats(dstats, column_id=""):
             "[open class words](https://dictionary.apa.org/open-class-words) "
             "and their counts are: "
         )
+
         st.dataframe(dstats.top_vocab_df)
         st.markdown(
             "There are {0} missing values in the dataset.".format(
