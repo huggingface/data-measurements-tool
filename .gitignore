@@ -1,0 +1,15 @@
+.gitignore
+.DS_Store
+*.pyc
+log_files
+log_files/*
+log_files/*/*
+hate_speech*/*
+cache_dir
+cache_dir/*
+*/cache_dir/*
+.idea/*
+.env/*
+bak/*
+ */*__pycache__*
+temp.jsonl
