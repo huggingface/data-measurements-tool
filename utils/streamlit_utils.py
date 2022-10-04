@@ -46,8 +46,6 @@ def sidebar_header():
     side_bar_text,
     unsafe_allow_html=True,
    )
-   #return 0
-
 
 
     '''
