@@ -1,4 +1,5 @@
-import evaluate
+#import evaluate
+from evaluate import load
 import logging
 import os
 import pandas as pd
@@ -200,7 +201,7 @@ class Labels:
         # When the label field is not found, an error will be thrown.
         label_list = self.dset[label_field]
         # Get the evaluate library's measurement for label distro.
-        label_distribution = evaluate.load(EVAL_LABEL_MEASURE)
+        label_distribution = load(EVAL_LABEL_MEASURE)
         # Measure the label distro.
         label_measurement = label_distribution.compute(data=label_list)
         # TODO: Incorporate this summation into what the evaluate library returns.
