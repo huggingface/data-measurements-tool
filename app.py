@@ -215,7 +215,7 @@ def show_column(dstats, display_list, show_perplexities, column_id=""):
   
         
     ##TO:DO @Ezi --> incorperate 
-    #st_utils.expander_header(dstats, DATASET_NAME_TO_DICT)
+    
     i =1
     for (widget_tuple, tab) in zip(display_list,[tab2, tab3, tab4, tab5, tab6, tab7]) :
         widget_type = widget_tuple[0]
@@ -270,7 +270,7 @@ def main():
     ✓ Propose the list of candidate text and label features to select
 
     We are still working on:
-    
+
     ✓ Implementing all the current tools
     """,
         unsafe_allow_html=True,)
