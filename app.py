@@ -127,7 +127,7 @@ def display_measurements(dataset_args, display_list, loaded_dstats,
 
 def display_initial_UI():
     """Displays the header in the UI"""
-    st.title("Data Measurements Tool")
+    #st.title("Data Measurements Tool")
     # Write out the sidebar details
     st_utils.sidebar_header()
     # Extract the selected arguments
@@ -275,7 +275,7 @@ def main():
     """,
         unsafe_allow_html=True,)
     # Get the sidebar details
-    st_utils.sidebar_header()
+    #st_utils.sidebar_header() ####  ---> disaplayed twice
     # Set up naming, configs, and cache path.
     #compare_mode = st.sidebar.checkbox("Comparison mode")
 
@@ -297,7 +297,7 @@ def main():
     #dataset_args = st_utils.sidebar_selection(ds_name_to_dict)
 
     # Initialize the interface and grab the UI-provided arguments
-    dataset_args = display_initial_UI()
+    dataset_args = display_initial_UI()  ####first call ( repeated)
 
     # TODO: Make this less of a weird outlier.
     #show_perplexities = st.sidebar.checkbox("Show text perplexities")

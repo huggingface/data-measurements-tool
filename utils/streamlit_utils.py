@@ -50,14 +50,14 @@ def sidebar_header():
 
 
 
-    '''
-    st.sidebar.markdown("""This demo showcases the 
-    [dataset metrics as we develop them](https://huggingface.co/blog/data-measurements-tool).
-    Right now this has:
-    - dynamic loading of datasets in the lib
-    - fetching config and info without downloading the dataset
-    - propose the list of candidate text and label features to select.
-    """, unsafe_allow_html=True,)'''
+    
+    #st.sidebar.markdown("""This demo showcases the 
+    #[dataset metrics as we develop them](https://huggingface.co/blog/data-measurements-tool).
+    ###Right now this has:
+    ##- dynamic loading of datasets in the lib
+    #- fetching config and info without downloading the dataset
+    #- propose the list of candidate text and label features to select.
+    #""", unsafe_allow_html=True,)'''
 
 
 
