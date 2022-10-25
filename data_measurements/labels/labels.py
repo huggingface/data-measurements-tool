@@ -57,6 +57,7 @@ def make_label_fig(label_results, chart_type="pie"):
         logs.info("Input label data missing required key(s).")
         logs.info("We require %s, %s" % (LABEL_NAMES, LABEL_MEASUREMENT))
         logs.info("We found: %s" % ",".join(label_results.keys()))
+        logs.info("Not making a chart.\n")
         return False
     return fig_labels
 
@@ -149,17 +150,19 @@ class DMTHelper:
                            config_name=self.dset_config)
         # TODO: Handle the case where there are multiple label columns.
         # The logic throughout the code assumes only one.
-        if type(self.label_field) == tuple:
-            label_field = self.label_field[0]
-        elif type(self.label_field) == str:
-            label_field = self.label_field
-        else:
-            logs.warning("Unexpected format %s for label column name(s). "
-                         "Not computing label statistics." %
-                         type(self.label_field))
-            return {}
-        label_results = label_obj.prepare_labels(label_field, self.label_names)
-        return label_results
+        if self.label_field:
+            if type(self.label_field) == tuple:
+                label_field = self.label_field[0]
+            elif type(self.label_field) == str:
+                label_field = self.label_field
+            else:
+                logs.warning("Unexpected format %s for label column name(s). "
+                             "Not computing label statistics." %
+                             type(self.label_field))
+                return {}
+            label_results = label_obj.prepare_labels(label_field, self.label_names)
+            return label_results
+        return {}
 
     def _write_label_cache(self):
         ds_utils.make_path(pjoin(self.cache_dir, self.label_dir))

@@ -69,7 +69,7 @@ NUM_VOCAB_BATCHES = 2000
 class DatasetStatisticsCacheClass:
 
     def __init__(self, dset_name, dset_config, split_name, text_field,
-                 label_field, label_names, cache_dir="cache_dir",
+                 label_field, label_names=None, cache_dir="cache_dir",
                  dset_cache_dir=None, use_cache=False, load_only=False, save=True):
         ### What are we analyzing?
         # name of the Hugging Face dataset
@@ -438,9 +438,11 @@ class DatasetStatisticsCacheClass:
         self.z.calc_fit()
         self.zipf_fig = zipf.make_zipf_fig(self.z)
 
+# TODO: Remove in favor of using tokenize.py with tokenization + counting in one
 def dummy(doc):
     return doc
 
+# TODO: Move this to tokenize.py and do both tokenization + counting in one
 def count_vocab_frequencies(tokenized_df, num_vocab_batches=2000):
     """
     Based on an input pandas DataFrame with a 'text' column,
@@ -458,8 +460,9 @@ def count_vocab_frequencies(tokenized_df, num_vocab_batches=2000):
     logs.info(
         "Fitting dummy tokenization to make matrix using the previous tokenization"
     )
-    cvec.fit(tokenized_df[TOKENIZED_FIELD])
-    document_matrix = cvec.transform(tokenized_df[TOKENIZED_FIELD])
+    # fit_transform does what fit() and transform() do independently
+    # more efficiently.
+    document_matrix = cvec.fit_transform(tokenized_df[TOKENIZED_FIELD])
     batches = np.linspace(0, tokenized_df.shape[0], num_vocab_batches).astype(
         int)
     i = 0
