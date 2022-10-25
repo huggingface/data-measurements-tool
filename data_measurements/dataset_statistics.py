@@ -167,10 +167,12 @@ class DatasetStatisticsCacheClass:
                                          "vocab_counts.json")
         self.general_stats_json_fid = pjoin(self.dset_cache_dir,
                                             "general_stats_dict.json")
+        self.dset = None
+        self.text_dset = None
 
+    def load_or_prepare_dataset(self):
         # Load the HuggingFace dataset object with the given arguments.
         self.dset = self._get_dataset()
-        self.text_dset = None
         # Defines self.text_dset, a HF Dataset with just the TEXT_FIELD
         # instances in self.dset extracted
         self.load_or_prepare_text_dataset()

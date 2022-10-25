@@ -392,9 +392,9 @@ class DMTHelper:
             self.results_dict = self._load_dmt_cache()
         # Compute results if we can
         if not self.load_only:
-            logs.info("Calculating anew.")
             # If there isn't a solution using cache
             if not self.results_dict:
+                logs.info("Calculating anew.")
                 # Does the actual computations
                 self.prepare_results()
             # Finish
@@ -411,12 +411,12 @@ class DMTHelper:
         for pair in pairs:
             combined_fid = self.filenames_dict[DMT][pair]
             if exists(combined_fid):
-                logs.debug(combined_fid)
+                logs.debug("Loading %s" % combined_fid)
                 results_dict[pair] = ds_utils.read_df(combined_fid)
         return results_dict
 
     def prepare_results(self):
-        assoc_obj = nPMI(vocabulary_list=list(self.dstats.vocab_counts_df.index),
+        assoc_obj = nPMI(vocabulary_list=list(self.vocab_counts_df.index),
                          tokenized_sentence_df=self.tokenized_sentence_df,
                          given_id_terms=self.avail_identity_terms)
         self.assoc_results_dict = assoc_obj.assoc_results_dict
@@ -497,10 +497,12 @@ class DMTHelper:
             self.filenames_dict[DMT][id_term_tuple] = json_fid
 
     def get_display(self, s1, s2):
+        display_df = pd.DataFrame()
         pair = tuple(sorted([s1, s2]))
-        display_df = self.results_dict[pair]
-        # logs.debug(self.results_dict)
-        display_df.columns = ["bias", s1, s2]
+        if pair in self.results_dict:
+            display_df = self.results_dict[pair]
+            # logs.debug(self.results_dict)
+            display_df.columns = ["bias", s1, s2]
         return display_df
 
     def get_filenames(self):

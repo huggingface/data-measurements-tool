@@ -156,6 +156,7 @@ class Zipf:
             [self._estimate_count(rank, pmf_mass) for rank in
              self.word_ranks_unique]
         )
+        logs.debug("Returning zipf counts.")
         return zipf_counts
 
     def _estimate_count(self, rank, pmf_mass):

@@ -48,19 +48,19 @@ def get_widgets(dstats):
     # Measurement calculation:
     # Add any additional modules and their load-prepare function here.
     load_prepare_list = [("general stats", dstats.load_or_prepare_general_stats),
-                         ("label distribution", dstats.load_or_prepare_labels),]
-                         #("text_lengths", dstats.load_or_prepare_text_lengths),
-                         #("duplicates", dstats.load_or_prepare_text_duplicates),]
-                        # ("npmi", dstats.load_or_prepare_npmi),
-                        # ("zipf", dstats.load_or_prepare_zipf)]
+                         ("label distribution", dstats.load_or_prepare_labels),
+                         ("text_lengths", dstats.load_or_prepare_text_lengths),
+                         ("duplicates", dstats.load_or_prepare_text_duplicates),
+                         ("npmi", dstats.load_or_prepare_npmi),
+                         ("zipf", dstats.load_or_prepare_zipf)]
     # Measurement interface:
     # Add the graphic interfaces for any new measurements here.
     display_list = [("general stats", st_utils.expander_general_stats),
-                    ("label distribution", st_utils.expander_label_distribution),]
-                    #("text_lengths", st_utils.expander_text_lengths),
-                    #("duplicates", st_utils.expander_text_duplicates),]
-                   # ("npmi", st_utils.npmi_widget),
-                   # ("zipf", st_utils.expander_zipf)]
+                    ("label distribution", st_utils.expander_label_distribution),
+                    ("text_lengths", st_utils.expander_text_lengths),
+                    ("duplicates", st_utils.expander_text_duplicates),
+                    ("npmi", st_utils.npmi_widget),
+                    ("zipf", st_utils.expander_zipf)]
 
     return load_prepare_list, display_list
 
@@ -72,6 +72,7 @@ def display_title(dstats):
 def display_measurements(dataset_args, display_list, loaded_dstats,
                          show_perplexities):
     """Displays the measurement results in the UI"""
+    logs.info("Attempting to display results")
     if isdir(loaded_dstats.dset_cache_dir):
         show_widgets(loaded_dstats, display_list, show_perplexities)
     else:
@@ -87,7 +88,7 @@ def display_initial_UI():
     dataset_args = st_utils.sidebar_selection(DATASET_NAME_TO_DICT)
     return dataset_args
 
-@st.cache(suppress_st_warning=True,)
+@st.cache(suppress_st_warning=True)
 def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=True, pull_cache_from_hub=False):
     """
      Takes the dataset arguments from the GUI and uses them to load a dataset from the Hub or, if
@@ -109,11 +110,9 @@ def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=T
     # not to prepare/compute anything anew.
     if live:
         # Only use what's cached; don't prepare anything
-        load_only = True
         logs.info("Only using cache.")
     else:
         # Prepare things anew and cache them if we're not live.
-        load_only = False
         logs.info("Making new calculations if cache is not there.")
     if pull_cache_from_hub:
         dataset_utils.pull_cache_from_hub(dstats.cache_path, dstats.dset_cache_dir)
@@ -121,7 +120,7 @@ def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=T
     # Data common across DMT:
     # Includes the dataset text/requested feature column,
     # the dataset tokenized, and the vocabulary
-    dstats.load_or_prepare_text_dataset()
+    dstats.load_or_prepare_dataset()
     # Just a snippet of the dataset
     dstats.load_or_prepare_dset_peek()
     # Tokenized dataset
@@ -145,10 +144,11 @@ def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=T
         except Exception as e:
             logs.warning("Issue with %s." % "perplexities")
             logs.exception(e)
+    logs.debug("Done loading/preparing calculations.")
     return dstats
 
 
-@st.cache(suppress_st_warning=True,)
+#@st.cache(suppress_st_warning=True,)
 def show_widgets(dstats, display_list, show_perplexities):
     """
     Function for displaying the elements in the streamlit app.

@@ -33,6 +33,8 @@ def load_or_prepare_widgets(ds_args, show_embeddings=False,
     """
     dstats = dataset_statistics.DatasetStatisticsCacheClass(**ds_args,
                                                             use_cache=use_cache)
+    # Get the dataset we're working with.
+    dstats.load_or_prepare_dataset()
     # Header widget
     dstats.load_or_prepare_dset_peek()
     # General stats widget
@@ -129,11 +131,6 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
             "Figure saved to %s, with corresponding json at %s."
             % (zipf_fig_html_fid, zipf_fig_json_fid)
         )
-
-    # Don't do this one until someone specifically asks for it -- takes awhile.
-    if calculation == "embeddings":
-        logs.info("\n* Preparing text embeddings.")
-        dstats.load_or_prepare_embeddings()
 
     # Don't do this one until someone specifically asks for it -- takes awhile.
     if calculation == "perplexities":

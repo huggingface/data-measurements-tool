@@ -204,6 +204,7 @@ def expander_text_lengths(dstats, column_id=""):
                 np.sort(dstats.length_obj.lengths_df["length"].unique())[::-1].tolist(),
                 key=f"select_show_length_{column_id}",
             )
+            # TODO: Handle duplicates.
             st.table(
                 dstats.length_obj.lengths_df[
                     dstats.length_obj.lengths_df["length"] == start_id_show_lengths
