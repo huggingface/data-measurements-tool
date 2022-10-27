@@ -32,7 +32,7 @@ np.seterr(divide="ignore")
 pd.set_option("use_inf_as_na", True)
 logs = utils.prepare_logging(__file__)
 # TODO: Should be possible for a user to specify this.
-NUM_BATCHES = 2000
+NUM_BATCHES = 5000
 # For the associations of an identity term
 SING = "associations"
 # For the difference between the associations of identity terms
@@ -103,7 +103,8 @@ class nPMI:
         """
         logs.info("Creating co-occurrence matrix for nPMI calculations.")
         word_cnts_per_sentence = []
-        batches = np.linspace(0, self.tokenized_sentence_df.shape[0], NUM_BATCHES).astype(int)
+        num_sentences = self.tokenized_sentence_df.shape[0]
+        batches = np.linspace(0, num_sentences, NUM_BATCHES).astype(int)
         # Creates matrix of size # batches x # sentences
         batch_num = 0
         while batch_num < len(batches) - 1:
@@ -119,7 +120,12 @@ class nPMI:
             # Per-sentence word counts
             sentence_batch = self.tokenized_sentence_df[
                              batches[batch_num]:batches[batch_num + 1]]
-            mlb_series = mlb.fit_transform(sentence_batch)
+            # Just get the ones with the subgroup terms in it, so we don't have
+            # to have unnecessarily large matrices around.
+            compact_sentence_batch = sentence_batch[sentence_batch.isin(self.given_id_terms)]
+            logs.debug("Compact sentence batch is:")
+            logs.debug(compact_sentence_batch)
+            mlb_series = mlb.fit_transform(compact_sentence_batch)
             word_cnts_per_sentence.append(mlb_series)
             # Sum per column = df.sum(axis=0)
             self.vocab_count_array += np.sum(mlb_series, axis=0)
@@ -159,25 +165,24 @@ class nPMI:
             "Approaching big computation! Here, we binarize all words in the "
             "sentences, making a sparse matrix of sentences."
         )
-        for batch_id in range(len(self.word_cnts_per_sentence)):
+        for batch_id in range(self.num_sentences):
             # Every 100 batches, print out the progress.
             if not batch_id % 100:
                 logs.debug(
                     "%s of %s co-occurrence count batches"
-                    % (str(batch_id), str(len(self.word_cnts_per_sentence)))
+                    % (str(batch_id), str(self.num_sentences))
                 )
-            # List of all the sentences (list of vocab) in that batch
+            # List of all the vocabulary-binarized sentences in that batch
             batch_sentence_row = self.word_cnts_per_sentence[batch_id]
             # Dataframe of # sentences in batch x vocabulary size
             sent_batch_df = pd.DataFrame(batch_sentence_row)
-            # Subgroup counts per-sentence for the given batch
-            subgroup_df = sent_batch_df[subgroup_idx]
-            subgroup_df.columns = [subgroup]
-            # Remove the sentences where the count of the subgroup is 0.
-            # This way we have less computation & resources needs.
-            subgroup_df = subgroup_df[subgroup_df > 0]
-            mlb_subgroup_only = sent_batch_df[sent_batch_df[subgroup_idx] > 0]
-            # Create cooccurrence matrix for the given subgroup and all words.
+            # mlb_subgroup_only: Vocabulary-binarized matrix with all the terms
+            # that co-occur with the subgroup term.
+            # subgroup_df: The isolated counts per-sentence for only the given
+            # subgroup term.
+            mlb_subgroup_only, subgroup_df = self._extract_subgroup_sentences(
+                sent_batch_df, subgroup, subgroup_idx)
+            # Co-occurrence matrix for the given subgroup term and all words.
             batch_coo_df = pd.DataFrame(mlb_subgroup_only.T.dot(subgroup_df))
 
             # Creates a batch-sized dataframe of co-occurrence counts.
@@ -193,6 +198,23 @@ class nPMI:
         count_df.columns = ["count"]
         count_df["count"] = count_df["count"].astype(int)
         return count_df
+
+    def _extract_subgroup_sentences(self, sent_batch_df, subgroup,
+                                    subgroup_idx):
+        """
+        Creates:
+         1. A vector of counts of just the subgroup term, per-sentence
+         2. A matrix of sentences where the subgroup appears x vocabulary
+         This allows us to do subgroup-specific calculation with less
+         computation & resources needs.
+        """
+        # Isolated subgroup, counts per-sentence for the given batch
+        subgroup_df = sent_batch_df[subgroup_idx]
+        subgroup_df.columns = [subgroup]
+        # Remove the sentences where the count of the subgroup is 0.
+        subgroup_df = subgroup_df[subgroup_df > 0]
+        mlb_subgroup_only = sent_batch_df[sent_batch_df[subgroup_idx] > 0]
+        return mlb_subgroup_only, subgroup_df
 
     def calc_PMI(self, vocab_cooc_df, subgroup):
         """A
@@ -262,22 +284,6 @@ class nPMI:
         logs.debug(paired_results_dict)
         return paired_results_dict
 
-    def _write_debug_msg(self, batch_id, subgroup_df=None,
-                         subgroup_sentences=None, msg_type="batching"):
-        if msg_type == "batching":
-            if not batch_id % 100:
-                logs.debug(
-                    "%s of %s co-occurrence count batches"
-                    % (str(batch_id), str(len(self.word_cnts_per_sentence)))
-                )
-        elif msg_type == "transpose":
-            if not batch_id % 100:
-                logs.debug("Removing 0 counts, subgroup_df is")
-                logs.debug(subgroup_df)
-                logs.debug("subgroup_sentences is")
-                logs.debug(subgroup_sentences)
-                logs.debug(
-                    "Now we do the transpose approach for co-occurrences")
 
 class DMTHelper:
     """Helper class for the Data Measurements Tool.

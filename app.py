@@ -120,22 +120,27 @@ def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=T
     # Data common across DMT:
     # Includes the dataset text/requested feature column,
     # the dataset tokenized, and the vocabulary
+    logs.info("<!---- Loading or preparing dataset --->")
     dstats.load_or_prepare_dataset()
     # Just a snippet of the dataset
     dstats.load_or_prepare_dset_peek()
+    logs.info("<!---- Loading or preparing tokenized dataset --->")
     # Tokenized dataset
     dstats.load_or_prepare_tokenized_df()
+    logs.info("<!---- Loading or preparing vocabulary --->")
     # Vocabulary (uses tokenized dataset)
     dstats.load_or_prepare_vocab()
     # Custom widgets
     for widget_tuple in load_prepare_list:
         widget_name = widget_tuple[0]
         widget_fn = widget_tuple[1]
+        logs.info("<!---- Calling %s --->" % widget_name)
         try:
             widget_fn()
         except Exception as e:
             logs.warning("Issue with %s." % widget_name)
             logs.exception(e)
+        logs.info("<!---- ✅ Done with %s --->" % widget_name)
     # TODO: If these are cached, can't we just show them by default?
     # It won't take up computation time.
     if show_perplexities:
@@ -144,7 +149,7 @@ def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=T
         except Exception as e:
             logs.warning("Issue with %s." % "perplexities")
             logs.exception(e)
-    logs.debug("Done loading/preparing calculations.")
+    logs.debug("<!---- Done loading/preparing measurements.  --->")
     return dstats
 
 

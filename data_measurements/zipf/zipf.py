@@ -105,6 +105,7 @@ class Zipf:
         # theoretical distribution.
         predicted_pdf = theoretical_distro.pdf()
         self._set_fit_vars(observed_pdf, predicted_pdf, theoretical_distro)
+        logs.debug("Done with fitting.")
 
     def _set_fit_vars(self, observed_pdf, predicted_pdf, theoretical_distro):
         # !!!! CRITICAL VALUE FOR ZIPF !!!!
@@ -122,6 +123,7 @@ class Zipf:
         logs.info("KS test:")
         logs.info(self.ks_test)
         self.predicted_counts = self._calc_zipf_counts()
+        logs.debug("Done setting variables.")
 
     def _make_rank_column(self):
         # TODO: These proportions may have already been calculated.
@@ -145,13 +147,17 @@ class Zipf:
             logs.warning("Have not yet fit -- need the alpha value.")
             logs.warning("Fitting now...")
             self.calc_fit()
+            logs.debug("Fit.")
         logs.info(self.word_counts_unique)
         logs.info(self.xmin)
         logs.info(self.xmax)
+        logs.debug("Subset of words that fit.")
         # The subset of words that fit
         word_counts_fit_unique = self.word_counts_unique[
                                  self.xmin + 1: self.xmax]
+        logs.debug("PMF mass.")
         pmf_mass = float(sum(word_counts_fit_unique))
+        logs.debug("Zipf counts.")
         zipf_counts = np.array(
             [self._estimate_count(rank, pmf_mass) for rank in
              self.word_ranks_unique]
