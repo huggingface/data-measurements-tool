@@ -149,16 +149,19 @@ class DMTHelper:
                            config_name=self.dset_config)
         # TODO: Handle the case where there are multiple label columns.
         # The logic throughout the code assumes only one.
-        if type(self.label_field) == tuple:
-            label_field = self.label_field[0]
-        elif type(self.label_field) == str:
-            label_field = self.label_field
-        else:
-            logs.warning("Unexpected format %s for label column name(s). "
-                         "Not computing label statistics." %
-                         type(self.label_field))
-            return {}
-        label_results = label_obj.prepare_labels(label_field, self.label_names)
+        # TODO: Actually can this all be removed?
+        #if type(self.label_field) == tuple:
+        #    label_field = self.label_field[0]
+        #elif type(self.label_field) == str:
+        #    label_field = self.label_field
+        #else:
+        #    logs.warning("Unexpected format %s for label column name(s). "
+        #                 "Not computing label statistics." %
+        #                 type(self.label_field))
+        #    return {}
+        label_results = {}
+        if self.label_field:
+            label_results = label_obj.prepare_labels(self.label_field, self.label_names)
         return label_results
 
     def _write_label_cache(self):

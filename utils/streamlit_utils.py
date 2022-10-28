@@ -374,6 +374,17 @@ def expander_zipf(dstats, column_id=""):
         except:
             st.write("Under construction!")
 
+def get_npmi_display(npmi_stats, term1, term2):
+    try:
+        joint_npmi_df = npmi_stats.get_display(term1, term2)
+        npmi_show(joint_npmi_df)
+    except Exception as e:
+        logs.exception(e)
+        st.markdown(
+            "**WARNING!** The nPMI for these terms has not been"
+            " pre-computed, please re-run caching."
+        )
+
 
 def npmi_widget(dstats, column_id=""):
     """
@@ -387,25 +398,21 @@ def npmi_widget(dstats, column_id=""):
     available_terms = npmi_stats.avail_identity_terms
     with st.expander(f"Word Association{column_id}: nPMI", expanded=False):
         if npmi_stats and len(available_terms) > 0:
-            expander_npmi_description(min_vocab)
-            st.markdown("-----")
-            term1 = st.selectbox(
-                f"What is the first term you want to select?{column_id}",
-                available_terms,
-            )
-            term2 = st.selectbox(
-                f"What is the second term you want to select?{column_id}",
-                reversed(available_terms),
-            )
-            try:
-                joint_npmi_df = npmi_stats.get_display(term1, term2)
-                npmi_show(joint_npmi_df)
-            except Exception as e:
-                logs.exception(e)
-                st.markdown(
-                    "**WARNING!** The nPMI for these terms has not been"
-                    " pre-computed, please re-run caching."
+            # Using the "with" syntax
+            with st.form(key='npmi_form'):
+                expander_npmi_description(min_vocab)
+                st.markdown("-----")
+                term1 = st.selectbox(
+                    f"What is the first term you want to select?{column_id}",
+                    available_terms,
                 )
+                term2 = st.selectbox(
+                    f"What is the second term you want to select?{column_id}",
+                    reversed(available_terms),
+                )
+                submit_button = st.form_submit_button(label='Submit')
+                if submit_button:
+                    get_npmi_display(npmi_stats, term1, term2)
         else:
             st.markdown("No words found co-occurring with both of the selected identity"
                 " terms.")

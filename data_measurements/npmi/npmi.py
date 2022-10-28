@@ -32,7 +32,7 @@ np.seterr(divide="ignore")
 pd.set_option("use_inf_as_na", True)
 logs = utils.prepare_logging(__file__)
 # TODO: Should be possible for a user to specify this.
-NUM_BATCHES = 500
+NUM_BATCHES = 1000
 # For the associations of an identity term
 SING = "associations"
 # For the difference between the associations of identity terms
@@ -267,7 +267,7 @@ class DMTHelper:
     def get_display(self, s1, s2):
         pair = tuple(sorted([s1, s2]))
         display_df = self.results_dict[pair]
-        logs.debug(self.results_dict)
+        #logs.debug(self.results_dict)
         display_df.columns = ["bias", s1, s2]
         return display_df
 

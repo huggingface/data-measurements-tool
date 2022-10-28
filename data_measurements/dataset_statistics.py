@@ -21,6 +21,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import seaborn as sns
 import statistics
+import streamlit as st
 import utils
 import utils.dataset_utils as ds_utils
 from data_measurements.tokenize import Tokenize
@@ -228,23 +229,24 @@ class DatasetStatisticsCacheClass:
         )
 
         # Set the HuggingFace dataset object with the given arguments.
-        self.dset = self._get_dataset()
+        # TODO: Remove this so an explicit function must be called to run this,
+        # rather than having it automatically run in init.
+        self.dset = None #self._get_dataset()
         self.text_dset = None
-        # Defines self.text_dset, a HF Dataset with just the TEXT_FIELD instances in self.dset extracted
-        self.load_or_prepare_text_dataset()
 
-    def _get_dataset(self):
+    @st.cache
+    def load_dataset(self):
         """
         Gets the HuggingFace Dataset object.
         First tries to use the given cache directory if specified;
         otherwise saves to the given cache directory if specified.
         """
-        dset = ds_utils.load_truncated_dataset(self.dset_name, self.dset_config,
+        self.dset = ds_utils.load_truncated_dataset(self.dset_name, self.dset_config,
                                                self.split_name,
                                                cache_dir=self.hf_dset_cache_dir,
                                                save=self.save)
-        return dset
 
+    # For some reason having st.cache here makes it unfindable when the app is rerun with streamlit cache.
     def load_or_prepare_text_dataset(self, load_only=False):
         """
         Prepares the HF dataset text/feature based on given config, split, etc.
@@ -269,6 +271,8 @@ class DatasetStatisticsCacheClass:
     def prepare_text_dset(self):
         logs.info("Working with dataset:")
         logs.info(self.dset)
+        if self.dset is None:
+            self.load_dataset()
         # Extract all text instances from the user-specified self.text_field,
         # which is a dataset-specific text/feature field;
         # create a new feature called TEXT_FIELD, which is a constant shared
@@ -280,7 +284,6 @@ class DatasetStatisticsCacheClass:
             batched=True,
             remove_columns=list(self.dset.features),
         )
-
 
     def load_or_prepare_general_stats(self, load_only=False):
         """
@@ -387,6 +390,9 @@ class DatasetStatisticsCacheClass:
         returns strings with their counts, fraction of data that is duplicated,
         or else uses what's available in the cache.
         """
+        # Uses the text dset -- make sure it's initialized.
+        if self.text_dset is None:
+            self.load_or_prepare_text_dataset()
         dups_obj = td.DMTHelper(self, load_only=load_only, save=save)
         dups_obj.run_DMT_processing(list_duplicates=list_duplicates)
         self.duplicates_results = dups_obj.duplicates_results
@@ -394,7 +400,6 @@ class DatasetStatisticsCacheClass:
         if list_duplicates and td.DUPS_DICT in self.duplicates_results:
             self.dups_dict = self.duplicates_results[td.DUPS_DICT]
         self.duplicates_files = dups_obj.get_duplicates_filenames()
-
 
     def load_or_prepare_text_perplexities(self, load_only=False):
         perplex_obj = perplexity.DMTHelper(self, load_only=load_only)
@@ -433,27 +438,6 @@ class DatasetStatisticsCacheClass:
             td.DUPS_FRAC: self.dups_frac
         }
 
-    def load_or_prepare_dataset(self, load_only=False):
-        """
-        Prepares the HF dataset text/feature based on given config, split, etc.
-        Args:
-            load_only: Whether only a cached dataset can be used.
-        """
-        logs.info("Doing text dset.")
-        if self.use_cache and exists(self.text_dset_fid):
-            # load extracted text
-            self.text_dset = load_from_disk(self.text_dset_fid)
-            logs.warning("Loaded dataset from disk")
-            logs.warning(self.text_dset)
-        # ...Or load it from the server and store it anew
-        elif not load_only:
-            self.prepare_text_dset()
-            if self.save:
-                # save extracted text instances
-                logs.warning("Saving dataset to disk")
-                self.text_dset.save_to_disk(self.text_dset_fid)
-
-    # TODO: Are we not using this anymore?
     def load_or_prepare_dset_peek(self, load_only=False):
         if self.use_cache and exists(self.dset_peek_json_fid):
             with open(self.dset_peek_json_fid, "r") as f:

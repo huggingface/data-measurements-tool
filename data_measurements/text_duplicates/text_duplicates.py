@@ -30,9 +30,6 @@ class DMTHelper:
     def __init__(self, dstats, load_only, save):
         # Input HuggingFace Dataset.
         self.dset = dstats.text_dset[TEXT]
-        if self.dset is None:
-            dstats.load_or_prepare_text_dset()
-            self.dset = dstats.text_dset
         self.use_cache = dstats.use_cache
         self.duplicates_results = dstats.duplicates_results
         self.cache_dir = dstats.dataset_cache_dir

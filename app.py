@@ -64,10 +64,11 @@ def get_widgets(dstats):
 
     return load_prepare_list, display_list
 
-def display_title(dstats):
+@st.cache(suppress_st_warning=True)
+def make_title(dstats):
     title_str = f"### Showing: {dstats.dset_name} - {dstats.dset_config} - {dstats.split_name} - {'-'.join(dstats.text_field)}"
-    st.markdown(title_str)
     logs.info("showing header")
+    return title_str
 
 def display_measurements(dataset_args, display_list, loaded_dstats,
                          show_perplexities):
@@ -87,7 +88,8 @@ def display_initial_UI():
     dataset_args = st_utils.sidebar_selection(DATASET_NAME_TO_DICT)
     return dataset_args
 
-def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=True, pull_cache_from_hub=False):
+def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities,
+                            live=True, pull_cache_from_hub=False):
     """
      Takes the dataset arguments from the GUI and uses them to load a dataset from the Hub or, if
      a cache for those arguments is available, to load it from the cache.
@@ -120,22 +122,29 @@ def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=T
     # Data common across DMT:
     # Includes the dataset text/requested feature column,
     # the dataset tokenized, and the vocabulary
-    dstats.load_or_prepare_text_dataset(load_only=load_only)
-    # Just a snippet of the dataset
-    dstats.load_or_prepare_dset_peek(load_only=load_only)
-    # Tokenized dataset
-    dstats.load_or_prepare_tokenized_df(load_only=load_only)
-    # Vocabulary (uses tokenized dataset)
-    dstats.load_or_prepare_vocab(load_only=load_only)
+    text_prep = st.session_state.title + ".text_prepared"
+    if text_prep not in st.session_state:
+        dstats.load_dataset()
+        dstats.load_or_prepare_text_dataset(load_only=load_only)
+        # Just a snippet of the dataset
+        dstats.load_or_prepare_dset_peek(load_only=load_only)
+        # Tokenized dataset
+        dstats.load_or_prepare_tokenized_df(load_only=load_only)
+        # Vocabulary (uses tokenized dataset)
+        dstats.load_or_prepare_vocab(load_only=load_only)
+        st.session_state.text_prep = True
     # Custom widgets
     for widget_tuple in load_prepare_list:
         widget_name = widget_tuple[0]
         widget_fn = widget_tuple[1]
-        try:
-            widget_fn(load_only=load_only)
-        except Exception as e:
-            logs.warning("Issue with %s." % widget_name)
-            logs.exception(e)
+        widget_prep = st.session_state.title + widget_name
+        if widget_prep not in st.session_state:
+            try:
+                widget_fn(load_only=load_only)
+            except Exception as e:
+                logs.warning("Issue with %s." % widget_name)
+                logs.exception(e)
+            st.session_state.widget_prep = True
     # TODO: If these are cached, can't we just show them by default?
     # It won't take up computation time.
     if show_perplexities:
@@ -162,12 +171,15 @@ def show_column(dstats, display_list, show_perplexities, column_id=""):
     for widget_tuple in display_list:
         widget_type = widget_tuple[0]
         widget_fn = widget_tuple[1]
-        logs.info("showing %s." % widget_type)
-        try:
-            widget_fn(dstats, column_id)
-        except Exception as e:
-            logs.warning("Jk jk jk. There was an issue with %s:" % widget_type)
-            logs.exception(e)
+        # Stop *all* widgets from reloading every time *any* widget has a change.
+        if widget_type not in st.session_state:
+            try:
+                logs.info("showing %s." % widget_type)
+                widget_fn(dstats, column_id)
+                st.session_state.widget_type = True
+            except Exception as e:
+                logs.warning("Jk jk jk. There was an issue with %s:" % widget_type)
+                logs.exception(e)
     # TODO: Fix how this is a weird outlier.
     if show_perplexities:
         st_utils.expander_text_perplexities(dstats, column_id)
@@ -185,26 +197,31 @@ def main():
 
     # Initialize the interface and grab the UI-provided arguments
     dataset_args = display_initial_UI()
-
     # TODO: Make this less of a weird outlier.
     show_perplexities = st.sidebar.checkbox("Show text perplexities")
 
     # Initialize the main DMT class with the UI-provided arguments
     # When using the app (this file), try to use cache by default.
     dstats = dmt_cls(**dataset_args, use_cache=True)
-    display_title(dstats)
-    # Get the widget functionality for the different measurements.
-    load_prepare_list, display_list = get_widgets(dstats)
-    # Load/Prepare the DMT widgets.
-    loaded_dstats = load_or_prepare_widgets(dstats, load_prepare_list,
-                                            show_perplexities, live=live,
-                                            pull_cache_from_hub=pull_cache_from_hub)
+    title_str = make_title(dstats)
+    if 'title' not in st.session_state or st.session_state.title != title_str:
+        st.session_state.title = title_str
+        st.markdown(title_str)
+        # Get the widget functionality for the different measurements.
+        load_prepare_list, display_list = get_widgets(dstats)
+        #if 'loaded' not in st.session_state:
+        # Load/Prepare the DMT widgets.
+        loaded_dstats = load_or_prepare_widgets(dstats, load_prepare_list,
+                                                show_perplexities, live=live,
+                                                pull_cache_from_hub=pull_cache_from_hub)
+        st.session_state.display_list = display_list
+        st.session_state.loaded_dstats = loaded_dstats
     # After the load_or_prepare functions are run,
     # we should have a cache for each measurement widget --
     # either because it was there already,
     # or we computed them (which we do when not live).
     # Write out on the UI what we have.
-    display_measurements(dataset_args, display_list, loaded_dstats,
+    display_measurements(dataset_args, st.session_state.display_list, st.session_state.loaded_dstats,
                          show_perplexities)
 
 if __name__ == "__main__":

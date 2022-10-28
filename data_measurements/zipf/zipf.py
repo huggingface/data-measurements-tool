@@ -119,8 +119,8 @@ class Zipf:
         self.ks_distance = theoretical_distro.KS()
         self.ks_test = ks_2samp(observed_pdf, predicted_pdf)
         self.p = self.ks_test[1]
-        logs.info("KS test:")
-        logs.info(self.ks_test)
+        #logs.info("KS test:")
+        #logs.info(self.ks_test)
         self.predicted_counts = self._calc_zipf_counts()
 
     def _make_rank_column(self):
