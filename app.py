@@ -263,15 +263,12 @@ def main():
     
     With this tool, you can:
     
-    ✓ Dynamic loading of datasets in the lib
+    ✓ View general statistics about the text vocabulary, lengths and labels
 
-    ✓ Fetching config and info without downloading the dataset
+    ✓ Explore some distribution statistics, to assess properties of the language
 
-    ✓ Propose the list of candidate text and label features to select
+    ✓ View comparison statistics and an overview of the text distribution
 
-    We are still working on:
-
-    ✓ Implementing all the current tools
     """,
         unsafe_allow_html=True,)
     # Get the sidebar details
