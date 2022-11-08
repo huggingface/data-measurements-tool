@@ -17,9 +17,6 @@ form {
     overflow: visible;
     padding: 25px;
 }
-p {
-    font-weight: bold;
-}
 span .number-label {
     padding: 8px 12px;
     background-color: #dddddd;
@@ -53,10 +50,7 @@ span .number-label::after {
     background-color: white !important;
     color:black;
 }
-.st-dx{
-    background-color: #dddddd !important;
 
-}
 
 div {
     color:black !important;
