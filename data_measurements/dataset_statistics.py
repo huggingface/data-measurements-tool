@@ -155,8 +155,6 @@ class DatasetStatisticsCacheClass:
         self.use_cache = use_cache
         # Save newly calculated results.
         self.save = save
-
-
         self.dset_peek = None
         # Tokenized text
         self.tokenized_df = None

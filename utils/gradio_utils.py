@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import logging
+
+import gradio as gr
 import numpy as np
 import pandas as pd
 from matplotlib.figure import Figure
@@ -33,48 +35,97 @@ st.set_option('deprecation.showPyplotGlobalUse', False)
 
 pd.options.display.float_format = "{:,.3f}".format # '{:20,.2f}'.format
 
-def sidebar_header():
-    st.sidebar.markdown("""This demo showcases the 
+def subheader():
+    gr.Markdown("""This demo showcases the 
     [dataset metrics as we develop them](https://huggingface.co/blog/data-measurements-tool).
     Right now this has:
     - dynamic loading of datasets in the lib
     - fetching config and info without downloading the dataset
     - propose the list of candidate text and label features to select.
-    """, unsafe_allow_html=True,)
+    """)
+
+
+def get_label_names(dataset_name: str, config_name: str, ds_name_to_dict):
+    label_field, label_names = (
+        ds_name_to_dict[dataset_name][config_name][HF_FEATURE_FIELD][
+            HF_LABEL_FIELD][0]
+        if len(
+            ds_name_to_dict[dataset_name][config_name][HF_FEATURE_FIELD][
+                HF_LABEL_FIELD]
+        ) > 0
+        else ((), [])
+    )
+    return label_field, label_names
+
+
+
+def update_dataset(dataset_name: str, ds_name_to_dict):
+    # choose a config to analyze
+    ds_configs = ds_name_to_dict[dataset_name]
+    # special handling for the largest-by-far dataset, C4
+    if dataset_name == "c4":
+        config_names = ['en', 'en.noblocklist', 'realnewslike']
+    else:
+        config_names = list(ds_configs.keys())
+
+    config_name = config_names[0]
+    ds_config = ds_configs[config_name]
+
+    text_features = ds_config[HF_FEATURE_FIELD]["string"]
+    text_features = [('text',)] if dataset_name == "c4" else [tp for tp in text_features if tp[0] != "id"]
+    feature = text_features[0]
+
+    avail_splits = list(ds_config["splits"].keys())
+    split = avail_splits[0]
+
+    return [(config_names, config_name), (text_features, feature), (avail_splits, split)]
+
+
+def update_config(dataset_name: str, config_name: str, ds_name_to_dict):
+    ds_config = ds_name_to_dict[dataset_name][config_name]
+
+    text_features = ds_config[HF_FEATURE_FIELD]["string"]
+    text_features = [('text',)] if dataset_name == "c4" else [tp for tp in text_features if tp[0] != "id"]
+    feature = text_features[0]
+
+    avail_splits = list(ds_config["splits"].keys())
+    split = avail_splits[0]
+
+    return [(text_features, feature), (avail_splits, split)]
 
 
 def sidebar_selection(ds_name_to_dict, column_id=""):
     ds_names = list(ds_name_to_dict.keys())
-    with st.sidebar.expander(f"Choose dataset and field {column_id}",
-                             expanded=True):
+    with gr.Accordion(f"Choose dataset and field {column_id}", open=True):
+        subheader()
         # choose a dataset to analyze
-        ds_name = st.selectbox(
-            f"Choose dataset to explore{column_id}:",
-            ds_names,
-            index=ds_names.index("hate_speech18"),
+        ds_name = gr.Dropdown(
+            label=f"Choose dataset to explore{column_id}:",
+            choices=ds_names,
+            value="hate_speech18",
         )
         # choose a config to analyze
-        ds_configs = ds_name_to_dict[ds_name]
+        ds_configs = ds_name_to_dict[ds_name.value]
         # special handling for the largest-by-far dataset, C4
         if ds_name == "c4":
             config_names = ['en', 'en.noblocklist', 'realnewslike']
         else:
             config_names = list(ds_configs.keys())
-        config_name = st.selectbox(
-            f"Choose configuration{column_id}:",
-            config_names,
-            index=0,
+        config_name = gr.Dropdown(
+            label=f"Choose configuration{column_id}:",
+            choices=config_names,
+            value=config_names[0],
         )
         # choose a subset of num_examples
-        ds_config = ds_configs[config_name]
+        ds_config = ds_configs[config_name.value]
         text_features = ds_config[HF_FEATURE_FIELD]["string"]
         # TODO @yacine: Explain what this is doing and why eg tp[0] could = "id"
-        text_field = st.selectbox(
-            f"Which text feature from the {column_id} dataset would you like to"
-            f" analyze?",
-            [("text",)]
-            if ds_name == "c4"
-            else [tp for tp in text_features if tp[0] != "id"],
+        text = f"Which text feature from the {column_id} dataset would you like to analyze?"
+        choices = [('text',)] if ds_name == "c4" else [tp for tp in text_features if tp[0] != "id"]
+        text_field = gr.Dropdown(
+            label=text,
+            choices=choices,
+            value=choices[0]
         )
         # Choose a split and dataset size
         avail_splits = list(ds_config["splits"].keys())
@@ -82,21 +133,12 @@ def sidebar_selection(ds_name_to_dict, column_id=""):
         # without discussion of pros and cons, which we haven't done yet.
         if "test" in avail_splits:
             avail_splits.remove("test")
-        split = st.selectbox(
-            f"Which split from the{column_id} dataset would you like to "
-            f"analyze?",
-            avail_splits,
-            index=0,
+        split = gr.Dropdown(
+            label=f"Which split from the{column_id} dataset would you like to analyze?",
+            choices=avail_splits,
+            value=avail_splits[0],
         )
-        label_field, label_names = (
-            ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][
-                HF_LABEL_FIELD][0]
-            if len(
-                ds_name_to_dict[ds_name][config_name][HF_FEATURE_FIELD][
-                    HF_LABEL_FIELD]
-            ) > 0
-            else ((), [])
-        )
+        label_field, label_names = get_label_names(ds_name.value, config_name.value, ds_name_to_dict)
         return {
             "dset_name": ds_name,
             "dset_config": config_name,
@@ -116,7 +158,7 @@ def expander_header(dstats, ds_name_to_dict, column_id=""):
 
 
 def expander_general_stats(dstats, column_id=""):
-    with st.expander(f"General Text Statistics{column_id}"):
+    with gr.Accordion(f"General Text Statistics{column_id}"):
         st.caption(
             "Use this widget to check whether the terms you see most "
             "represented in the dataset make sense for the goals of the dataset."

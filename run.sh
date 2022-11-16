@@ -5,12 +5,12 @@ python3 run_data_measurements.py --dataset="hate_speech18" --config="default" --
 python3 run_data_measurements.py --dataset="hate_speech_offensive" --config="default" --split="train" --label_field="label" --feature="tweet"
 
 
-python3 run_data_measurements.py --dataset="imdb" --config="plain_text" --split="train" --label_field="label" --feature="text"
-python3 run_data_measurements.py --dataset="imdb" --config="plain_text" --split="unsupervised" --label_field="label" --feature="text"
+python3 run_data_measurements.py --dataset="imdb" --config="plain_text" --split="train" --label_field="label" --feature="text" --overwrite_previous
+python3 run_data_measurements.py --dataset="imdb" --config="plain_text" --split="unsupervised" --label_field="label" --feature="text" --overwrite_previous
 
 
-python3 run_data_measurements.py --dataset="glue" --config="cola" --split="train" --label_field="label" --feature="sentence"
-python3 run_data_measurements.py --dataset="glue" --config="cola" --split="validation" --label_field="label" --feature="sentence"
+python3 run_data_measurements.py --dataset="glue" --config="cola" --split="train" --label_field="label" --feature="sentence" --overwrite_previous
+python3 run_data_measurements.py --dataset="glue" --config="cola" --split="validation" --label_field="label" --feature="sentence" --overwrite_previous
 
 python3 run_data_measurements.py --dataset="glue" --config="mnli" --split="train" --label_field="label" --feature="hypothesis"
 python3 run_data_measurements.py --dataset="glue" --config="mnli" --split="train" --label_field="label" --feature="premise"
