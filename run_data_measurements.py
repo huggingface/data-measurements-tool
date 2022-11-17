@@ -59,7 +59,6 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
     # TODO: Catch error exceptions for each measurement, so that an error
     # for one measurement doesn't break the calculation of all of them.
 
-    do_all = False
     dstats = dataset_statistics.DatasetStatisticsCacheClass(**dataset_args,
                                                             use_cache=use_cache)
     logs.info("Tokenizing dataset.")
@@ -67,7 +66,7 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
     logs.info("Calculating vocab.")
     dstats.load_or_prepare_vocab()
 
-    if do_all or calculation == "general":
+    if calculation == "all" or calculation == "general":
         logs.info("\n* Calculating general statistics.")
         dstats.load_or_prepare_general_stats()
         logs.info("Done!")
