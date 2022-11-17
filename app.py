@@ -303,7 +303,7 @@ class Npmi(Widget):
         self.npmi_second_word = gr.Dropdown(render=False,
                                             label="What is the second word you want to select?")
         self.npmi_error_text = gr.Markdown(render=False)
-        self.npmi_df = gr.DataFrame(render=False)
+        self.npmi_df = gr.HTML(render=False)
         self.npmi_empty_text = gr.Markdown(render=False)
         self.npmi_description = gr.Markdown(render=False)
 
@@ -345,7 +345,7 @@ class Npmi(Widget):
                 value="""No words that co-occur enough times for results! Or there's a 🐛. 
                         Or we're still computing this one. 🤷""",
                 visible=True)
-            output[self.npmi_df] = gr.DataFrame.update(visible=False)
+            output[self.npmi_df] = gr.HTML.update(visible=False)
         else:
             output[self.npmi_empty_text] = gr.Markdown.update(visible=False)
             logs.debug("Results to be shown in streamlit are")
@@ -353,7 +353,8 @@ class Npmi(Widget):
             s = pd.DataFrame(
                 paired_results.sort_values(paired_results.columns[0], ascending=True))
             s.index.name = "word"
-            bias_col = s.filter(like="bias").columns
+            s = s.reset_index()
+            bias_col = [col for col in s.columns if col != "word"]
             # count_cols = s.filter(like="count").columns
             # Keep the dataframe from being crazy big.
             if s.shape[0] > 10000:
@@ -364,13 +365,15 @@ class Npmi(Widget):
             else:
                 s_filtered = s
             #cm = sns.palplot(sns.diverging_palette(270, 36, s=99, l=48, n=16))
-            #out_df = s_filtered.style.background_gradient(subset=bias_col).format(
-             #   formatter="{:,.3f}").set_properties(**{"align": "center", "width": "100em"}).set_caption(
-             #   "nPMI scores between the selected identity terms and the words they both co-occur with")
+            out_df = s_filtered.style.background_gradient(subset=bias_col).format(
+                formatter="{:,.3f}", subset=bias_col)\
+                .set_properties(**{"align": "center", "width": "100em"})\
+                .set_caption(
+                "nPMI scores between the selected identity terms and the words they both co-occur with")
             # set_properties(subset=count_cols, **{"width": "10em", "text-align": "center"}).
             # .format(subset=count_cols, formatter=int).
             # .format(subset=bias_col, formatter="{:,.3f}")
-            output[self.npmi_df] = s_filtered
+            output[self.npmi_df] = out_df.to_html()
         return output
 
 
