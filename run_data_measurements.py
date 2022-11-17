@@ -67,9 +67,6 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
     logs.info("Calculating vocab.")
     dstats.load_or_prepare_vocab()
 
-    if not calculation:
-        do_all = True
-
     if do_all or calculation == "general":
         logs.info("\n* Calculating general statistics.")
         dstats.load_or_prepare_general_stats()
@@ -77,7 +74,7 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
         logs.info(
             "Basic text statistics now available at %s." % dstats.general_stats_json_fid)
 
-    if do_all or calculation == "duplicates":
+    if calculation == "all" or calculation == "duplicates":
         logs.info("\n* Calculating text duplicates.")
         dstats.load_or_prepare_text_duplicates()
         duplicates_fid_dict = dstats.duplicates_files
@@ -85,7 +82,7 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
         for key, value in duplicates_fid_dict.items():
             logs.info("%s: %s" % (key, value))
 
-    if do_all or calculation == "lengths":
+    if calculation == "all" or calculation == "lengths":
         logs.info("\n* Calculating text lengths.")
         dstats.load_or_prepare_text_lengths()
         length_fid_dict = dstats.length_obj.get_filenames()
@@ -94,7 +91,7 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
             print("%s: %s" % (key, value))
         print()
 
-    if do_all or calculation == "labels":
+    if calculation == "all" or calculation == "labels":
         logs.info("\n* Calculating label statistics.")
         dstats.load_or_prepare_labels()
         npmi_fid_dict = dstats.label_files
@@ -103,7 +100,21 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
             print("%s: %s" % (key, value))
         print()
 
-    if do_all or calculation == "npmi":
+
+    if calculation == "all" or calculation == "zipf":
+        logs.info("\n* Preparing Zipf.")
+        dstats.load_or_prepare_zipf()
+        logs.info("Done!")
+        zipf_json_fid, zipf_fig_json_fid, zipf_fig_html_fid = zipf.get_zipf_fids(
+            dstats.dataset_cache_dir)
+        logs.info("Zipf results now available at %s." % zipf_json_fid)
+        logs.info(
+            "Figure saved to %s, with corresponding json at %s."
+            % (zipf_fig_html_fid, zipf_fig_json_fid)
+        )
+
+    # Don't do this one until someone specifically asks for it -- takes awhile.
+    if calculation == "npmi":
         print("\n* Preparing nPMI.")
         dstats.load_or_prepare_npmi()
         npmi_fid_dict = dstats.npmi_files
@@ -116,18 +127,6 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
             else:
                 print("%s: %s" % (key, value))
         print()
-
-    if do_all or calculation == "zipf":
-        logs.info("\n* Preparing Zipf.")
-        dstats.load_or_prepare_zipf()
-        logs.info("Done!")
-        zipf_json_fid, zipf_fig_json_fid, zipf_fig_html_fid = zipf.get_zipf_fids(
-            dstats.dataset_cache_dir)
-        logs.info("Zipf results now available at %s." % zipf_json_fid)
-        logs.info(
-            "Figure saved to %s, with corresponding json at %s."
-            % (zipf_fig_html_fid, zipf_fig_json_fid)
-        )
 
     # Don't do this one until someone specifically asks for it -- takes awhile.
     if calculation == "embeddings":
@@ -210,6 +209,7 @@ def main():
     parser.add_argument(
         "-w",
         "--calculation",
+        default="all",
         help="""What to calculate (defaults to everything except embeddings and perplexities).\n
                                                     Options are:\n
 
