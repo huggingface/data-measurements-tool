@@ -34,7 +34,11 @@ class DMTHelper:
             dstats.load_or_prepare_text_dset()
             self.dset = dstats.text_dset
         self.use_cache = dstats.use_cache
-        self.duplicates_results = dstats.duplicates_results
+        # Note: This is None as it can be called different times with different
+        # settings, and so we want fresh results each time. With the evaluate
+        # integration, results are different depending on whether
+        # list_duplicates is set.
+        self.duplicates_results = None
         self.cache_dir = dstats.dataset_cache_dir
         self.save = save
         self.load_only = load_only
