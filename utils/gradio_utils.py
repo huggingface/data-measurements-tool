@@ -73,7 +73,8 @@ def update_dataset(dataset_name: str, ds_name_to_dict):
 
     text_features = ds_config[HF_FEATURE_FIELD]["string"]
     text_features = [('text',)] if dataset_name == "c4" else [tp for tp in text_features if tp[0] != "id"]
-    feature = text_features[0]
+    feature = str(text_features[0])
+    text_features = [str(f) for f in text_features]
 
     avail_splits = list(ds_config["splits"].keys())
     split = avail_splits[0]
@@ -86,7 +87,8 @@ def update_config(dataset_name: str, config_name: str, ds_name_to_dict):
 
     text_features = ds_config[HF_FEATURE_FIELD]["string"]
     text_features = [('text',)] if dataset_name == "c4" else [tp for tp in text_features if tp[0] != "id"]
-    feature = text_features[0]
+    feature = str(text_features[0])
+    text_features = [str(f) for f in text_features]
 
     avail_splits = list(ds_config["splits"].keys())
     split = avail_splits[0]
@@ -124,8 +126,8 @@ def sidebar_selection(ds_name_to_dict, column_id=""):
         choices = [('text',)] if ds_name == "c4" else [tp for tp in text_features if tp[0] != "id"]
         text_field = gr.Dropdown(
             label=text,
-            choices=choices,
-            value=choices[0]
+            choices=[str(f) for f in choices],
+            value=str(choices[0])
         )
         # Choose a split and dataset size
         avail_splits = list(ds_config["splits"].keys())

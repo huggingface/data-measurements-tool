@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import argparse
+import ast
 import logging
+import seaborn as sns
 import gradio as gr
 import pandas as pd
 from os import mkdir
@@ -68,7 +70,6 @@ class DatasetDescription(Widget):
             self.description_df.render()
 
     def update(self, dstats: dmt_cls):
-
         return {self.description_markdown: DATASET_NAME_TO_DICT[dstats.dset_name][dstats.dset_config][gr_utils.HF_DESC_FIELD],
                 self.description_df: pd.DataFrame(dstats.dset_peek)}
 
@@ -294,6 +295,110 @@ class Zipf(Widget):
         return [self.zipf_table, self.zipf_plot, self.zipf_summary, self.alpha_warning, self.xmin_warning]
 
 
+class Npmi(Widget):
+
+    def __init__(self):
+        self.npmi_first_word = gr.Dropdown(render=False,
+                                           label="What is the first word you want to select?")
+        self.npmi_second_word = gr.Dropdown(render=False,
+                                            label="What is the second word you want to select?")
+        self.npmi_error_text = gr.Markdown(render=False)
+        self.npmi_df = gr.DataFrame(render=False)
+        self.npmi_empty_text = gr.Markdown(render=False)
+        self.npmi_description = gr.Markdown(render=False)
+
+    @property
+    def output_components(self):
+        return [self.npmi_first_word, self.npmi_second_word,
+                self.npmi_error_text, self.npmi_df, self.npmi_description, self.npmi_empty_text]
+
+    def ui(self):
+        with gr.Accordion("Word Association: nPMI", open=False):
+            self.npmi_description.render()
+            self.npmi_first_word.render()
+            self.npmi_second_word.render()
+            self.npmi_df.render()
+            self.npmi_empty_text.render()
+            self.npmi_error_text.render()
+
+    def update(self, dstats: dmt_cls):
+        min_vocab = dstats.min_vocab_count
+        npmi_stats = dstats.npmi_obj
+        available_terms = npmi_stats.avail_identity_terms
+        output = {comp: gr.update(visible=False) for comp in self.output_components}
+        if npmi_stats and len(available_terms) > 0:
+            output[self.npmi_description] = gr.Markdown.update(value=self.expander_npmi_description(min_vocab), visible=True)
+            output[self.npmi_first_word] = gr.Dropdown.update(choices=available_terms, value=available_terms[0], visible=True)
+            output[self.npmi_second_word] = gr.Dropdown.update(choices=available_terms[::-1], value=available_terms[-1], visible=True)
+            output.update(self.npmi_show(available_terms[0], available_terms[-1], dstats))
+        else:
+            output[self.npmi_error_text] = gr.Markdown.update(visible=True,
+                                                              value="No words found co-occurring with both of the selected identity terms.")
+        return output
+
+    def npmi_show(self, term1, term2, dstats):
+        npmi_stats = dstats.npmi_obj
+        paired_results = npmi_stats.get_display(term1, term2)
+        output = {}
+        if paired_results.empty:
+            output[self.npmi_empty_text] = gr.Markdown.update(
+                value="""No words that co-occur enough times for results! Or there's a 🐛. 
+                        Or we're still computing this one. 🤷""",
+                visible=True)
+            output[self.npmi_df] = gr.DataFrame.update(visible=False)
+        else:
+            output[self.npmi_empty_text] = gr.Markdown.update(visible=False)
+            logs.debug("Results to be shown in streamlit are")
+            logs.debug(paired_results)
+            s = pd.DataFrame(
+                paired_results.sort_values(paired_results.columns[0], ascending=True))
+            s.index.name = "word"
+            bias_col = s.filter(like="bias").columns
+            # count_cols = s.filter(like="count").columns
+            # Keep the dataframe from being crazy big.
+            if s.shape[0] > 10000:
+                bias_thres = max(abs(s[s[0]][5000]),
+                                 abs(s[s[0]][-5000]))
+                logs.info(f"filtering with bias threshold: {bias_thres}")
+                s_filtered = s[s[0].abs() > bias_thres]
+            else:
+                s_filtered = s
+            #cm = sns.palplot(sns.diverging_palette(270, 36, s=99, l=48, n=16))
+            #out_df = s_filtered.style.background_gradient(subset=bias_col).format(
+             #   formatter="{:,.3f}").set_properties(**{"align": "center", "width": "100em"}).set_caption(
+             #   "nPMI scores between the selected identity terms and the words they both co-occur with")
+            # set_properties(subset=count_cols, **{"width": "10em", "text-align": "center"}).
+            # .format(subset=count_cols, formatter=int).
+            # .format(subset=bias_col, formatter="{:,.3f}")
+            output[self.npmi_df] = s_filtered
+        return output
+
+
+    @staticmethod
+    def expander_npmi_description(min_vocab):
+        return f"""
+        Use this widget to identify problematic biases and stereotypes in 
+        your data.
+        
+        nPMI scores for a word help to identify potentially
+        problematic associations, ranked by how close the association is.
+        
+        nPMI bias scores for paired words help to identify how word
+        associations are skewed between the selected selected words
+        ([Aka et al., 2021](https://arxiv.org/abs/2103.03417)).
+       
+        You can select from gender and sexual orientation
+        identity terms that appear in the dataset at least {min_vocab} times.
+        
+        The resulting ranked words are those that co-occur with both identity terms.
+        
+        The more *positive* the score, the more associated the word is with 
+        the first identity term.
+        The more *negative* the score, the more associated the word is with 
+        the second identity term.
+        
+        -----
+        """
 
 def get_widgets(dstats):
     """
@@ -441,7 +546,7 @@ def main():
 
     # Initialize the interface and grab the UI-provided arguments
     with gr.Blocks() as demo:
-        widget_list = [DatasetDescription(), GeneralStats(), LabelDistribution(), TextLengths(), Zipf()]
+        widget_list = [DatasetDescription(), GeneralStats(), LabelDistribution(), TextLengths(), Npmi(), Zipf()]
         state = gr.State()
         with gr.Row():
             with gr.Column():
@@ -456,29 +561,16 @@ def main():
                 for widget in widget_list:
                     widget.ui()
 
-            # # Get the widget functionality for the different measurements.
-            # load_prepare_list, display_list = get_widgets(dstats)
-            # # Load/Prepare the DMT widgets.
-            # loaded_dstats = load_or_prepare_widgets(dstats, load_prepare_list,
-            #                                         show_perplexities, live=live,
-            #                                         pull_cache_from_hub=pull_cache_from_hub)
-            # # After the load_or_prepare functions are run,
-            # # we should have a cache for each measurement widget --
-            # # either because it was there already,
-            # # or we computed them (which we do when not live).
-            # # Write out on the UI what we have.
-            # display_measurements(dataset_args, display_list, loaded_dstats,
-            #                      show_perplexities)
-
             def update_ui(dataset: str, config: str, split: str, feature: str):
+                feature = ast.literal_eval(feature) #if isinstance(feature, str) else feature
                 label_field, label_names = gr_utils.get_label_names(dataset, config, DATASET_NAME_TO_DICT)
                 dstats = dmt_cls(dset_name=dataset, dset_config=config, split_name=split, text_field=feature,
                                  label_field=label_field, label_names=label_names, use_cache=True)
                 load_prepare_list = [("general stats", dstats.load_or_prepare_general_stats),
                                      ("label distribution", dstats.load_or_prepare_labels),
                                      ("text_lengths", dstats.load_or_prepare_text_lengths),
-                                     #("duplicates", dstats.load_or_prepare_text_duplicates),]
-                                     #("npmi", dstats.load_or_prepare_npmi),]
+                                     ("duplicates", dstats.load_or_prepare_text_duplicates),
+                                     ("npmi", dstats.load_or_prepare_npmi),
                                      ("zipf", dstats.load_or_prepare_zipf)]
                 dstats = load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities=False,
                                                  live=True, pull_cache_from_hub=False)
@@ -534,11 +626,21 @@ def main():
                 inputs=[widget_list[3].text_length_drop_down, state],
                 outputs=[widget_list[3].text_length_df]
             )
+            widget_list[4].npmi_first_word.change(
+                widget_list[4].npmi_show,
+                inputs=[widget_list[4].npmi_first_word, widget_list[4].npmi_second_word, state],
+                outputs=[widget_list[4].npmi_df, widget_list[4].npmi_empty_text]
+            )
+            widget_list[4].npmi_second_word.change(
+                widget_list[4].npmi_show,
+                inputs=[widget_list[4].npmi_first_word, widget_list[4].npmi_second_word, state],
+                outputs=[widget_list[4].npmi_df, widget_list[4].npmi_empty_text]
+            )
 
-            # dataset_args["text_field"].change(update_ui,
-            #                                   inputs=[dataset_args["dset_name"], dataset_args["dset_config"],
-            #                                           dataset_args["split_name"], dataset_args["text_field"]],
-            #                                   outputs=[title] + measurements)
+            dataset_args["text_field"].change(update_ui,
+                                              inputs=[dataset_args["dset_name"], dataset_args["dset_config"],
+                                                      dataset_args["split_name"], dataset_args["text_field"]],
+                                              outputs=[title, state] + measurements)
 
             dataset_args["split_name"].change(update_ui,
                                               inputs=[dataset_args["dset_name"], dataset_args["dset_config"],
