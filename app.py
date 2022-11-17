@@ -147,6 +147,154 @@ class GeneralStats(Widget):
                 self.general_stats_missing, self.general_stats_duplicates]
 
 
+class TextLengths(Widget):
+
+    def __init__(self):
+        self.text_length_distribution_plot = gr.Image(render=False)
+        self.text_length_explainer = gr.Markdown(render=False)
+        self.text_length_drop_down = gr.Dropdown(render=False)
+        self.text_length_df = gr.DataFrame(render=False)
+
+    def update_text_length_df(self, length, dstats):
+        return dstats.length_obj.lengths_df[
+                        dstats.length_obj.lengths_df["length"] == length
+                        ].set_index("length")
+
+    def ui(self):
+        with gr.Accordion("Text Lengths", open=False):
+            gr.Markdown("Use this widget to identify outliers, particularly suspiciously long outliers.")
+            gr.Markdown(
+                "Below, you can see how the lengths of the text instances in your "
+                "dataset are distributed."
+            )
+            gr.Markdown(
+                "Any unexpected peaks or valleys in the distribution may help to "
+                "identify instances you want to remove or augment."
+            )
+            gr.Markdown(
+                "### Here is the count of different text lengths in "
+                "your dataset:"
+            )
+            # When matplotlib first creates this, it's a Figure.
+            # Once it's saved, then read back in,
+            # it's an ndarray that must be displayed using st.image
+            # (I know, lame).
+            self.text_length_distribution_plot.render()
+            self.text_length_explainer.render()
+            self.text_length_drop_down.render()
+            self.text_length_df.render()
+
+    def update(self, dstats: dmt_cls):
+        explainer_text = (
+                "The average length of text instances is **"
+                + str(round(dstats.length_obj.avg_length, 2))
+                + " words**, with a standard deviation of **"
+                + str(round(dstats.length_obj.std_length, 2))
+                + "**."
+            )
+        output = {self.text_length_distribution_plot: dstats.length_obj.fig_lengths,
+                  self.text_length_explainer: explainer_text,
+                  }
+        if dstats.length_obj.lengths_df is not None:
+            import numpy as np
+            choices = np.sort(dstats.length_obj.lengths_df["length"].unique())[::-1].tolist()
+            output[self.text_length_drop_down] = gr.Dropdown.update(choices=choices,
+                                                                    value=choices[0])
+            output[self.text_length_df] = self.update_text_length_df(choices[0], dstats)
+        else:
+            output[self.text_length_df] = gr.update(visible=False)
+            output[self.text_length_drop_down] = gr.update(visible=False)
+        return output
+
+    @property
+    def output_components(self):
+        return [self.text_length_distribution_plot,
+                self.text_length_explainer,
+                self.text_length_drop_down, self.text_length_df]
+
+
+class Zipf(Widget):
+
+    def __init__(self):
+        self.zipf_table = gr.DataFrame(render=False)
+        self.alpha_warning = gr.Markdown(value="Your alpha value is a bit on the high side, which means that the distribution over words in this dataset is a bit unnatural. This could be due to non-language items throughout the dataset.",
+                                         render=False, visible=False)
+        self.xmin_warning = gr.Markdown(value="The minimum rank for this fit is a bit on the high side, which means that the frequencies of your most common words aren't distributed as would be expected by Zipf's law.",
+                                        render=False, visible=False)
+        self.zipf_summary = gr.Markdown(render=False)
+        self.zipf_plot = gr.Plot(render=False)
+
+    def ui(self):
+        with gr.Accordion("Vocabulary Distribution: Zipf's Law Fit", open=False):
+            gr.Markdown(
+                "Use this widget for the counts of different words in your dataset, measuring the difference between the observed count and the expected count under Zipf's law."
+            )
+            gr.Markdown("""This shows how close the observed language is to an ideal
+                        natural language distribution following [Zipf's law](https://en.wikipedia.org/wiki/Zipf%27s_law),
+                        calculated by minimizing the [Kolmogorov-Smirnov (KS) statistic](https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test).""")
+            gr.Markdown(
+            """
+            A Zipfian distribution follows the power law: $p(x) \propto x^{-α}$ with an ideal α value of 1.
+            
+            In general, an alpha greater than 2 or a minimum rank greater than 10 (take with a grain of salt) means that your distribution is relativaly _unnatural_ for natural language. This can be a sign of mixed artefacts in the dataset, such as HTML markup.
+            
+            Below, you can see the counts of each word in your dataset vs. the expected number of counts following a Zipfian distribution.
+            
+            -----
+            
+            ### Here is your dataset's Zipf results:
+            """
+            )
+            self.zipf_table.render()
+            self.zipf_summary.render()
+            self.zipf_plot.render()
+            self.alpha_warning.render()
+            self.xmin_warning.render()
+
+    def update(self, dstats: dmt_cls):
+        z = dstats.z
+        zipf_fig = dstats.zipf_fig
+
+        zipf_summary = (
+                "The optimal alpha based on this dataset is: **"
+                + str(round(z.alpha, 2))
+                + "**, with a KS distance of: **"
+                + str(round(z.ks_distance, 2))
+        )
+        zipf_summary += (
+                "**.  This was fit with a minimum rank value of: **"
+                + str(int(z.xmin))
+                + "**, which is the optimal rank *beyond which* the scaling regime of the power law fits best."
+        )
+
+        fit_results_table = pd.DataFrame.from_dict(
+            {
+                r"Alpha:": [str("%.2f" % z.alpha)],
+                "KS distance:": [str("%.2f" % z.ks_distance)],
+                "Min rank:": [str("%s" % int(z.xmin))],
+            },
+            columns=["Results"],
+            orient="index",
+        )
+        fit_results_table.index.name = ""
+
+        output = {self.zipf_table: fit_results_table,
+                  self.zipf_summary: zipf_summary,
+                  self.zipf_plot: zipf_fig,
+                  self.alpha_warning: gr.Markdown.update(visible=False),
+                  self.xmin_warning: gr.Markdown.update(visible=False)}
+        if z.alpha > 2:
+            output[self.alpha_warning] = gr.Markdown.update(visible=True)
+        if z.xmin > 5:
+           output[self.xmin_warning] = gr.Markdown.update(visible=True)
+        return output
+
+    @property
+    def output_components(self):
+        return [self.zipf_table, self.zipf_plot, self.zipf_summary, self.alpha_warning, self.xmin_warning]
+
+
+
 def get_widgets(dstats):
     """
     # A measurement widget requires 2 things:
@@ -293,7 +441,8 @@ def main():
 
     # Initialize the interface and grab the UI-provided arguments
     with gr.Blocks() as demo:
-        widget_list = [DatasetDescription(), GeneralStats(), LabelDistribution()]
+        widget_list = [DatasetDescription(), GeneralStats(), LabelDistribution(), TextLengths(), Zipf()]
+        state = gr.State()
         with gr.Row():
             with gr.Column():
                 dataset_args = display_initial_UI()
@@ -327,13 +476,13 @@ def main():
                                  label_field=label_field, label_names=label_names, use_cache=True)
                 load_prepare_list = [("general stats", dstats.load_or_prepare_general_stats),
                                      ("label distribution", dstats.load_or_prepare_labels),
-                                     ("text_lengths", dstats.load_or_prepare_text_lengths)]
+                                     ("text_lengths", dstats.load_or_prepare_text_lengths),
                                      #("duplicates", dstats.load_or_prepare_text_duplicates),]
-                                     #("npmi", dstats.load_or_prepare_npmi),
-                                     #("zipf", dstats.load_or_prepare_zipf)]
+                                     #("npmi", dstats.load_or_prepare_npmi),]
+                                     ("zipf", dstats.load_or_prepare_zipf)]
                 dstats = load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities=False,
                                                  live=True, pull_cache_from_hub=False)
-                output = {title: display_title(dstats)}
+                output = {title: display_title(dstats), state: dstats}
                 for widget in widget_list:
                     output.update(widget.update(dstats))
                 return output
@@ -346,7 +495,7 @@ def main():
                 new_dropdown = {
                     dataset_args["dset_config"]: gr.Dropdown.update(choices=new_values[0][0], value=config),
                     dataset_args["text_field"]: gr.Dropdown.update(choices=new_values[1][0], value=feature),
-                    dataset_args["split_name"]: gr.Dropdown.update(choices=new_values[2][0], value=split)
+                    dataset_args["split_name"]: gr.Dropdown.update(choices=new_values[2][0], value=split),
                 }
                 new_measurements = update_ui(dataset, config, split, feature)
                 new_dropdown.update(new_measurements)
@@ -366,20 +515,25 @@ def main():
                 return new_dropdown
 
             measurements = [comp for output in widget_list for comp in output.output_components]
-            # demo.load(update_ui,
-            #           inputs=[dataset_args["dset_name"], dataset_args["dset_config"], dataset_args["split_name"], dataset_args["text_field"]],
-            #           outputs=[title] + measurements)
+            demo.load(update_ui,
+                      inputs=[dataset_args["dset_name"], dataset_args["dset_config"], dataset_args["split_name"], dataset_args["text_field"]],
+                      outputs=[title, state] + measurements)
 
             dataset_args["dset_name"].change(update_dataset,
                                              inputs=[dataset_args["dset_name"]],
                                              outputs=[dataset_args["dset_config"],
                                               dataset_args["split_name"], dataset_args["text_field"],
-                                             title] + measurements)
+                                             title, state] + measurements)
 
             dataset_args["dset_config"].change(update_config,
                                              inputs=[dataset_args["dset_name"], dataset_args["dset_config"]],
                                              outputs=[dataset_args["split_name"], dataset_args["text_field"],
-                                             title] + measurements)
+                                             title, state] + measurements)
+            widget_list[3].text_length_drop_down.change(
+                widget_list[3].update_text_length_df,
+                inputs=[widget_list[3].text_length_drop_down, state],
+                outputs=[widget_list[3].text_length_df]
+            )
 
             # dataset_args["text_field"].change(update_ui,
             #                                   inputs=[dataset_args["dset_name"], dataset_args["dset_config"],
@@ -389,7 +543,7 @@ def main():
             dataset_args["split_name"].change(update_ui,
                                               inputs=[dataset_args["dset_name"], dataset_args["dset_config"],
                                                       dataset_args["split_name"], dataset_args["text_field"]],
-                                              outputs=[title] + measurements)
+                                              outputs=[title, state] + measurements)
 
 
     demo.launch()
