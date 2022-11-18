@@ -61,7 +61,7 @@ def make_label_fig(label_results, chart_type="pie"):
             # which breaks the assumption that
             # the number of label_names == the number of label_sums.
             # This handles that case, assuming it will happen in other datasets.
-            if len(label_names) != label(label_sums):
+            if len(label_names) != len(label_sums):
                 logs.warning("Can't make a figure with the given label names: "
                              "We don't have the right amount of label types "
                              "to apply them to!")
