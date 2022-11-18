@@ -24,12 +24,17 @@ logs = utils.prepare_logging(__file__)
 
 
 def map_labels(label_field, ds_name_to_dict, ds_name, config_name):
-    label_field, label_names = (
-        ds_name_to_dict[ds_name][config_name]["features"][label_field][0]
-        if len(
-            ds_name_to_dict[ds_name][config_name]["features"][label_field]) > 0
-        else ((), [])
-    )
+    try:
+        label_field, label_names = (
+            ds_name_to_dict[ds_name][config_name]["features"][label_field][0]
+            if len(
+                ds_name_to_dict[ds_name][config_name]["features"][label_field]) > 0
+            else ((), [])
+        )
+    except KeyError as e:
+        logs.exception(e)
+        logs.warning("Not returning a label-name mapping")
+        return []
     return label_names
 
 
@@ -198,7 +203,11 @@ class Labels:
         logs.info("Inside main label calculation function.")
         # The input Dataset object
         # When the label field is not found, an error will be thrown.
-        label_list = self.dset[label_field]
+        if label_field in self.dset:
+            label_list = self.dset[label_field]
+        else:
+            logs.warning("No label column found -- nothing to do. Returning.")
+            return {}
         # Get the evaluate library's measurement for label distro.
         label_distribution = evaluate.load(EVAL_LABEL_MEASURE)
         # Measure the label distro.
