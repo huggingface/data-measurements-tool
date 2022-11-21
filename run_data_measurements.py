@@ -96,12 +96,16 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
 
     if do_all or calculation == "labels":
         logs.info("\n* Calculating label statistics.")
-        dstats.load_or_prepare_labels()
-        npmi_fid_dict = dstats.label_files
-        print("If all went well, then results are in the following files:")
-        for key, value in npmi_fid_dict.items():
-            print("%s: %s" % (key, value))
-        print()
+        if dstats.label_field not in dstats.dset:
+            logs.warning("No label field found.")
+            logs.info("No label statistics to calculate.")
+        else:
+            dstats.load_or_prepare_labels()
+            npmi_fid_dict = dstats.label_files
+            print("If all went well, then results are in the following files:")
+            for key, value in npmi_fid_dict.items():
+                print("%s: %s" % (key, value))
+            print()
 
     if do_all or calculation == "npmi":
         print("\n* Preparing nPMI.")

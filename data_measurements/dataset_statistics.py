@@ -344,11 +344,14 @@ class DatasetStatisticsCacheClass:
         or else uses what's available in the cache.
         Currently supports Datasets with just one label column.
         """
-        label_obj = labels.DMTHelper(self, load_only=load_only, save=self.save)
-        label_obj.run_DMT_processing()
-        self.fig_labels = label_obj.fig_labels
-        self.label_results = label_obj.label_results
-        self.label_files = label_obj.get_label_filenames()
+        if self.label_field not in self.dset:
+            logs.warning("No label field. Not computing label statistics.")
+        else:
+            label_obj = labels.DMTHelper(self, load_only=load_only, save=self.save)
+            label_obj.run_DMT_processing()
+            self.fig_labels = label_obj.fig_labels
+            self.label_results = label_obj.label_results
+            self.label_files = label_obj.get_label_filenames()
 
     # Get vocab with word counts
     def load_or_prepare_vocab(self, load_only=False):

@@ -24,12 +24,17 @@ logs = utils.prepare_logging(__file__)
 
 
 def map_labels(label_field, ds_name_to_dict, ds_name, config_name):
-    label_field, label_names = (
-        ds_name_to_dict[ds_name][config_name]["features"][label_field][0]
-        if len(
-            ds_name_to_dict[ds_name][config_name]["features"][label_field]) > 0
-        else ((), [])
-    )
+    try:
+        label_field, label_names = (
+            ds_name_to_dict[ds_name][config_name]["features"][label_field][0]
+            if len(
+                ds_name_to_dict[ds_name][config_name]["features"][label_field]) > 0
+            else ((), [])
+        )
+    except KeyError as e:
+        logs.exception(e)
+        logs.warning("Not returning a label-name mapping")
+        return []
     return label_names
 
 
@@ -52,6 +57,15 @@ def make_label_fig(label_results, chart_type="pie"):
             if chart_type != "pie":
                 logs.info("Oops! Don't have that chart-type implemented.")
                 logs.info("Making the default pie chart")
+            # IMDB - unsupervised has a labels column where all values are -1,
+            # which breaks the assumption that
+            # the number of label_names == the number of label_sums.
+            # This handles that case, assuming it will happen in other datasets.
+            if len(label_names) != len(label_sums):
+                logs.warning("Can't make a figure with the given label names: "
+                             "We don't have the right amount of label types "
+                             "to apply them to!")
+                return False
             fig_labels = px.pie(names=label_names, values=label_sums)
     except KeyError:
         logs.info("Input label data missing required key(s).")
@@ -198,7 +212,11 @@ class Labels:
         logs.info("Inside main label calculation function.")
         # The input Dataset object
         # When the label field is not found, an error will be thrown.
-        label_list = self.dset[label_field]
+        if label_field in self.dset:
+            label_list = self.dset[label_field]
+        else:
+            logs.warning("No label column found -- nothing to do. Returning.")
+            return {}
         # Get the evaluate library's measurement for label distro.
         label_distribution = evaluate.load(EVAL_LABEL_MEASURE)
         # Measure the label distro.
