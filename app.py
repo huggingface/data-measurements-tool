@@ -28,22 +28,9 @@ logs = utils.prepare_logging(__file__)
 DATASET_NAME_TO_DICT = dataset_utils.get_dataset_info_dicts()
 
 
-# Set up the basic interface of the app.
-# st.set_page_config(
-#     page_title="Demo to showcase dataset metrics",
-#     page_icon="https://huggingface.co/front/assets/huggingface_logo.svg",
-#     layout="wide",
-#     initial_sidebar_state="auto",
-# )
-
-
-def get_widgets(dstats):
+def get_load_prepare_list(dstats):
     """
-    # A measurement widget requires 2 things:
-    # - A load or prepare function
-    # - A display function
-    # We define these here; any widget can be trivially added in this way
-    # and the rest of the app logic will work.
+    # Get load_or_prepare functions for the measurements we will display
     """
     # Measurement calculation:
     # Add any additional modules and their load-prepare function here.
@@ -53,19 +40,34 @@ def get_widgets(dstats):
                          ("duplicates", dstats.load_or_prepare_text_duplicates),
                          ("npmi", dstats.load_or_prepare_npmi),
                          ("zipf", dstats.load_or_prepare_zipf)]
-    # Measurement interface:
-    # Add the graphic interfaces for any new measurements here.
-    # display_list = [("general stats", gr_utils.expander_general_stats),
-    #                 ("label distribution", gr_utils.expander_label_distribution),
-    #                 ("text_lengths", gr_utils.expander_text_lengths),
-    #                 ("duplicates", gr_utils.expander_text_duplicates),
-    #                 ("npmi", gr_utils.npmi_widget),
-    #                 ("zipf", gr_utils.expander_zipf)]
 
-    return load_prepare_list, display_list
+    return load_prepare_list
 
 
-def display_title(dstats):
+def get_ui_widgets():
+    """Get the widgets that will be displayed in the UI."""
+    return [widgets.DatasetDescription(DATASET_NAME_TO_DICT),
+            widgets.GeneralStats(),
+            widgets.LabelDistribution(),
+            widgets.TextLengths(),
+            widgets.Npmi(),
+            widgets.Zipf()]
+
+
+def get_widgets():
+    """
+    # A measurement widget requires 2 things:
+    # - A load or prepare function
+    # - A display function
+    # We define these in two separate functions get_load_prepare_list and get_ui_widgets;
+    # any widget can be added by modifying both functions and the rest of the app logic will work.
+    # get_load_prepare_list is a function since it requires a DatasetStatisticsCacheClass which will
+    # not be created until dataset and config values are selected in the ui
+    """
+    return get_load_prepare_list, get_ui_widgets()
+
+
+def get_title(dstats):
     title_str = f"### Showing: {dstats.dset_name} - {dstats.dset_config} - {dstats.split_name} - {'-'.join(dstats.text_field)}"
     logs.info("showing header")
     return title_str
@@ -165,28 +167,13 @@ def show_column(dstats, display_list, show_perplexities, column_id=""):
     logs.info("Have finished displaying the widgets.")
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--live", default=False, required=False, action="store_true", help="Flag to specify that this is not running live.")
-    parser.add_argument(
-        "--pull_cache_from_hub", default=False, required=False, action="store_true", help="Flag to specify whether to look in the hub for measurements caches. If you are using this option, you must have HUB_CACHE_ORGANIZATION=<the organization you've set up on the hub to store your cache> and HF_TOKEN=<your hf token> on separate lines in a file named .env at the root of this repo.")
-    arguments = parser.parse_args()
-    live = arguments.live
-    pull_cache_from_hub = arguments.pull_cache_from_hub
-
-    # Initialize the interface and grab the UI-provided arguments
+def create_demo(live: bool, pull_cache_from_hub: bool):
     with gr.Blocks() as demo:
-        widget_list = [widgets.DatasetDescription(DATASET_NAME_TO_DICT),
-                       widgets.GeneralStats(),
-                       widgets.LabelDistribution(),
-                       widgets.TextLengths(),
-                       widgets.Npmi(),
-                       widgets.Zipf()]
         state = gr.State()
         with gr.Row():
             with gr.Column():
                 dataset_args = display_initial_UI()
+                get_load_prepare_list_fn, widget_list = get_widgets()
                 # # TODO: Make this less of a weird outlier.
                 # Doesn't do anything right now
                 show_perplexities = gr.Checkbox(label="Show text perplexities")
@@ -197,19 +184,14 @@ def main():
                     widget.render()
 
             def update_ui(dataset: str, config: str, split: str, feature: str):
-                feature = ast.literal_eval(feature) #if isinstance(feature, str) else feature
+                feature = ast.literal_eval(feature)
                 label_field, label_names = gr_utils.get_label_names(dataset, config, DATASET_NAME_TO_DICT)
                 dstats = dmt_cls(dset_name=dataset, dset_config=config, split_name=split, text_field=feature,
                                  label_field=label_field, label_names=label_names, use_cache=True)
-                load_prepare_list = [("general stats", dstats.load_or_prepare_general_stats),
-                                     ("label distribution", dstats.load_or_prepare_labels),
-                                     ("text_lengths", dstats.load_or_prepare_text_lengths),
-                                     ("duplicates", dstats.load_or_prepare_text_duplicates),
-                                     ("npmi", dstats.load_or_prepare_npmi),
-                                     ("zipf", dstats.load_or_prepare_zipf)]
+                load_prepare_list = get_load_prepare_list_fn(dstats)
                 dstats = load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities=False,
-                                                 live=True, pull_cache_from_hub=False)
-                output = {title: display_title(dstats), state: dstats}
+                                                 live=live, pull_cache_from_hub=pull_cache_from_hub)
+                output = {title: get_title(dstats), state: dstats}
                 for widget in widget_list:
                     output.update(widget.update(dstats))
                 return output
@@ -269,7 +251,21 @@ def main():
                                               inputs=[dataset_args["dset_name"], dataset_args["dset_config"],
                                                       dataset_args["split_name"], dataset_args["text_field"]],
                                               outputs=[title, state] + measurements)
+    return demo
 
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--live", default=False, required=False, action="store_true", help="Flag to specify that this is not running live.")
+    parser.add_argument(
+        "--pull_cache_from_hub", default=False, required=False, action="store_true", help="Flag to specify whether to look in the hub for measurements caches. If you are using this option, you must have HUB_CACHE_ORGANIZATION=<the organization you've set up on the hub to store your cache> and HF_TOKEN=<your hf token> on separate lines in a file named .env at the root of this repo.")
+    arguments = parser.parse_args()
+    live = arguments.live
+    pull_cache_from_hub = arguments.pull_cache_from_hub
+
+    # Create and initialize the demo
+    demo = create_demo(live, pull_cache_from_hub)
 
     demo.launch()
 

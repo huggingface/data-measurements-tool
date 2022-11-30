@@ -87,7 +87,6 @@ class Npmi(Widget):
             s.index.name = "word"
             s = s.reset_index()
             bias_col = [col for col in s.columns if col != "word"]
-            # count_cols = s.filter(like="count").columns
             # Keep the dataframe from being crazy big.
             if s.shape[0] > 10000:
                 bias_thres = max(abs(s[s[0]][5000]), abs(s[s[0]][-5000]))
@@ -95,7 +94,6 @@ class Npmi(Widget):
                 s_filtered = s[s[0].abs() > bias_thres]
             else:
                 s_filtered = s
-            # cm = sns.palplot(sns.diverging_palette(270, 36, s=99, l=48, n=16))
             out_df = (
                 s_filtered.style.background_gradient(subset=bias_col)
                 .format(formatter="{:,.3f}", subset=bias_col)
@@ -104,9 +102,6 @@ class Npmi(Widget):
                     "nPMI scores between the selected identity terms and the words they both co-occur with"
                 )
             )
-            # set_properties(subset=count_cols, **{"width": "10em", "text-align": "center"}).
-            # .format(subset=count_cols, formatter=int).
-            # .format(subset=bias_col, formatter="{:,.3f}")
             output[self.npmi_df] = out_df.to_html()
         return output
 

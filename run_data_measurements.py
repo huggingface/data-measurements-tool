@@ -31,8 +31,7 @@ def load_or_prepare_widgets(ds_args, show_embeddings=False,
     Returns:
 
     """
-    dstats = dataset_statistics.DatasetStatisticsCacheClass(**ds_args, save=True,
-                                                            use_cache=use_cache)
+    dstats = dataset_statistics.DatasetStatisticsCacheClass(**ds_args, use_cache=use_cache)
     # Header widget
     dstats.load_or_prepare_dset_peek()
     # General stats widget
