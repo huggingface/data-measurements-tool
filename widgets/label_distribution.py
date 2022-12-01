@@ -16,7 +16,7 @@ class LabelDistribution(Widget):
         self.label_dist_accordion = gr.Accordion(render=False, label="", open=False)
 
     def render(self):
-        with gr.Accordion(label="Label Distribution", open=False):
+        with gr.TabItem(label="Label Distribution"):
             gr.Markdown(
                 "Use this widget to see how balanced the labels in your dataset are."
             )

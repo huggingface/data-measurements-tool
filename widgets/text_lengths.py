@@ -20,7 +20,7 @@ class TextLengths(Widget):
         ].set_index("length")
 
     def render(self):
-        with gr.Accordion("Text Lengths", open=False):
+        with gr.TabItem("Text Lengths"):
             gr.Markdown(
                 "Use this widget to identify outliers, particularly suspiciously long outliers."
             )

@@ -171,13 +171,13 @@ def create_demo(live: bool, pull_cache_from_hub: bool):
     with gr.Blocks() as demo:
         state = gr.State()
         with gr.Row():
-            with gr.Column():
+            with gr.Column(scale=1):
                 dataset_args = display_initial_UI()
                 get_load_prepare_list_fn, widget_list = get_widgets()
                 # # TODO: Make this less of a weird outlier.
                 # Doesn't do anything right now
                 show_perplexities = gr.Checkbox(label="Show text perplexities")
-            with gr.Column():
+            with gr.Column(scale=4):
                 gr.Markdown("# Data Measurements Tool")
                 title = gr.Markdown()
                 for widget in widget_list:

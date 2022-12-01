@@ -16,7 +16,7 @@ class DatasetDescription(Widget):
         self.description_df = gr.DataFrame(render=False, wrap=True)
 
     def render(self):
-        with gr.Accordion("Dataset Description", open=False):
+        with gr.TabItem("Dataset Description",):
             self.description_markdown.render()
             self.description_df.render()
 

@@ -25,7 +25,7 @@ class Zipf(Widget):
         self.zipf_plot = gr.Plot(render=False)
 
     def render(self):
-        with gr.Accordion("Vocabulary Distribution: Zipf's Law Fit", open=False):
+        with gr.TabItem("Vocabulary Distribution: Zipf's Law Fit"):
             gr.Markdown(
                 "Use this widget for the counts of different words in your dataset, measuring the difference between the observed count and the expected count under Zipf's law."
             )

@@ -17,7 +17,7 @@ class Npmi(Widget):
             render=False, label="What is the second word you want to select?"
         )
         self.npmi_error_text = gr.Markdown(render=False)
-        self.npmi_df = gr.HTML(render=False)
+        self.npmi_df = gr.DataFrame(render=False)
         self.npmi_empty_text = gr.Markdown(render=False)
         self.npmi_description = gr.Markdown(render=False)
 
@@ -33,7 +33,7 @@ class Npmi(Widget):
         ]
 
     def render(self):
-        with gr.Accordion("Word Association: nPMI", open=False):
+        with gr.TabItem("Word Association: nPMI"):
             self.npmi_description.render()
             self.npmi_first_word.render()
             self.npmi_second_word.render()
@@ -76,7 +76,7 @@ class Npmi(Widget):
                         Or we're still computing this one. 🤷""",
                 visible=True,
             )
-            output[self.npmi_df] = gr.HTML.update(visible=False)
+            output[self.npmi_df] = gr.DataFrame.update(visible=False)
         else:
             output[self.npmi_empty_text] = gr.Markdown.update(visible=False)
             logs.debug("Results to be shown in streamlit are")
@@ -94,15 +94,7 @@ class Npmi(Widget):
                 s_filtered = s[s[0].abs() > bias_thres]
             else:
                 s_filtered = s
-            out_df = (
-                s_filtered.style.background_gradient(subset=bias_col)
-                .format(formatter="{:,.3f}", subset=bias_col)
-                .set_properties(**{"align": "center", "width": "100em"})
-                .set_caption(
-                    "nPMI scores between the selected identity terms and the words they both co-occur with"
-                )
-            )
-            output[self.npmi_df] = out_df.to_html()
+            output[self.npmi_df] = s_filtered
         return output
 
     @staticmethod

@@ -16,7 +16,7 @@ class GeneralStats(Widget):
         self.general_stats_duplicates = gr.Markdown(render=False)
 
     def render(self):
-        with gr.Accordion(f"General Text Statistics", open=False):
+        with gr.TabItem(f"General Text Statistics"):
             self.general_stats.render()
             self.general_stats_top_vocab.render()
             self.general_stats_missing.render()
