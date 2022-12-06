@@ -206,8 +206,6 @@ def create_demo(live: bool, pull_cache_from_hub: bool):
                     dataset_args["text_field"]: gr.Dropdown.update(choices=new_values[1][0], value=feature),
                     dataset_args["split_name"]: gr.Dropdown.update(choices=new_values[2][0], value=split),
                 }
-                new_measurements = update_ui(dataset, config, split, feature)
-                new_dropdown.update(new_measurements)
                 return new_dropdown
 
             def update_config(dataset: str, config: str):
@@ -219,8 +217,6 @@ def create_demo(live: bool, pull_cache_from_hub: bool):
                     dataset_args["text_field"]: gr.Dropdown.update(choices=new_values[0][0], value=feature),
                     dataset_args["split_name"]: gr.Dropdown.update(choices=new_values[1][0], value=split)
                 }
-                new_measurements = update_ui(dataset, config, split, feature)
-                new_dropdown.update(new_measurements)
                 return new_dropdown
 
             measurements = [comp for output in widget_list for comp in output.output_components]
@@ -238,19 +234,14 @@ def create_demo(live: bool, pull_cache_from_hub: bool):
                                              title, state] + measurements)
 
             dataset_args["dset_config"].change(update_config,
-                                             inputs=[dataset_args["dset_name"], dataset_args["dset_config"]],
-                                             outputs=[dataset_args["split_name"], dataset_args["text_field"],
-                                             title, state] + measurements)
+                                               inputs=[dataset_args["dset_name"], dataset_args["dset_config"]],
+                                               outputs=[dataset_args["split_name"], dataset_args["text_field"],
+                                                        title, state] + measurements)
 
-            dataset_args["text_field"].change(update_ui,
-                                              inputs=[dataset_args["dset_name"], dataset_args["dset_config"],
-                                                      dataset_args["split_name"], dataset_args["text_field"]],
-                                              outputs=[title, state] + measurements)
-
-            dataset_args["split_name"].change(update_ui,
-                                              inputs=[dataset_args["dset_name"], dataset_args["dset_config"],
-                                                      dataset_args["split_name"], dataset_args["text_field"]],
-                                              outputs=[title, state] + measurements)
+            dataset_args["calculate_btn"].click(update_ui,
+                                                inputs=[dataset_args["dset_name"], dataset_args["dset_config"],
+                                                        dataset_args["split_name"], dataset_args["text_field"]],
+                                                outputs=[title, state] + measurements)
     return demo
 
 

@@ -141,6 +141,7 @@ def sidebar_selection(ds_name_to_dict, column_id=""):
             value=avail_splits[0],
         )
         label_field, label_names = get_label_names(ds_name.value, config_name.value, ds_name_to_dict)
+        calculate_btn = gr.Button(value="Calculate", variant="primary")
         return {
             "dset_name": ds_name,
             "dset_config": config_name,
@@ -148,6 +149,7 @@ def sidebar_selection(ds_name_to_dict, column_id=""):
             "text_field": text_field,
             "label_field": label_field,
             "label_names": label_names,
+            "calculate_btn": calculate_btn
         }
 
 
