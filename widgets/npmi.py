@@ -102,7 +102,7 @@ class Npmi(Widget):
             out_df = (
                 s_filtered.style.background_gradient(subset=bias_col)
                 .format(formatter="{:,.3f}", subset=bias_col)
-                .set_properties(**{"align": "center", "width": "100em"})
+                .set_properties(**{"text-align": "center", "width": "100em"})
                 .set_caption(
                     "nPMI scores between the selected identity terms and the words they both co-occur with"
                 )
