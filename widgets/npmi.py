@@ -17,7 +17,8 @@ class Npmi(Widget):
             render=False, label="What is the second word you want to select?"
         )
         self.npmi_error_text = gr.Markdown(render=False)
-        self.npmi_df = gr.DataFrame(render=False)
+        self.npmi_df = gr.HTML(render=False)
+        self.sort = gr.Dropdown(label="Sort By Column", render=False)
         self.npmi_empty_text = gr.Markdown(render=False)
         self.npmi_description = gr.Markdown(render=False)
 
@@ -26,6 +27,7 @@ class Npmi(Widget):
         return [
             self.npmi_first_word,
             self.npmi_second_word,
+            self.sort,
             self.npmi_error_text,
             self.npmi_df,
             self.npmi_description,
@@ -37,6 +39,7 @@ class Npmi(Widget):
             self.npmi_description.render()
             self.npmi_first_word.render()
             self.npmi_second_word.render()
+            self.sort.render()
             self.npmi_df.render()
             self.npmi_empty_text.render()
             self.npmi_error_text.render()
@@ -56,8 +59,10 @@ class Npmi(Widget):
             output[self.npmi_second_word] = gr.Dropdown.update(
                 choices=available_terms[::-1], value=available_terms[-1], visible=True
             )
+            output[self.sort] = gr.Dropdown.update(choices=['bias', available_terms[0], available_terms[-1]],
+                                                   value='bias')
             output.update(
-                self.npmi_show(available_terms[0], available_terms[-1], dstats)
+                self.npmi_show(available_terms[0], available_terms[-1], 'bias', dstats)
             )
         else:
             output[self.npmi_error_text] = gr.Markdown.update(
@@ -66,7 +71,7 @@ class Npmi(Widget):
             )
         return output
 
-    def npmi_show(self, term1, term2, dstats):
+    def npmi_show(self, term1, term2, sort_col, dstats):
         npmi_stats = dstats.npmi_obj
         paired_results = npmi_stats.get_display(term1, term2)
         output = {}
@@ -82,10 +87,10 @@ class Npmi(Widget):
             logs.debug("Results to be shown in streamlit are")
             logs.debug(paired_results)
             s = pd.DataFrame(
-                paired_results.sort_values(paired_results.columns[0], ascending=True)
+                paired_results.sort_values(sort_col, ascending=False)
             )
             s.index.name = "word"
-            s = s.reset_index()
+            #s = s.reset_index()
             bias_col = [col for col in s.columns if col != "word"]
             # Keep the dataframe from being crazy big.
             if s.shape[0] > 10000:
@@ -94,7 +99,15 @@ class Npmi(Widget):
                 s_filtered = s[s[0].abs() > bias_thres]
             else:
                 s_filtered = s
-            output[self.npmi_df] = s_filtered
+            out_df = (
+                s_filtered.style.background_gradient(subset=bias_col)
+                .format(formatter="{:,.3f}", subset=bias_col)
+                .set_properties(**{"align": "center", "width": "100em"})
+                .set_caption(
+                    "nPMI scores between the selected identity terms and the words they both co-occur with"
+                )
+            )
+            output[self.npmi_df] = out_df.to_html()
         return output
 
     @staticmethod
@@ -123,14 +136,26 @@ class Npmi(Widget):
         -----
         """
 
+    def update_sort_and_npmi(self, first_word, second_word, sort_col, dstats):
+        output = {self.sort: gr.Dropdown.update(choices=['bias', first_word, second_word],
+                                                value='bias')}
+        new_df = self.npmi_show(first_word, second_word, sort_col, dstats)
+        output.update(new_df)
+        return output
+
     def add_events(self, state: gr.State):
         self.npmi_first_word.change(
-            self.npmi_show,
-            inputs=[self.npmi_first_word, self.npmi_second_word, state],
-            outputs=[self.npmi_df, self.npmi_empty_text],
+            self.update_sort_and_npmi,
+            inputs=[self.npmi_first_word, self.npmi_second_word, self.sort, state],
+            outputs=[self.npmi_df, self.npmi_empty_text, self.sort],
         )
         self.npmi_second_word.change(
+            self.update_sort_and_npmi,
+            inputs=[self.npmi_first_word, self.npmi_second_word, self.sort, state],
+            outputs=[self.npmi_df, self.npmi_empty_text, self.sort],
+        )
+        self.sort.change(
             self.npmi_show,
-            inputs=[self.npmi_first_word, self.npmi_second_word, state],
+            inputs=[self.npmi_first_word, self.npmi_second_word, self.sort, state],
             outputs=[self.npmi_df, self.npmi_empty_text],
         )
