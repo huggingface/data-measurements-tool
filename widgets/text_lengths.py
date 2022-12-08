@@ -52,6 +52,7 @@ class TextLengths(Widget):
             + str(round(dstats.length_obj.std_length, 2))
             + "**."
         )
+        # TODO: Add text on choosing the length you want to the dropdown.
         output = {
             self.text_length_distribution_plot: dstats.length_obj.fig_lengths,
             self.text_length_explainer: explainer_text,
