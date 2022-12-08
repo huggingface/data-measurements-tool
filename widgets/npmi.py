@@ -90,7 +90,6 @@ class Npmi(Widget):
                 paired_results.sort_values(sort_col, ascending=False)
             )
             s.index.name = "word"
-            #s = s.reset_index()
             bias_col = [col for col in s.columns if col != "word"]
             # Keep the dataframe from being crazy big.
             if s.shape[0] > 10000:
