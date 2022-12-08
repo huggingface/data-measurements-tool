@@ -2,6 +2,7 @@ import logging
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
+from PIL import Image
 import seaborn as sns
 import statistics
 from os.path import join as pjoin
@@ -27,6 +28,7 @@ logs = utils.prepare_logging(__file__)
 def make_fig_lengths(lengths_df):
     # How the hell is this working? plt transforms to sns  ?!
     logs.info("Creating lengths figure.")
+    plt.switch_backend('Agg')
     fig_tok_lengths, axs = plt.subplots(figsize=(15, 6), dpi=150)
     plt.xlabel("Number of tokens")
     plt.title("Binned counts of text lengths, with kernel density estimate and ticks for each instance.")
@@ -93,6 +95,10 @@ class DMTHelper:
             if self.save:
                 logs.info("Saving results.")
                 self._write_lengths_cache()
+                if exists(self.lengths_fig_png_fid):
+                    # As soon as we have a figure, we redefine it as an image.
+                    # This is a hack to handle a UI display error (TODO: file bug)
+                    self.fig_lengths = Image.open(self.lengths_fig_png_fid)
 
     def set_attributes(self):
         if self.length_stats_dict:
@@ -100,7 +106,7 @@ class DMTHelper:
             self.std_length = self.length_stats_dict[STD]
             self.uniq_counts = self.length_stats_dict[UNIQ]
         else:
-            logs.info("Dictionary of results is empty, couldn't load measurements. =(")
+            logs.info("No lengths stats found. =(")
 
     def load_lengths_cache(self):
         # Dataframe with <sentence, length> exists. Load it.
@@ -108,7 +114,7 @@ class DMTHelper:
             self.lengths_df = ds_utils.read_df(self.lengths_df_json_fid)
         # Image exists. Load it.
         if exists(self.lengths_fig_png_fid):
-            self.fig_lengths = mpimg.imread(self.lengths_fig_png_fid)
+            self.fig_lengths = Image.open(self.lengths_fig_png_fid) # mpimg.imread(self.lengths_fig_png_fid)
         # Measurements exist. Load them.
         if exists(self.length_stats_json_fid):
             # Loads the length measurements
