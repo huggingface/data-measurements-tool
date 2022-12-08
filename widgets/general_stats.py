@@ -32,7 +32,7 @@ class GeneralStats(Widget):
 
         The most common [open class words](https://dictionary.apa.org/open-class-words) and their counts are: 
         """
-        top_vocab = pd.DataFrame(dstats.sorted_top_vocab_df)
+        top_vocab = pd.DataFrame(dstats.sorted_top_vocab_df).round(4)
         missing_text = (
             f"There are {dstats.text_nan_count} missing values in the dataset"
         )
