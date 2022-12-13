@@ -95,7 +95,7 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
 
     if do_all or calculation == "labels":
         logs.info("\n* Calculating label statistics.")
-        if dstats.label_field not in dstats.dset:
+        if dstats.label_field not in dstats.dset.features:
             logs.warning("No label field found.")
             logs.info("No label statistics to calculate.")
         else:
