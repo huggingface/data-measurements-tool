@@ -24,7 +24,7 @@ class Duplicates(Widget):
         self.duplicates_text = gr.Markdown(render=False)
 
     def render(self):
-        with gr.TabItem(f"General Text Statistics"):
+        with gr.TabItem(f"Duplicates"):
             self.duplicates_intro.render()
             self.duplicates_text.render()
             self.duplicates_df.render()
