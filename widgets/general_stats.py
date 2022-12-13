@@ -16,11 +16,11 @@ class GeneralStats(Widget):
         self.general_stats_duplicates = gr.Markdown(render=False)
 
     def render(self):
-        with gr.TabItem(f"General Text Statistics"):
+        with gr.TabItem(f"Duplicates"):
             self.general_stats.render()
-            self.general_stats_top_vocab.render()
             self.general_stats_missing.render()
             self.general_stats_duplicates.render()
+            self.general_stats_top_vocab.render()
 
     def update(self, dstats: dmt_cls):
         general_stats_text = f"""
@@ -37,7 +37,7 @@ class GeneralStats(Widget):
             f"There are {dstats.text_nan_count} missing values in the dataset"
         )
         if dstats.dups_frac > 0:
-            dupes_text = f"The dataset is {round(dstats.dups_frac * 100, 2)}% duplicates, For more information about the duplicates, click the 'Duplicates' tab below."
+            dupes_text = f"The dataset is {round(dstats.dups_frac * 100, 2)}% duplicates, For more information about the duplicates, click the 'Duplicates' tab."
         else:
             dupes_text = "There are 0 duplicate items in the dataset"
         return {

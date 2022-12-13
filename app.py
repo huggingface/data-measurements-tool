@@ -50,6 +50,7 @@ def get_ui_widgets():
             widgets.GeneralStats(),
             widgets.LabelDistribution(),
             widgets.TextLengths(),
+            widgets.Duplicates(),
             widgets.Npmi(),
             widgets.Zipf()]
 

@@ -5,3 +5,4 @@ from widgets.label_distribution import LabelDistribution
 from widgets.npmi import Npmi
 from widgets.text_lengths import TextLengths
 from widgets.zipf import Zipf
+from widgets.duplicates import Duplicates
