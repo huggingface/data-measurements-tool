@@ -37,7 +37,11 @@ class Duplicates(Widget):
             output[self.duplicates_text] = gr.Markdown.update(visible=True,
                                                               value="There are no duplicates in this dataset! 🥳")
         else:
-            dupes_df = ds_utils.counter_dict_to_df(dstats.dups_dict)
+            dupes_df_tmp = ds_utils.counter_dict_to_df(dstats.dups_dict, key_as_column=True)
+            dupes_df_tmp.columns = ["instance", "count"]
+            # Nice to have the counts show up first, because the instances
+            # can be quite long (and run off the page)
+            dupes_df = dupes_df_tmp[["count", "instance"]]
             output[self.duplicates_df] = gr.DataFrame.update(visible=True, value=dupes_df)
 
             duplicates_text = f"The fraction of data that is duplicate is {str(round(dstats.dups_frac, 4))}"
