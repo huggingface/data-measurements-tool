@@ -8,7 +8,7 @@ def prepare_logging(fid):
     Path('./log_files').mkdir(exist_ok=True)
     log_fid = Path(fid).stem
     logs = logging.getLogger(log_fid)
-    logs.setLevel(logging.DEBUG)
+    logs.setLevel(logging.ERROR)
 
     logs.propagate = False
     log_fid = Path(fid).stem
@@ -18,12 +18,12 @@ def prepare_logging(fid):
         print("Logging output in %s " % file_path)
         file = logging.FileHandler(file_path)
         fileformat = logging.Formatter("%(asctime)s:%(pathname)s,  %(module)s:%(lineno)s\n%(message)s")
-        file.setLevel(logging.INFO)
+        file.setLevel(logging.ERROR)
         file.setFormatter(fileformat)
         # Logging debug messages to stream
         stream = logging.StreamHandler()
         streamformat = logging.Formatter("[data_measurements_tool] {%(pathname)s:%(lineno)d} %(module)s %(levelname)s - %(message)s")
-        stream.setLevel(logging.DEBUG)
+        stream.setLevel(logging.ERROR)
         stream.setFormatter(streamformat)
         logs.addHandler(file)
         logs.addHandler(stream)

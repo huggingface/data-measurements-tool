@@ -14,7 +14,6 @@
 
 import numpy as np
 import pandas as pd
-import sys
 import utils
 import utils.dataset_utils as ds_utils
 import warnings
@@ -23,6 +22,7 @@ from os.path import exists
 from os.path import join as pjoin
 from sklearn.preprocessing import MultiLabelBinarizer
 from utils.dataset_utils import (CNT, TOKENIZED_FIELD)
+from abc import ABC, abstractmethod
 
 # Might be nice to print to log instead? Happens when we drop closed class.
 warnings.filterwarnings(action="ignore", category=UserWarning)
@@ -39,6 +39,7 @@ SING = "associations"
 DIFF = "biases"
 # Used in the figures we show in DMT
 DMT = "combined"
+
 
 def pair_terms(id_terms):
     """Creates alphabetically ordered paired terms based on the given terms."""
@@ -194,34 +195,6 @@ class DMTHelper:
         self.assoc_results_dict = assoc_obj.assoc_results_dict
         self.results_dict = assoc_obj.bias_results_dict
 
-    def _prepare_dmt_dfs(self, measure="npmi"):
-        """
-        Create the main dataframe that is used in the DMT, which lists
-        the npmi scores for each paired identity term and the difference between
-        them. The difference between them is the "bias".
-        """
-        # Paired identity terms, associations and differences, in one dataframe.
-        bias_dfs_dict = defaultdict(dict)
-        logs.debug("bias results dict is")
-        logs.debug(self.bias_results_dict)
-        for pair in sorted(self.bias_results_dict):
-            combined_df = pd.DataFrame()
-            # Paired identity terms, values are the the difference between them.
-            combined_df[pair] = pd.DataFrame(self.bias_results_dict[pair])
-            s1 = pair[0]
-            s2 = pair[1]
-            # Single identity term 1, values
-            combined_df[s1] = pd.DataFrame(self.assoc_results_dict[s1][measure])
-            # Single identity term 2, values
-            combined_df[s2] = pd.DataFrame(self.assoc_results_dict[s2][measure])
-            # Full dataframe with scores per-term,
-            # as well as the difference between.
-            bias_dfs_dict[pair] = combined_df
-        # {pair: {pd.DataFrame({(s1,s2)):diffs, s1:assocs, s2:assocs})}}
-        logs.debug("combined df is")
-        logs.debug(bias_dfs_dict)
-        return bias_dfs_dict
-
     def _write_term_cache(self):
         ds_utils.make_path(self.cache_path)
         if self.avail_identity_terms:
@@ -277,13 +250,13 @@ class DMTHelper:
         return filenames
 
 
-class nPMI:
+class Association(ABC):
     """
-    Uses the vocabulary dataframe and tokenized sentences to calculate
-    co-occurrence statistics, PMI, and nPMI
-    """
+     Uses the vocabulary dataframe and tokenized sentences to calculate
+     co-occurrence statistics, PMI, and nPMI
+     """
 
-    def __init__(self, vocab_counts_df, tokenized_sentence_df, given_id_terms):
+    def __init__(self, vocab_counts_df, tokenized_sentence_df, given_id_terms, measure=None):
         logs.debug("Initiating assoc class.")
         self.vocab_counts_df = vocab_counts_df
         # TODO: Change this logic so just the vocabulary is given.
@@ -308,7 +281,7 @@ class nPMI:
         # Dictionary keyed by pair tuples. Each value is a dataframe with
         # vocab terms as the index, and columns of paired difference and
         # individual scores for the two identity terms.
-        self.bias_results_dict = self.calc_bias(self.assoc_results_dict)
+        self.bias_results_dict = self.calc_bias(self.assoc_results_dict, measure)
 
     def count_words_per_sentence(self):
         # Counts the number of each vocabulary item per-sentence in batches.
@@ -335,32 +308,64 @@ class nPMI:
             word_cnts_per_sentence.append(mlb_series)
         return word_cnts_per_sentence
 
+    @abstractmethod
+    def calculate(self, subgroup):
+        pass
+
     def calc_measures(self):
         id_results = {}
         for subgroup in self.given_id_terms:
-            logs.info("Calculating for %s " % subgroup)
-            # Index of the identity term in the vocabulary
-            subgroup_idx = self.vocabulary.index(subgroup)
-            print("idx is %s" % subgroup_idx)
-            logs.debug("Calculating co-occurrences...")
-            vocab_cooc_df = self.calc_cooccurrences(subgroup, subgroup_idx)
-            logs.debug("Calculating PMI...")
-            pmi_df = self.calc_PMI(vocab_cooc_df, subgroup)
-            logs.debug("PMI dataframe is:")
-            logs.debug(pmi_df)
-            logs.debug("Calculating nPMI...")
-            npmi_df = self.calc_nPMI(pmi_df, vocab_cooc_df, subgroup)
-            logs.debug("npmi df is")
-            logs.debug(npmi_df)
-            # Create a data structure for the identity term associations
-            id_results[subgroup] = {"count": vocab_cooc_df,
-                                    "pmi": pmi_df,
-                                    "npmi": npmi_df}
-            logs.debug("results_dict is:")
-            print(id_results)
+            id_results[subgroup] = self.calculate(subgroup)
         return id_results
 
-    def calc_cooccurrences(self, subgroup, subgroup_idx):
+    def calc_bias(self, measurements_dict, measure):
+        """Uses the subgroup dictionaries to compute the differences across pairs.
+        Uses dictionaries rather than dataframes due to the fact that dicts seem
+        to be preferred amongst evaluate users so far.
+        :return: Dict of (id_term1, id_term2):{term1:diff, term2:diff ...}"""
+        paired_results_dict = {}
+        for pair in self.paired_terms:
+            paired_results = pd.DataFrame()
+            s1 = pair[0]
+            s2 = pair[1]
+            s1_results = measurements_dict[s1][measure]
+            s2_results = measurements_dict[s2][measure]
+            # !!! This is the final result of all the work !!!
+            word_diffs = s1_results[s1] - s2_results[s2]
+            paired_results[("%s - %s" % (s1, s2))] = word_diffs
+            paired_results[s1] = s1_results
+            paired_results[s2] = s2_results
+            paired_results_dict[pair] = paired_results.dropna()
+        logs.debug("Paired bias results from the main nPMI class are ")
+        logs.debug(paired_results_dict)
+        return paired_results_dict
+
+    def _write_debug_msg(self, batch_id, subgroup_df=None,
+                         subgroup_sentences=None, msg_type="batching"):
+        if msg_type == "batching":
+            if not batch_id % 100:
+                logs.debug(
+                    "%s of %s co-occurrence count batches"
+                    % (str(batch_id), str(len(self.word_cnts_per_sentence)))
+                )
+        elif msg_type == "transpose":
+            if not batch_id % 100:
+                logs.debug("Removing 0 counts, subgroup_df is")
+                logs.debug(subgroup_df)
+                logs.debug("subgroup_sentences is")
+                logs.debug(subgroup_sentences)
+                logs.debug(
+                    "Now we do the transpose approach for co-occurrences")
+
+
+class Cooccurence(Association):
+    def calculate(self, subgroup):
+        logs.info("Calculating for %s " % subgroup)
+        # Index of the identity term in the vocabulary
+        subgroup_idx = self.vocabulary.index(subgroup)
+        # print("idx is %s" % subgroup_idx)
+        logs.debug("Calculating co-occurrences...")
+
         initialize = True
         coo_df = None
         # Big computation here!  Should only happen once.
@@ -401,19 +406,28 @@ class nPMI:
         count_df = coo_df.set_index(self.vocab_counts_df.index)
         count_df.columns = ["count"]
         count_df["count"] = count_df["count"].astype(int)
-        return count_df
 
-    def calc_PMI(self, vocab_cooc_df, subgroup):
+        # Create a data structure for the identity term associations
+        # logs.debug("results_dict is:")
+        return {
+            "count": count_df,
+        }
+
+
+class PMI(Cooccurence):
+    def __init__(self, *args, measure="pmi", **kwargs):
+        super().__init__(*args, **kwargs, measure=measure)
+
+    def calculate(self, subgroup):
+        base_results = super().calculate(subgroup)
+        vocab_cooc_df = base_results["count"]
+
         """A
         # PMI(x;y) = h(y) - h(y|x)
         #          = h(subgroup) - h(subgroup|word)az
         #          = log (p(subgroup|word) / p(subgroup))
         # nPMI additionally divides by -log(p(x,y)) = -log(p(x|y)p(y))
         """
-        print("vocab cooc df")
-        print(vocab_cooc_df)
-        print("vocab counts")
-        print(self.vocab_counts_df["count"])
         # Calculation of p(subgroup)
         subgroup_prob = self.vocab_counts_df.loc[subgroup]["proportion"]
         # Calculation of p(subgroup|word) = count(subgroup,word) / count(word)
@@ -421,7 +435,7 @@ class nPMI:
         # this division doesn't need to specify the index (I think?!)
         vocab_cooc_df.columns = ["cooc"]
         p_subgroup_g_word = (
-                    vocab_cooc_df["cooc"] / self.vocab_counts_df["count"])
+                vocab_cooc_df["cooc"] / self.vocab_counts_df["count"])
         logs.info("p_subgroup_g_word is")
         logs.info(p_subgroup_g_word)
         pmi_df = pd.DataFrame()
@@ -430,9 +444,20 @@ class nPMI:
         # can be based on this zip idea:
         # df_test['size_kb'],  df_test['size_mb'], df_test['size_gb'] =
         # zip(*df_test['size'].apply(sizes))
-        return pmi_df
 
-    def calc_nPMI(self, pmi_df, vocab_cooc_df, subgroup):
+        return {**base_results, "pmi": pmi_df}
+
+
+class nPMI(PMI):
+    def __init__(self, *args, measure="npmi", **kwargs):
+        super().__init__(*args, **kwargs, measure=measure)
+
+    def calculate(self, subgroup):
+        base_results = super().calculate(subgroup)
+
+        pmi_df = base_results["pmi"]
+        vocab_cooc_df = base_results["count"]
+
         """
         # nPMI additionally divides by -log(p(x,y)) = -log(p(x|y)p(y))
         #                                           = -log(p(word|subgroup)p(word))
@@ -448,43 +473,5 @@ class nPMI:
         normalize_pmi = -np.log(p_word_g_subgroup * p_word)
         npmi_df = pd.DataFrame()
         npmi_df[subgroup] = pmi_df[subgroup] / normalize_pmi
-        return npmi_df.dropna()
 
-    def calc_bias(self, measurements_dict, measure="npmi"):
-        """Uses the subgroup dictionaries to compute the differences across pairs.
-        Uses dictionaries rather than dataframes due to the fact that dicts seem
-        to be preferred amongst evaluate users so far.
-        :return: Dict of (id_term1, id_term2):{term1:diff, term2:diff ...}"""
-        paired_results_dict = {}
-        for pair in self.paired_terms:
-            paired_results = pd.DataFrame()
-            s1 = pair[0]
-            s2 = pair[1]
-            s1_results = measurements_dict[s1][measure]
-            s2_results = measurements_dict[s2][measure]
-            # !!! This is the final result of all the work !!!
-            word_diffs = s1_results[s1] - s2_results[s2]
-            paired_results[("%s - %s" % (s1, s2))] = word_diffs
-            paired_results[s1] = s1_results
-            paired_results[s2] = s2_results
-            paired_results_dict[pair] = paired_results.dropna()
-        logs.debug("Paired bias results from the main nPMI class are ")
-        logs.debug(paired_results_dict)
-        return paired_results_dict
-
-    def _write_debug_msg(self, batch_id, subgroup_df=None,
-                         subgroup_sentences=None, msg_type="batching"):
-        if msg_type == "batching":
-            if not batch_id % 100:
-                logs.debug(
-                    "%s of %s co-occurrence count batches"
-                    % (str(batch_id), str(len(self.word_cnts_per_sentence)))
-                )
-        elif msg_type == "transpose":
-            if not batch_id % 100:
-                logs.debug("Removing 0 counts, subgroup_df is")
-                logs.debug(subgroup_df)
-                logs.debug("subgroup_sentences is")
-                logs.debug(subgroup_sentences)
-                logs.debug(
-                    "Now we do the transpose approach for co-occurrences")
+        return {**base_results, "npmi": npmi_df.dropna()}
