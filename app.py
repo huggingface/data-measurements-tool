@@ -174,6 +174,7 @@ def show_column(dstats, display_list, show_perplexities, column_id=""):
     logs.info("Have finished displaying the widgets.")
 
 def main():
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--live", default=False, required=False, action="store_true", help="Flag to specify that this is not running live.")
