@@ -554,7 +554,7 @@ def count_vocab_frequencies(tokenized_df):
         tf.append(batch_result)
         i += 1
     word_count_df = pd.DataFrame(
-        [np.sum(tf, axis=0)], columns=cvec.get_feature_names()
+        [np.sum(tf, axis=0)], columns=cvec.get_feature_names_out()
     ).transpose()
     # Now organize everything into the dataframes
     word_count_df.columns = [CNT]
