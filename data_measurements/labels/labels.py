@@ -210,12 +210,14 @@ class Labels:
     def prepare_labels(self, label_field, label_names=[]):
         """ Uses the evaluate library to return the label distribution. """
         logs.info("Inside main label calculation function.")
+        logs.debug("Looking for label field called '%s'" % label_field)
         # The input Dataset object
         # When the label field is not found, an error will be thrown.
-        if label_field in self.dset:
+        if label_field in self.dset.features:
             label_list = self.dset[label_field]
         else:
             logs.warning("No label column found -- nothing to do. Returning.")
+            logs.debug(self.dset.features)
             return {}
         # Get the evaluate library's measurement for label distro.
         label_distribution = evaluate.load(EVAL_LABEL_MEASURE)

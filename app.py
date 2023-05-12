@@ -13,15 +13,14 @@
 # limitations under the License.
 
 import argparse
-import logging
-import streamlit as st
-from os import mkdir
+import ast
+import gradio as gr
 from os.path import isdir
-from pathlib import Path
 from data_measurements.dataset_statistics import DatasetStatisticsCacheClass as dmt_cls
 import utils
 from utils import dataset_utils
-from utils import streamlit_utils as st_utils
+from utils import gradio_utils as gr_utils
+import widgets
 
 logs = utils.prepare_logging(__file__)
 
@@ -29,21 +28,9 @@ logs = utils.prepare_logging(__file__)
 DATASET_NAME_TO_DICT = dataset_utils.get_dataset_info_dicts()
 
 
-# Set up the basic interface of the app.
-st.set_page_config(
-    page_title="Demo to showcase dataset metrics",
-    page_icon="https://huggingface.co/front/assets/huggingface_logo.svg",
-    layout="wide",
-    initial_sidebar_state="auto",
-)
-
-def get_widgets(dstats):
+def get_load_prepare_list(dstats):
     """
-    # A measurement widget requires 2 things:
-    # - A load or prepare function
-    # - A display function
-    # We define these here; any widget can be trivially added in this way
-    # and the rest of the app logic will work.
+    # Get load_or_prepare functions for the measurements we will display
     """
     # Measurement calculation:
     # Add any additional modules and their load-prepare function here.
@@ -53,39 +40,46 @@ def get_widgets(dstats):
                          ("duplicates", dstats.load_or_prepare_text_duplicates),
                          ("npmi", dstats.load_or_prepare_npmi),
                          ("zipf", dstats.load_or_prepare_zipf)]
-    # Measurement interface:
-    # Add the graphic interfaces for any new measurements here.
-    display_list = [("general stats", st_utils.expander_general_stats),
-                    ("label distribution", st_utils.expander_label_distribution),
-                    ("text_lengths", st_utils.expander_text_lengths),
-                    ("duplicates", st_utils.expander_text_duplicates),
-                    ("npmi", st_utils.npmi_widget),
-                    ("zipf", st_utils.expander_zipf)]
 
-    return load_prepare_list, display_list
+    return load_prepare_list
 
-def display_title(dstats):
+
+def get_ui_widgets():
+    """Get the widgets that will be displayed in the UI."""
+    return [widgets.DatasetDescription(DATASET_NAME_TO_DICT),
+            widgets.GeneralStats(),
+            widgets.LabelDistribution(),
+            widgets.TextLengths(),
+            widgets.Duplicates(),
+            widgets.Npmi(),
+            widgets.Zipf()]
+
+
+def get_widgets():
+    """
+    # A measurement widget requires 2 things:
+    # - A load or prepare function
+    # - A display function
+    # We define these in two separate functions get_load_prepare_list and get_ui_widgets;
+    # any widget can be added by modifying both functions and the rest of the app logic will work.
+    # get_load_prepare_list is a function since it requires a DatasetStatisticsCacheClass which will
+    # not be created until dataset and config values are selected in the ui
+    """
+    return get_load_prepare_list, get_ui_widgets()
+
+
+def get_title(dstats):
     title_str = f"### Showing: {dstats.dset_name} - {dstats.dset_config} - {dstats.split_name} - {'-'.join(dstats.text_field)}"
-    st.markdown(title_str)
     logs.info("showing header")
+    return title_str
 
-def display_measurements(dataset_args, display_list, loaded_dstats,
-                         show_perplexities):
-    """Displays the measurement results in the UI"""
-    if isdir(loaded_dstats.dataset_cache_dir):
-        show_column(loaded_dstats, display_list, show_perplexities)
-    else:
-        st.markdown("### Missing pre-computed data measures!")
-        st.write(dataset_args)
 
 def display_initial_UI():
     """Displays the header in the UI"""
-    st.title("Data Measurements Tool")
-    # Write out the sidebar details
-    st_utils.sidebar_header()
     # Extract the selected arguments
-    dataset_args = st_utils.sidebar_selection(DATASET_NAME_TO_DICT)
+    dataset_args = gr_utils.sidebar_selection(DATASET_NAME_TO_DICT)
     return dataset_args
+
 
 def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=True, pull_cache_from_hub=False):
     """
@@ -158,7 +152,7 @@ def show_column(dstats, display_list, show_perplexities, column_id=""):
     """
 
     # start showing stuff
-    st_utils.expander_header(dstats, DATASET_NAME_TO_DICT)
+    gr_utils.expander_header(dstats, DATASET_NAME_TO_DICT)
     for widget_tuple in display_list:
         widget_type = widget_tuple[0]
         widget_fn = widget_tuple[1]
@@ -170,8 +164,87 @@ def show_column(dstats, display_list, show_perplexities, column_id=""):
             logs.exception(e)
     # TODO: Fix how this is a weird outlier.
     if show_perplexities:
-        st_utils.expander_text_perplexities(dstats, column_id)
+        gr_utils.expander_text_perplexities(dstats, column_id)
     logs.info("Have finished displaying the widgets.")
+
+
+def create_demo(live: bool, pull_cache_from_hub: bool):
+    with gr.Blocks() as demo:
+        state = gr.State()
+        with gr.Row():
+            with gr.Column(scale=1):
+                dataset_args = display_initial_UI()
+                get_load_prepare_list_fn, widget_list = get_widgets()
+                # # TODO: Make this less of a weird outlier.
+                # Doesn't do anything right now
+                show_perplexities = gr.Checkbox(label="Show text perplexities")
+            with gr.Column(scale=4):
+                gr.Markdown("# Data Measurements Tool")
+                title = gr.Markdown()
+                for widget in widget_list:
+                    widget.render()
+
+            def update_ui(dataset: str, config: str, split: str, feature: str):
+                feature = ast.literal_eval(feature)
+                label_field, label_names = gr_utils.get_label_names(dataset, config, DATASET_NAME_TO_DICT)
+                dstats = dmt_cls(dset_name=dataset, dset_config=config, split_name=split, text_field=feature,
+                                 label_field=label_field, label_names=label_names, use_cache=True)
+                load_prepare_list = get_load_prepare_list_fn(dstats)
+                dstats = load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities=False,
+                                                 live=live, pull_cache_from_hub=pull_cache_from_hub)
+                output = {title: get_title(dstats), state: dstats}
+                for widget in widget_list:
+                    output.update(widget.update(dstats))
+                return output
+
+            def update_dataset(dataset: str):
+                new_values = gr_utils.update_dataset(dataset, DATASET_NAME_TO_DICT)
+                config = new_values[0][1]
+                feature = new_values[1][1]
+                split = new_values[2][1]
+                new_dropdown = {
+                    dataset_args["dset_config"]: gr.Dropdown.update(choices=new_values[0][0], value=config),
+                    dataset_args["text_field"]: gr.Dropdown.update(choices=new_values[1][0], value=feature),
+                    dataset_args["split_name"]: gr.Dropdown.update(choices=new_values[2][0], value=split),
+                }
+                return new_dropdown
+
+            def update_config(dataset: str, config: str):
+                new_values = gr_utils.update_config(dataset, config, DATASET_NAME_TO_DICT)
+
+                feature = new_values[0][1]
+                split = new_values[1][1]
+                new_dropdown = {
+                    dataset_args["text_field"]: gr.Dropdown.update(choices=new_values[0][0], value=feature),
+                    dataset_args["split_name"]: gr.Dropdown.update(choices=new_values[1][0], value=split)
+                }
+                return new_dropdown
+
+            measurements = [comp for output in widget_list for comp in output.output_components]
+            demo.load(update_ui,
+                      inputs=[dataset_args["dset_name"], dataset_args["dset_config"], dataset_args["split_name"], dataset_args["text_field"]],
+                      outputs=[title, state] + measurements)
+
+            for widget in widget_list:
+                widget.add_events(state)
+
+            dataset_args["dset_name"].change(update_dataset,
+                                             inputs=[dataset_args["dset_name"]],
+                                             outputs=[dataset_args["dset_config"],
+                                              dataset_args["split_name"], dataset_args["text_field"],
+                                             title, state] + measurements)
+
+            dataset_args["dset_config"].change(update_config,
+                                               inputs=[dataset_args["dset_name"], dataset_args["dset_config"]],
+                                               outputs=[dataset_args["split_name"], dataset_args["text_field"],
+                                                        title, state] + measurements)
+
+            dataset_args["calculate_btn"].click(update_ui,
+                                                inputs=[dataset_args["dset_name"], dataset_args["dset_config"],
+                                                        dataset_args["split_name"], dataset_args["text_field"]],
+                                                outputs=[title, state] + measurements)
+    return demo
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -183,29 +256,10 @@ def main():
     live = arguments.live
     pull_cache_from_hub = arguments.pull_cache_from_hub
 
-    # Initialize the interface and grab the UI-provided arguments
-    dataset_args = display_initial_UI()
+    # Create and initialize the demo
+    demo = create_demo(live, pull_cache_from_hub)
 
-    # TODO: Make this less of a weird outlier.
-    show_perplexities = st.sidebar.checkbox("Show text perplexities")
-
-    # Initialize the main DMT class with the UI-provided arguments
-    # When using the app (this file), try to use cache by default.
-    dstats = dmt_cls(**dataset_args, use_cache=True)
-    display_title(dstats)
-    # Get the widget functionality for the different measurements.
-    load_prepare_list, display_list = get_widgets(dstats)
-    # Load/Prepare the DMT widgets.
-    loaded_dstats = load_or_prepare_widgets(dstats, load_prepare_list,
-                                            show_perplexities, live=live,
-                                            pull_cache_from_hub=pull_cache_from_hub)
-    # After the load_or_prepare functions are run,
-    # we should have a cache for each measurement widget --
-    # either because it was there already,
-    # or we computed them (which we do when not live).
-    # Write out on the UI what we have.
-    display_measurements(dataset_args, display_list, loaded_dstats,
-                         show_perplexities)
+    demo.launch()
 
 if __name__ == "__main__":
     main()

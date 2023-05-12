@@ -54,7 +54,6 @@ class DMTHelper:
         DMT uses the full duplicates list in a widget,
         so it is set to default True.
         """
-
         # First look to see what we can load from cache.
         if self.use_cache:
             self.duplicates_results = self._load_duplicates_cache()

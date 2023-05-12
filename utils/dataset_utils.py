@@ -374,9 +374,13 @@ def extract_field(examples, field_path, new_field_name=None):
 def make_path(path):
     os.makedirs(path, exist_ok=True)
 
-def counter_dict_to_df(dict_input):
+def counter_dict_to_df(dict_input, key_as_column=False):
     df_output = pd.DataFrame(dict_input, index=[0]).T
-    df_output.columns = ["count"]
+    if key_as_column:
+        df_output.reset_index(inplace=True)
+        df_output.columns = ["instance", "count"]
+    else:
+        df_output.columns = ["count"]
     return df_output.sort_values(by="count", ascending=False)
 
 def write_plotly(fig, fid):
