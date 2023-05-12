@@ -112,8 +112,7 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
             % (zipf_fig_html_fid, zipf_fig_json_fid)
         )
 
-    # Don't do this one until someone specifically asks for it -- takes awhile.
-    if calculation == "npmi":
+    if calculation == "all" or calculation == "npmi":
         print("\n* Preparing nPMI.")
         dstats.load_or_prepare_npmi()
         npmi_fid_dict = dstats.npmi_files
@@ -127,12 +126,12 @@ def load_or_prepare(dataset_args, calculation=False, use_cache=False):
                 print("%s: %s" % (key, value))
         print()
 
-    # Don't do this one until someone specifically asks for it -- takes awhile.
+    # We removed this from the tool.
     if calculation == "embeddings":
         logs.info("\n* Preparing text embeddings.")
         dstats.load_or_prepare_embeddings()
 
-    # Don't do this one until someone specifically asks for it -- takes awhile.
+    # We removed this from the tool.
     if calculation == "perplexities":
         logs.info("\n* Preparing text perplexities.")
         dstats.load_or_prepare_text_perplexities()
