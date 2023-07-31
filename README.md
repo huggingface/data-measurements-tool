@@ -50,4 +50,4 @@ Example for IMDB dataset:
 
 ## User Interface
 
-`streamlit run app.py`
+`gradio app.py`
