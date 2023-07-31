@@ -23,7 +23,7 @@ import statistics
 import streamlit as st
 import utils
 import utils.dataset_utils as ds_utils
-from st_aggrid import AgGrid, GridOptionsBuilder
+#from st_aggrid import AgGrid, GridOptionsBuilder --> commenting out to fix local build error
 from utils.dataset_utils import HF_DESC_FIELD, HF_FEATURE_FIELD, HF_LABEL_FIELD
 
 logs = utils.prepare_logging(__file__)

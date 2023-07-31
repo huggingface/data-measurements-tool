@@ -21,6 +21,9 @@ import utils
 from utils import dataset_utils
 from utils import gradio_utils as gr_utils
 import widgets
+import app as ap
+from app import load_or_prepare_widgets
+
 
 logs = utils.prepare_logging(__file__)
 
@@ -34,25 +37,17 @@ def get_load_prepare_list(dstats):
     """
     # Measurement calculation:
     # Add any additional modules and their load-prepare function here.
-    load_prepare_list = [("general stats", dstats.load_or_prepare_general_stats),
-                         ("label distribution", dstats.load_or_prepare_labels),
+    load_prepare_list = [
                          ("text_lengths", dstats.load_or_prepare_text_lengths),
-                         ("duplicates", dstats.load_or_prepare_text_duplicates),
-                         ("npmi", dstats.load_or_prepare_npmi),
-                         ("zipf", dstats.load_or_prepare_zipf)]
+    ]
 
     return load_prepare_list
 
 
 def get_ui_widgets():
     """Get the widgets that will be displayed in the UI."""
-    return [widgets.DatasetDescription(DATASET_NAME_TO_DICT),
-            widgets.GeneralStats(),
-            widgets.LabelDistribution(),
-            widgets.TextLengths(),
-            widgets.Duplicates(),
-            widgets.Npmi(),
-            widgets.Zipf()]
+    return [
+            widgets.TextLengths(),]
 
 
 def get_widgets():
@@ -81,64 +76,6 @@ def display_initial_UI():
     return dataset_args
 
 
-def load_or_prepare_widgets(dstats, load_prepare_list, show_perplexities, live=True, pull_cache_from_hub=False):
-    """
-     Takes the dataset arguments from the GUI and uses them to load a dataset from the Hub or, if
-     a cache for those arguments is available, to load it from the cache.
-     Widget data is loaded only when the system is live (deployed for users).
-     Otherwise, the data is prepared if it doesn't yet exist.
-     Args:
-         ds_args (dict): the dataset arguments defined via the streamlit app GUI
-         load_prepare_list (list): List of (widget_name, widget_load_or_prepare_function)
-         show_perplexities (Bool): whether perplexities should be loaded and displayed for this dataset
-         live (Bool): Whether the system is deployed for live use by users.
-         pull_cache_from_hub (Bool): Whether the cache should be pulled from the hub (vs locally)
-     Returns:
-         dstats: the computed dataset statistics (from the dataset_statistics class)
-     """
-
-    # When we're "live" (tool is being used by users on our servers),
-    # cache is used and the f'ns are instructed to only try to load cache,
-    # not to prepare/compute anything anew.
-    if live:
-        # Only use what's cached; don't prepare anything
-        load_only = True
-        logs.info("Only using cache.")
-    else:
-        # Prepare things anew and cache them if we're not live.
-        load_only = False
-        logs.info("Making new calculations if cache is not there.")
-    if pull_cache_from_hub:
-        dataset_utils.pull_cache_from_hub(dstats.cache_path, dstats.dataset_cache_dir)
-
-    # Data common across DMT:
-    # Includes the dataset text/requested feature column,
-    # the dataset tokenized, and the vocabulary
-    dstats.load_or_prepare_text_dataset(load_only=load_only)
-    # Just a snippet of the dataset
-    dstats.load_or_prepare_dset_peek(load_only=load_only)
-    # Tokenized dataset
-    dstats.load_or_prepare_tokenized_df(load_only=load_only)
-    # Vocabulary (uses tokenized dataset)
-    dstats.load_or_prepare_vocab(load_only=load_only)
-    # Custom widgets
-    for widget_tuple in load_prepare_list:
-        widget_name = widget_tuple[0]
-        widget_fn = widget_tuple[1]
-        try:
-            widget_fn(load_only=load_only)
-        except Exception as e:
-            logs.warning("Issue with %s." % widget_name)
-            logs.exception(e)
-    # TODO: If these are cached, can't we just show them by default?
-    # It won't take up computation time.
-    if show_perplexities:
-        try:
-            dstats.load_or_prepare_text_perplexities(load_only=load_only)
-        except Exception as e:
-            logs.warning("Issue with %s." % "perplexities")
-            logs.exception(e)
-    return dstats
 
 
 def show_column(dstats, display_list, show_perplexities, column_id=""):
@@ -183,7 +120,7 @@ def create_demo(live: bool, pull_cache_from_hub: bool):
                 title = gr.Markdown()
                 for widget in widget_list:
                     widget.render()
-
+            # when UI upates, call the new text --> parse to teh TTi function 
             def update_ui(dataset: str, config: str, split: str, feature: str):
                 feature = ast.literal_eval(feature)
                 label_field, label_names = gr_utils.get_label_names(dataset, config, DATASET_NAME_TO_DICT)
@@ -203,7 +140,6 @@ def create_demo(live: bool, pull_cache_from_hub: bool):
                 feature = new_values[1][1]
                 split = new_values[2][1]
                 new_dropdown = {
-                    dataset_args["dset_config"]: gr.Dropdown.update(choices=new_values[0][0], value=config),
                     dataset_args["text_field"]: gr.Dropdown.update(choices=new_values[1][0], value=feature),
                     dataset_args["split_name"]: gr.Dropdown.update(choices=new_values[2][0], value=split),
                 }
@@ -224,10 +160,10 @@ def create_demo(live: bool, pull_cache_from_hub: bool):
             demo.load(update_ui,
                       inputs=[dataset_args["dset_name"], dataset_args["dset_config"], dataset_args["split_name"], dataset_args["text_field"]],
                       outputs=[title, state] + measurements)
-
+            print(dataset_args["text_field"])
             for widget in widget_list:
                 widget.add_events(state)
-            #dataset_args["text_field"] --> the text that could be returned
+
             dataset_args["dset_name"].change(update_dataset,
                                              inputs=[dataset_args["dset_name"]],
                                              outputs=[dataset_args["dset_config"],
