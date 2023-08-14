@@ -193,7 +193,10 @@ def main():
     pull_cache_from_hub = arguments.pull_cache_from_hub
 
     # Create and initialize the demo
+    dataset_args = display_initial_UI()
     demo = create_demo(live, pull_cache_from_hub)
+    print("this is the cureenrt TEXT:")
+    print(dataset_args["text_field"])
 
     demo.launch()
 
