@@ -55,6 +55,7 @@ TOT_WORDS = "total words"
 TOT_OPEN_WORDS = "total open words"
 
 _DATASET_LIST = [
+    "bigbench",
     "c4",
     "squad",
     "squad_v2",
@@ -65,8 +66,9 @@ _DATASET_LIST = [
     "wikitext",
     "imdb",
 ]
-
+#"OBELICS",
 _STREAMABLE_DATASET_LIST = [
+   
     "c4",
     "wikitext",
 ]
@@ -87,8 +89,10 @@ def _load_dotenv_for_cache_on_hub():
     """
     if Path(".env").is_file():
         load_dotenv(".env")
-    hf_token = getenv("HF_TOKEN")
-    hub_cache_organization = getenv("HUB_CACHE_ORGANIZATION")
+    #hf_token = getenv("HF_TOKEN")
+    hf_token = getenv("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")
+    hub_cache_organization = getenv("HuggingFaceM4")
+    #hub_cache_organization = getenv("HUB_CACHE_ORGANIZATION")
     return hub_cache_organization, hf_token
 
 def get_cache_dir_naming(out_dir, dataset, config, split, feature):
