@@ -278,6 +278,7 @@ class DatasetStatisticsCacheClass:
             batched=True,
             remove_columns=list(self.dset.features),
         )
+        self.text_dset = self.text_dset.filter(lambda ex: ex["text"] is not None)
 
 
     def load_or_prepare_general_stats(self, load_only=False):

@@ -69,9 +69,10 @@ _DATASET_LIST = [
 _STREAMABLE_DATASET_LIST = [
     "c4",
     "wikitext",
+    "HuggingFaceM4/OBELICS"
 ]
 
-_MAX_ROWS = 200000
+_MAX_ROWS = 100
 
 logs = utils.prepare_logging(__file__)
 
@@ -208,13 +209,17 @@ def load_truncated_dataset(
                 streaming=True,
             ).take(num_rows)
             rows = list(iterable_dataset)
-            f = open("temp.jsonl", "w", encoding="utf-8")
-            for row in rows:
-                _ = f.write(json.dumps(row) + "\n")
-            f.close()
-            dataset = Dataset.from_json(
-                "temp.jsonl", features=iterable_dataset.features, split=NamedSplit(split_name)
-            )
+            def gen():
+                yield from rows
+            dataset = Dataset.from_generator(gen, features=iterable_dataset.features)
+            dataset._split = NamedSplit(split_name)
+            # f = open("temp.jsonl", "w", encoding="utf-8")
+            # for row in rows:
+            #     _ = f.write(json.dumps(row) + "\n")
+            # f.close()
+            # dataset = Dataset.from_json(
+            #     "temp.jsonl", features=iterable_dataset.features, split=NamedSplit(split_name)
+            # )
         else:
             full_dataset = load_dataset(
                 dataset_name,
@@ -308,7 +313,7 @@ def dictionarize_info(dset_info):
     res = {
         "config_name": info_dict["config_name"],
         "splits": {
-            spl: spl_info["num_examples"]
+            spl: 100
             for spl, spl_info in info_dict["splits"].items()
         },
         "features": {
