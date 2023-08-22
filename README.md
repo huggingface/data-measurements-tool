@@ -47,6 +47,17 @@ Example for IMDB dataset:
 
          `python3 run_data_measurements.py --dataset="imdb" --config="plain_text" --split="train" --label_field="label" --feature="text"`
 
+### Docker Commands
+Build Container
+
+    docker build -t data-measurements-tool .   
+Run data measurement tool
+
+    docker run -v $(pwd):/app data-measurements-tool python3 run_data_measurements.py  --dataset="HuggingFaceM4/OBELICS" --config="default" --split="train" --feature="texts"
+Run streamlit app
+
+    docker run -p 8501:8501 -v $(pwd):/app data-measurements-tool streamlit run app.py  
+    
 
 ## User Interface
 
