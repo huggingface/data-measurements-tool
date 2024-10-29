@@ -21,8 +21,9 @@ For more information, check out out [blog post](https://huggingface.co/blog/data
 
 After cloning (and potentially setting up your virtual environment), run:
 
-`pip install -r requirements.txt`
-
+```
+pip install -r requirements.txt
+```
 This installs all the requirements for the tool.
 
 ## Command Line Interface
@@ -32,21 +33,22 @@ The options specify the HF Dataset, the Dataset config, the Dataset columns bein
 
 To see the full list of options, do:
 
-`python3 run_data_measurements.py -h` or `python3 run_data_measurements.py --help`
-
+```
+python3 run_data_measurements.py -h or python3 run_data_measurements.py --help
+```
 Example for hate_speech18 dataset:
-
-         `python3 run_data_measurements.py --dataset="hate_speech18" --config="default" --split="train" --feature="text"`
-
+```
+python3 run_data_measurements.py --dataset="hate_speech18" --config="default" --split="train" --feature="text"
+```
 Example for getting *just* the nPMI measurement from hate_speech18:
-
-         `python3 run_data_measurements.py --dataset=hate_speech18 --config default --split train --feature text --calculation npmi`
-
+```
+python3 run_data_measurements.py --dataset=hate_speech18 --config default --split train --feature text --calculation npmi
+```
 
 Example for IMDB dataset:
-
-         `python3 run_data_measurements.py --dataset="imdb" --config="plain_text" --split="train" --label_field="label" --feature="text"`
-
+```
+python3 run_data_measurements.py --dataset="imdb" --config="plain_text" --split="train" --label_field="label" --feature="text"
+```
 
 ## User Interface
 
